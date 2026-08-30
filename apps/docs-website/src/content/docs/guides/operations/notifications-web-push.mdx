@@ -76,14 +76,14 @@ This preserves "review later" behavior without waking the user's devices.
 
 Web Push is available by default. It needs no keys and no operator setup.
 
-At its first start, the server makes a VAPID key pair. It keeps the pair in the `RUNTIME_STATE` KV bucket. Browsers receive the public key. The server signs each push with the private key. The server also sends `webserver.url` as the VAPID contact URI. Push services use that URI to find the operator.
+At its first start, the server makes a VAPID key pair. It keeps the pair in the `RUNTIME_STATE` KV bucket. Browsers receive the public key. The server signs each push with the private key. The server also sends `webserver.url` as the VAPID contact URI, when that URL uses `https:`. Push services use that URI to find the operator.
 
 The server contacts a browser push service only after a member gives notification permission on a device.
 
 Web Push stays unavailable, and Chatto hides the push UI, in these two conditions:
 
 - You set `push.enabled` to `false`.
-- The server has no `webserver.url` and no `push.vapid_subject`. The server then writes a warning to its log.
+- The server has no contact URI. This occurs when `push.vapid_subject` is empty and `webserver.url` is not an `https:` URL. The server then writes a warning to its log.
 
 ### Keep The Generated Key Pair
 
@@ -110,7 +110,7 @@ Then configure Chatto:
 [push]
 vapid_public_key = "<generate-me>"
 vapid_private_key = "<generate-me>"
-# Optional. The default is webserver.url.
+# Optional. The default is webserver.url, when that URL uses https:.
 vapid_subject = "mailto:admin@example.com"
 ```
 
@@ -120,7 +120,7 @@ vapid_subject = "mailto:admin@example.com"
 ```bash
 CHATTO_PUSH_VAPID_PUBLIC_KEY=<generate-me>
 CHATTO_PUSH_VAPID_PRIVATE_KEY=<generate-me>
-# Optional. The default is webserver.url.
+# Optional. The default is webserver.url, when that URL uses https:.
 CHATTO_PUSH_VAPID_SUBJECT=mailto:admin@example.com
 ```
 

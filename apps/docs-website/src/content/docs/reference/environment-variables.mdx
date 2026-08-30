@@ -483,8 +483,8 @@ SMTP is the default transactional email transport. Set `email.transport = "jmap"
   VAPID private key for Web Push. Optional, but required together with `CHATTO_PUSH_VAPID_PUBLIC_KEY`. The server refuses to start if you set only one of the two.
 </EnvVar>
 
-<EnvVar name="CHATTO_PUSH_VAPID_SUBJECT" toml="push.vapid_subject" default="webserver.url">
-  VAPID subject identifier. Use an operator email address, optionally prefixed with `mailto:`, or an `https:` contact URL. Web Push stays unavailable when this and `webserver.url` are both empty.
+<EnvVar name="CHATTO_PUSH_VAPID_SUBJECT" toml="push.vapid_subject" default="https webserver.url">
+  VAPID subject identifier. Use an operator email address, optionally prefixed with `mailto:`, or an `https:` contact URL. Web Push stays unavailable when this is empty and `webserver.url` is not an `https:` URL.
 </EnvVar>
 
 ## Asset Processing

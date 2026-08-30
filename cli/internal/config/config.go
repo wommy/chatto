@@ -58,11 +58,16 @@ func (c *ChattoConfig) ApplyDefaults() {
 	}
 
 	// Web Push needs a contact URI for the push services it calls. The public
-	// server URL is a valid VAPID subject and is already known, so operators do
-	// not have to supply one. The generated key pair is resolved later, during
-	// server startup, because it lives in runtime state.
+	// server URL is a valid VAPID subject (RFC 8292 allows only https: and
+	// mailto: subjects, so an http: URL cannot become one) and is already
+	// known, so operators do not have to supply one. The generated key pair is
+	// resolved later, during server startup, because it lives in runtime
+	// state. Parsing lowercases the scheme, so the derived subject keeps the
+	// https: prefix that push libraries and services check for.
 	if c.Push.EnabledOrDefault() && c.Push.VAPIDSubject == "" && c.Webserver.URL != "" {
-		c.Push.VAPIDSubject = strings.TrimRight(c.Webserver.URL, "/")
+		if u, err := url.Parse(c.Webserver.URL); err == nil && u.Scheme == "https" && u.Host != "" {
+			c.Push.VAPIDSubject = strings.TrimRight(u.String(), "/")
+		}
 	}
 
 	if c.LiveKit.ServerID == "" {
@@ -403,11 +408,12 @@ func (c *ChattoConfig) Validate() error {
 			errs = append(errs, "push.vapid_private_key is required together with push.vapid_public_key")
 		}
 	}
-	// ApplyDefaults derives the subject from webserver.url. Only an operator
-	// who turned push on explicitly gets an error for a missing contact URI;
-	// otherwise push stays unavailable and the server logs the reason.
+	// ApplyDefaults derives the subject from an https webserver.url. Only an
+	// operator who turned push on explicitly gets an error for a missing
+	// contact URI; otherwise push stays unavailable and the server logs the
+	// reason.
 	if c.Push.Enabled != nil && *c.Push.Enabled && c.Push.VAPIDSubject == "" {
-		errs = append(errs, "webserver.url or push.vapid_subject is required when push is enabled")
+		errs = append(errs, "push.vapid_subject or an https webserver.url is required when push is enabled")
 	}
 
 	// LiveKit configuration

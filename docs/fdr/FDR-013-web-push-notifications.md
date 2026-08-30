@@ -13,7 +13,7 @@ configuration, and uses the persistent notification system (see FDR-012).
 ## Behavior
 
 - Web Push is enabled by default. The server generates a VAPID key pair on first use and stores it in `RUNTIME_STATE` under `push_vapid_keys`, so operators do not configure keys. A configured key pair takes precedence and suppresses generation; a half configured pair is a startup error.
-- The VAPID subject defaults to `webserver.url`. Push stays unavailable, without failing startup, when push is turned off or when neither `webserver.url` nor `push.vapid_subject` gives a contact URI.
+- The VAPID subject defaults to `webserver.url` when that URL uses `https:` (RFC 8292 allows only `https:` and `mailto:` subjects). Push stays unavailable, without failing startup, when push is turned off or when neither `webserver.url` nor `push.vapid_subject` gives a contact URI.
 - Replicas settle on one generated pair because the record is created, never overwritten. The pair stays stable for the life of the server's runtime state; a client whose browser subscription carries a different application-server key unsubscribes and subscribes again at its next startup registration, without a new permission prompt.
 - If push is configured and supported, the Notifications pane shows an action to enable push while browser permission is unset. This action opens the browser or operating-system permission prompt.
 - If the user dismisses the browser prompt, the action remains available because permission is still unset. If the user denies permission, Chatto hides the action. The user can change the choice in browser or operating-system settings.
@@ -62,7 +62,7 @@ validation can still suppress it.
 
 ### 3. VAPID with self-managed, self-generated keys
 
-**Decision:** The server generates its own VAPID key pair on first use and keeps it in `RUNTIME_STATE`, and defaults the subject (contact URI) to `webserver.url`. Push is enabled by default. Operators may still supply their own pair, and may turn the feature off.
+**Decision:** The server generates its own VAPID key pair on first use and keeps it in `RUNTIME_STATE`, and defaults the subject (contact URI) to `webserver.url` when that URL uses `https:`. Push is enabled by default. Operators may still supply their own pair, and may turn the feature off.
 **Why:** VAPID is the standard for Web Push. Self-managed keys mean the operator's server is the only entity that can send push notifications to its users — no third-party relay. Nothing about that requires a human to run a key generator: the server can make the same key material itself, so the feature works on a fresh install without setup. Generated keys go in `RUNTIME_STATE` rather than `ENCRYPTION_KEYS` so a normal backup keeps the pair together with the subscriptions it authenticates, and defaulting the subject to the public server URL avoids sending an operator's email address to third-party push services without being asked.
 **Tradeoff:** A server that never wanted push now exposes the push UI until the operator sets `push.enabled = false`. Contact with a browser push service still requires a member to grant notification permission, so the default costs no third-party traffic on its own. Losing `RUNTIME_STATE` without a backup rotates the pair and forces every device to subscribe again.
 

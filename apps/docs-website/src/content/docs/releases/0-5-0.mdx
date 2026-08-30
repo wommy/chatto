@@ -246,8 +246,8 @@ import ReleaseHero from "../../../components/release-notes/ReleaseHero.astro";
   member grants notification permission on a device. Set `push.enabled = false`
   (`CHATTO_PUSH_ENABLED=false`) to keep the feature hidden. A configured key
   pair keeps working unchanged; `push.vapid_subject` now defaults to
-  `webserver.url`, and setting only one of the two VAPID keys is a startup
-  error.
+  `webserver.url` when that URL uses `https:`, and setting only one of the two
+  VAPID keys is a startup error.
 - Existing 0.4 Web Push subscription records remain stored, but 0.5 cannot use
   them until the browser registers them again. The bundled client performs this
   refresh without another permission prompt when the user opens it and

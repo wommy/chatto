@@ -416,7 +416,7 @@ func resolvePushVAPIDKeys(ctx context.Context, chattoCore *core.ChattoCore, cfg 
 		return nil
 	}
 	if cfg.Push.VAPIDSubject == "" {
-		log.Warn("Web Push is unavailable because no contact URI is configured; set webserver.url or push.vapid_subject")
+		log.Warn("Web Push is unavailable because no contact URI is configured; set push.vapid_subject or an https webserver.url")
 		return nil
 	}
 	if cfg.Push.HasOperatorVAPIDKeys() {

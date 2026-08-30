@@ -485,6 +485,16 @@ func TestChattoConfig_ApplyDefaultsPushSubject(t *testing.T) {
 			name:        "derives no subject without a public server URL",
 			wantSubject: "",
 		},
+		{
+			name:        "derives no subject from an http URL",
+			webserver:   "http://localhost:5173",
+			wantSubject: "",
+		},
+		{
+			name:        "lowercases the scheme of the derived subject",
+			webserver:   "HTTPS://chat.example/",
+			wantSubject: "https://chat.example",
+		},
 	}
 
 	for _, tt := range tests {
