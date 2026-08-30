@@ -2157,7 +2157,7 @@ func TestPushNotificationServiceSubscribeAndUnsubscribe(t *testing.T) {
 	}
 
 	env.api.config.Push = config.PushConfig{
-		Enabled:         true,
+		Enabled:         boolPtr(true),
 		VAPIDPublicKey:  "public-key",
 		VAPIDPrivateKey: "private-key",
 		VAPIDSubject:    "mailto:admin@example.com",
@@ -2268,7 +2268,7 @@ func TestPushNotificationServiceHidesDeliveryFailureDetails(t *testing.T) {
 	env := newConnectAPITestEnv(t)
 	ctx := withCaller(env.ctx, env.viewer)
 	env.api.config.Push = config.PushConfig{
-		Enabled:         true,
+		Enabled:         boolPtr(true),
 		VAPIDPublicKey:  "public-key",
 		VAPIDPrivateKey: "private-key",
 		VAPIDSubject:    "mailto:admin@example.com",

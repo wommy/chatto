@@ -57,6 +57,14 @@ func (c *ChattoConfig) ApplyDefaults() {
 		}
 	}
 
+	// Web Push needs a contact URI for the push services it calls. The public
+	// server URL is a valid VAPID subject and is already known, so operators do
+	// not have to supply one. The generated key pair is resolved later, during
+	// server startup, because it lives in runtime state.
+	if c.Push.EnabledOrDefault() && c.Push.VAPIDSubject == "" && c.Webserver.URL != "" {
+		c.Push.VAPIDSubject = strings.TrimRight(c.Webserver.URL, "/")
+	}
+
 	if c.LiveKit.ServerID == "" {
 		c.LiveKit.ServerID = c.LiveKit.InstanceID
 	}
@@ -383,20 +391,23 @@ func (c *ChattoConfig) Validate() error {
 		errs = append(errs, "email.transport must be one of: smtp, jmap")
 	}
 
-	// Push notification configuration
-	if c.Push.Enabled {
-		if c.Webserver.URL == "" {
-			errs = append(errs, "webserver.url is required when push is enabled")
+	// Push notification configuration. Keys are optional: the server generates
+	// and stores a VAPID key pair when the operator supplies none. A half
+	// configured pair is still an error, because it hides a typo behind a
+	// generated key that the operator did not ask for.
+	if c.Push.EnabledOrDefault() {
+		if c.Push.VAPIDPublicKey == "" && c.Push.VAPIDPrivateKey != "" {
+			errs = append(errs, "push.vapid_public_key is required together with push.vapid_private_key")
 		}
-		if c.Push.VAPIDPublicKey == "" {
-			errs = append(errs, "push.vapid_public_key is required when push is enabled")
+		if c.Push.VAPIDPrivateKey == "" && c.Push.VAPIDPublicKey != "" {
+			errs = append(errs, "push.vapid_private_key is required together with push.vapid_public_key")
 		}
-		if c.Push.VAPIDPrivateKey == "" {
-			errs = append(errs, "push.vapid_private_key is required when push is enabled")
-		}
-		if c.Push.VAPIDSubject == "" {
-			errs = append(errs, "push.vapid_subject is required when push is enabled")
-		}
+	}
+	// ApplyDefaults derives the subject from webserver.url. Only an operator
+	// who turned push on explicitly gets an error for a missing contact URI;
+	// otherwise push stays unavailable and the server logs the reason.
+	if c.Push.Enabled != nil && *c.Push.Enabled && c.Push.VAPIDSubject == "" {
+		errs = append(errs, "webserver.url or push.vapid_subject is required when push is enabled")
 	}
 
 	// LiveKit configuration

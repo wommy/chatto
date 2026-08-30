@@ -283,7 +283,8 @@ directives, but these directives can stop multi-server connections or media.
 | OAuth/OIDC provider client secrets | `chatto.toml` `[[auth.providers]]` / `CHATTO_AUTH_PROVIDERS_<index>_CLIENT_SECRET` or legacy `CHATTO_AUTH_OIDC_CLIENT_SECRET` | n/a |
 | SMTP password | `chatto.toml` / `CHATTO_SMTP_PASSWORD` | n/a |
 | JMAP access token | `chatto.toml` / `CHATTO_EMAIL_JMAP_ACCESS_TOKEN` | n/a |
-| Web Push VAPID key pair | `chatto.toml` / `CHATTO_PUSH_VAPID_PUBLIC_KEY`, `CHATTO_PUSH_VAPID_PRIVATE_KEY` | n/a |
+| Web Push VAPID key pair (generated) | `RUNTIME_STATE` (`push_vapid_keys`) | Yes |
+| Web Push VAPID key pair (operator-supplied) | `chatto.toml` / `CHATTO_PUSH_VAPID_PUBLIC_KEY`, `CHATTO_PUSH_VAPID_PRIVATE_KEY` | n/a |
 | LiveKit API and webhook secrets | `chatto.toml` / `CHATTO_LIVEKIT_API_KEY`, `CHATTO_LIVEKIT_API_SECRET`, `CHATTO_LIVEKIT_WEBHOOK_API_KEY`, `CHATTO_LIVEKIT_WEBHOOK_API_SECRET` | n/a |
 | TLS certificates | Disk cache directory (`autocert`) | n/a |
 

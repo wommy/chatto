@@ -201,6 +201,18 @@ func runServer(configPath string) {
 		return
 	}
 
+	// Resolve the Web Push application-server keys before anything reads
+	// cfg.Push. A generated key pair lives in runtime state, so it can only be
+	// read once the core's storage exists.
+	if err := resolvePushVAPIDKeys(ctx, chattoCore, &cfg); err != nil {
+		if cfg.Push.Enabled != nil && *cfg.Push.Enabled {
+			log.Error("Failed to resolve Web Push VAPID keys", "error", err)
+			exitCode = 1
+			return
+		}
+		log.Warn("Web Push is unavailable because its VAPID keys could not be resolved", "error", err)
+	}
+
 	// Set up push notification callback if push is enabled
 	setupPushNotifications(chattoCore, cfg)
 
@@ -392,6 +404,32 @@ func setLogLevel(level string) {
 		log.Warn("Unknown log level in configuration, defaulting to 'info'", "log_level", level)
 		log.SetLevel(log.InfoLevel)
 	}
+}
+
+// resolvePushVAPIDKeys fills in the Web Push key pair that the rest of the
+// server reads from configuration. An operator-supplied pair always wins.
+// Otherwise the server uses the pair it generates and keeps in runtime state,
+// so Web Push needs no operator setup. Push stays unavailable, without an
+// error, when it is turned off or has no contact URI to give push services.
+func resolvePushVAPIDKeys(ctx context.Context, chattoCore *core.ChattoCore, cfg *config.ChattoConfig) error {
+	if !cfg.Push.EnabledOrDefault() {
+		return nil
+	}
+	if cfg.Push.VAPIDSubject == "" {
+		log.Warn("Web Push is unavailable because no contact URI is configured; set webserver.url or push.vapid_subject")
+		return nil
+	}
+	if cfg.Push.HasOperatorVAPIDKeys() {
+		return nil
+	}
+
+	publicKey, privateKey, err := chattoCore.EnsureServerVAPIDKeys(ctx)
+	if err != nil {
+		return err
+	}
+	cfg.Push.VAPIDPublicKey = publicKey
+	cfg.Push.VAPIDPrivateKey = privateKey
+	return nil
 }
 
 // setupPushNotifications configures the push notification callback if push is enabled.

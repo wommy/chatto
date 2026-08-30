@@ -446,8 +446,59 @@ func TestChattoConfig_ApplyDefaultsAndNormalize(t *testing.T) {
 	if cfg.Bootstrap.Users[0].ServerRole != "owner" {
 		t.Fatalf("bootstrap server_role alias = %q", cfg.Bootstrap.Users[0].ServerRole)
 	}
+	if !cfg.Push.EnabledOrDefault() {
+		t.Fatal("Web Push must be enabled by default")
+	}
+	if cfg.Push.VAPIDSubject != "https://chat.example" {
+		t.Fatalf("derived VAPID subject = %q", cfg.Push.VAPIDSubject)
+	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() after defaults failed: %v", err)
+	}
+}
+
+func TestChattoConfig_ApplyDefaultsPushSubject(t *testing.T) {
+	tests := []struct {
+		name        string
+		webserver   string
+		push        PushConfig
+		wantSubject string
+	}{
+		{
+			name:        "derives the subject from the public server URL",
+			webserver:   "https://chat.example/",
+			wantSubject: "https://chat.example",
+		},
+		{
+			name:        "keeps a configured subject",
+			webserver:   "https://chat.example",
+			push:        PushConfig{VAPIDSubject: "mailto:admin@example.com"},
+			wantSubject: "mailto:admin@example.com",
+		},
+		{
+			name:        "derives no subject when push is off",
+			webserver:   "https://chat.example",
+			push:        PushConfig{Enabled: boolPtr(false)},
+			wantSubject: "",
+		},
+		{
+			name:        "derives no subject without a public server URL",
+			wantSubject: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validTestConfig()
+			cfg.Webserver.URL = tt.webserver
+			cfg.Push = tt.push
+
+			cfg.ApplyDefaults()
+
+			if cfg.Push.VAPIDSubject != tt.wantSubject {
+				t.Fatalf("VAPID subject = %q, want %q", cfg.Push.VAPIDSubject, tt.wantSubject)
+			}
+		})
 	}
 }
 

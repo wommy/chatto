@@ -145,6 +145,13 @@ import ReleaseHero from "../../../components/release-notes/ReleaseHero.astro";
     accumulating retries without exposing asset details.
   </ReleaseFeatureCard>
 
+  <ReleaseFeatureCard title="Web Push without setup" size="small">
+    Web Push is on by default. The server makes its own VAPID key pair at first start and
+    uses the public server URL as its contact address, so operators no longer generate keys
+    to give members push notifications. Configured keys still take precedence, and
+    `push.enabled = false` turns the feature off.
+  </ReleaseFeatureCard>
+
   <ReleaseFeatureCard title="Test Web Push delivery" size="small">
     Members can send themselves a real test notification from notification settings and get
     direct feedback when a subscription has expired or delivery fails.
@@ -233,6 +240,14 @@ import ReleaseHero from "../../../components/release-notes/ReleaseHero.astro";
   protobuf for this forward-compatible fallback. ProtoJSON integrations must ignore unknown
   fields or regenerate before a future signal variant is exposed.
   Upgrade all replicas and bundled clients together.
+- Web Push is enabled by default in 0.5. A server that never configured VAPID
+  keys now generates a key pair at its next start, keeps it in `RUNTIME_STATE`,
+  and shows the push controls to members. No push service is contacted until a
+  member grants notification permission on a device. Set `push.enabled = false`
+  (`CHATTO_PUSH_ENABLED=false`) to keep the feature hidden. A configured key
+  pair keeps working unchanged; `push.vapid_subject` now defaults to
+  `webserver.url`, and setting only one of the two VAPID keys is a startup
+  error.
 - Existing 0.4 Web Push subscription records remain stored, but 0.5 cannot use
   them until the browser registers them again. The bundled client performs this
   refresh without another permission prompt when the user opens it and

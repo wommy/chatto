@@ -72,8 +72,9 @@ func TestNewSender(t *testing.T) {
 	})
 
 	t.Run("returns nil when enabled but missing keys", func(t *testing.T) {
+		enabled := true
 		cfg := config.PushConfig{
-			Enabled: true,
+			Enabled: &enabled,
 			// Missing VAPID keys
 		}
 		sender := NewSender(cfg, logger)
@@ -84,7 +85,6 @@ func TestNewSender(t *testing.T) {
 
 	t.Run("returns sender when fully configured", func(t *testing.T) {
 		cfg := config.PushConfig{
-			Enabled:         true,
 			VAPIDPublicKey:  "test-public-key",
 			VAPIDPrivateKey: "test-private-key",
 			VAPIDSubject:    "mailto:test@example.com",
@@ -1158,7 +1158,6 @@ func newTestSender(t *testing.T, client webpush.HTTPClient) *Sender {
 	}
 
 	sender := NewSender(config.PushConfig{
-		Enabled:         true,
 		VAPIDPublicKey:  publicKey,
 		VAPIDPrivateKey: privateKey,
 		VAPIDSubject:    "mailto:test@example.com",

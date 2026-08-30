@@ -233,14 +233,18 @@ If you do not want public email/password registration after the first owner exis
 
 ### Push Notifications
 
-For notifications when the browser is closed. Generate VAPID keys with `npx web-push generate-vapid-keys`, then add to `.env`:
+Web Push gives members notifications when the browser is closed. It is on by default and needs no keys. The server makes a VAPID key pair at its first start and keeps it in `RUNTIME_STATE`. Set `CHATTO_WEBSERVER_URL` to your public HTTPS origin. Make sure that your backups include `RUNTIME_STATE`.
+
+To use your own key pair, generate one with `npx web-push generate-vapid-keys`, then add both keys to `.env`:
 
 ```bash
-CHATTO_PUSH_ENABLED=true
 CHATTO_PUSH_VAPID_PUBLIC_KEY=BNx...
 CHATTO_PUSH_VAPID_PRIVATE_KEY=...
+# Optional. The default is CHATTO_WEBSERVER_URL.
 CHATTO_PUSH_VAPID_SUBJECT=admin@example.com
 ```
+
+To turn Web Push off, add `CHATTO_PUSH_ENABLED=false`.
 
 ### Video Processing
 
