@@ -5,7 +5,7 @@ description: Configure Chatto notifications, Web Push, VAPID keys, device behavi
 
 import { Aside, CardGrid, LinkCard, Tabs, TabItem } from "@astrojs/starlight/components";
 
-Chatto has persistent in-app notifications and browser Web Push. Web Push is available by default and needs no operator setup; members decide which rooms, threads, and devices should alert them.
+Chatto has persistent in-app notifications and browser Web Push. Web Push is available by default and needs no keys; a server that uses an `https:` URL needs no push setup at all. Members decide which rooms, threads, and devices should alert them.
 
 ## How Notifications Work
 
@@ -74,7 +74,9 @@ This preserves "review later" behavior without waking the user's devices.
 
 ## Web Push Configuration
 
-Web Push is available by default. It needs no keys and no operator setup.
+Web Push is available by default. It needs no keys.
+
+It needs one thing: a contact URI for the push services. A server that sets `webserver.url` to an `https:` URL has one already and needs no push setup. A server on a plain `http://` URL, which includes the `http://localhost` URL that `chatto init` writes, must set `push.vapid_subject` to an operator `mailto:` address. RFC 8292 allows only `https:` and `mailto:` subjects, so an `http:` URL cannot become one.
 
 At its first start, the server makes a VAPID key pair. It keeps the pair in the `RUNTIME_STATE` KV bucket. Browsers receive the public key. The server signs each push with the private key. The server also sends `webserver.url` as the VAPID contact URI, when that URL uses `https:`. Push services use that URI to find the operator.
 
