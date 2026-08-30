@@ -1,5 +1,6 @@
 [tools]
 actionlint = "1.7.12"
+"npm:@action-validator/cli" = "0.6.0"
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:axllent/mailpit" = "1.30.6"
 buf = "latest"
@@ -108,8 +109,17 @@ description = "Check SPDX/REUSE license metadata"
 run = "uvx --with charset-normalizer 'reuse==6.2.0' lint"
 
 [tasks.lint-actions]
-description = "Check GitHub Actions workflows and repository shell scripts"
-run = ["actionlint", "shellcheck --severity=warning tools/*.sh"]
+description = "Check GitHub Actions workflows, composite actions, and shell scripts"
+run = [
+    "actionlint",
+    # actionlint finds `.github/workflows` only, so nothing checked the composite
+    # actions. `action-validator` reads one file for each call: given more than
+    # one path it fails even when every file is correct. `|| exit 1` is
+    # necessary, because the exit status of a loop is the status of its last
+    # command, and a bad file before a good one would pass.
+    'for action in .github/actions/*/action.yml; do action-validator "$action" || exit 1; done',
+    "shellcheck --severity=warning tools/*.sh",
+]
 
 # =============================================================================
 # Code Generation
