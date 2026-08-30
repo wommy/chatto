@@ -1,0 +1,92 @@
+name: "Cache Frontend Build"
+description: >-
+  Restores the frontend build products that `mise build-frontend` produces, and
+  puts mise into content-hash freshness mode so it accepts them.
+
+# Every job that builds the E2E server pays for a full frontend build.
+# `mise build-e2e-server` depends on `build-frontend`, so the step those jobs
+# call "Build E2E server" is really `build-api-types` -> `build-lingua` ->
+# `svelte-kit sync` -> a Vite production build -> `prepare-embedded-frontend.sh`,
+# and only then the Go build. Six jobs repeat it: four E2E shards, the media job,
+# and the performance job. `test-cli` builds the frontend as well.
+#
+# None of those runs can skip the work on its own. mise decides freshness by
+# modification time by default: a task is fresh only when its outputs are newer
+# than its sources. `actions/checkout` stamps every source with the checkout
+# time, so restored outputs always look older than the sources that produced
+# them, and the build repeats.
+#
+# `MISE_TASK_SOURCE_FRESHNESS_HASH_CONTENTS` replaces that comparison with a
+# blake3 content hash of the sources, measured against a baseline mise keeps in
+# its state directory. Modification times stop counting, so restored outputs are
+# accepted. mise also compares a stored hash of the outputs with the outputs on
+# disk, so a partial or damaged restore is found and the task runs again. That is
+# a stronger guarantee than the modification-time rule it replaces: the binary
+# the E2E suite runs is accepted only when the sources and the outputs both agree
+# by content.
+#
+# The state directory holds that baseline, so it is cached with the build
+# products. Without it mise has nothing to compare and correctly rebuilds.
+#
+# Put this step after `actions/checkout` and before the setup action. It sets the
+# freshness mode for the steps that follow, and the setup action runs mise tasks.
+
+inputs:
+  save-cache:
+    description: >-
+      Save the cache when the job completes. Pull-request caches are isolated
+      from main and cannot accelerate a merge run, so only a main push should set
+      this.
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Use content-hash task freshness
+      shell: bash
+      run: echo "MISE_TASK_SOURCE_FRESHNESS_HASH_CONTENTS=true" >> "$GITHUB_ENV"
+
+    # `hashFiles` cannot express the `!src/**/*.spec.*` style exclusions that
+    # `build-frontend` declares, so this key covers test, story, and harness files
+    # that the build itself ignores. The cost is a missed cache when only a test
+    # file changes, which restores today's behaviour and never accepts a stale
+    # build.
+    - name: Resolve frontend build cache key
+      id: key
+      shell: bash
+      env:
+        SOURCES_HASH: ${{ hashFiles('mise.toml', '.npmrc', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'tools/prepare-embedded-frontend.sh', 'packages/api-types/package.json', 'packages/api-types/tsconfig.json', 'packages/api-types/src/**', 'packages/lingua/package.json', 'packages/lingua/tsconfig.json', 'packages/lingua/src/**', 'apps/frontend/package.json', 'apps/frontend/messages/**', 'apps/frontend/scripts/check-bundle-size.mjs', 'apps/frontend/src/**', 'apps/frontend/static/**', 'apps/frontend/svelte.config.js', 'apps/frontend/tsconfig.json', 'apps/frontend/vite.config.ts') }}
+      run: |
+        set -euo pipefail
+        echo "value=frontend-build-${RUNNER_OS}-${RUNNER_ARCH}-${SOURCES_HASH}" >> "$GITHUB_OUTPUT"
+
+    # The two cache steps must keep identical `path` lists. GitHub Actions does
+    # not support YAML anchors, so they cannot share one list.
+    #
+    # Neither step sets `restore-keys`. A partial match would restore a frontend
+    # build made from different sources, content-hash freshness would reject it,
+    # and the job would pay for the restore and then build anyway.
+    - name: Restore frontend build products
+      if: inputs.save-cache != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        key: ${{ steps.key.outputs.value }}
+        path: |
+          apps/frontend/build
+          packages/api-types/dist
+          packages/lingua/dist
+          cli/internal/http_server/.client
+          ~/.local/state/mise/task-sources
+
+    - name: Restore and save frontend build products
+      if: inputs.save-cache == 'true'
+      uses: actions/cache@v5
+      with:
+        key: ${{ steps.key.outputs.value }}
+        path: |
+          apps/frontend/build
+          packages/api-types/dist
+          packages/lingua/dist
+          cli/internal/http_server/.client
+          ~/.local/state/mise/task-sources
