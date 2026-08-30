@@ -149,3 +149,8 @@ Never leave a dev stack running in a detached or yielded terminal session.
 - Always create pull requests as full, ready-for-review PRs. Create a draft PR only when the user explicitly asks for a draft.
 - PR bodies should use clean Markup and summarize changes and link relevant FDRs, ADRs, glossary terms, and issues.
 - If a PR closes an issue, include a GitHub closing keyword such as `Closes #123.` in the body.
+- An agent session that uses an OAuth token cannot push a change to
+  `.github/workflows/`. GitHub refuses the push, because the token does not have
+  the `workflow` scope. Files in `.github/actions/` do not have this limit. Put
+  the logic in a composite action when you can, then give the small remaining
+  workflow change to the user as a patch that `git am` applies.
