@@ -324,6 +324,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Cache frontend build
+        uses: ./.github/actions/cache-frontend-build
+        with:
+          # PR caches are isolated from main and cannot accelerate a merge run.
+          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
@@ -401,6 +407,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Cache frontend build
+        uses: ./.github/actions/cache-frontend-build
+
       - name: Setup environment
         uses: ./.github/actions/setup
 
@@ -429,6 +438,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Cache frontend build
+        uses: ./.github/actions/cache-frontend-build
 
       - name: Setup environment
         uses: ./.github/actions/setup
@@ -462,6 +474,9 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Cache frontend build
+        uses: ./.github/actions/cache-frontend-build
 
       - name: Setup environment
         uses: ./.github/actions/setup
