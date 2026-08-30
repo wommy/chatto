@@ -1,0 +1,63 @@
+name: docs build
+
+# The documentation site is not covered by the `ci` workflow: `apps/docs-website`
+# defines neither a `check` nor a `lint` script, and the workspace scripts use
+# `--recursive --if-present`, so they skip it. `build-docs-image.yml` builds the
+# site only on pushes to `main`, which finds a broken page after it merges. This
+# workflow builds the site on every pull request that can change it.
+#
+# The two paths lists must stay identical. GitHub Actions does not support YAML
+# anchors, so they cannot share one list.
+on:
+  push:
+    branches:
+      - main
+      - 'release-[0-9]*'
+    paths:
+      - "apps/docs-website/**"
+      - ".github/workflows/docs-build.yml"
+      - ".npmrc"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - "apps/docs-website/**"
+      - ".github/workflows/docs-build.yml"
+      - ".npmrc"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+
+concurrency:
+  # Match `ci`: superseded pull-request revisions are cancelled, and every push
+  # keeps its own group so no main commit cancels another.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-docs:
+    # This job runs only when the paths filter above matches. Do not make it a
+    # required branch check without removing that filter: a required check that
+    # never starts blocks every pull request that does not touch the site.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          install-cli-deps: "false"
+
+      - name: Build documentation website
+        run: pnpm run build:docs
