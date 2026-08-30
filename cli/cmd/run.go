@@ -416,7 +416,9 @@ func resolvePushVAPIDKeys(ctx context.Context, chattoCore *core.ChattoCore, cfg 
 		return nil
 	}
 	if cfg.Push.VAPIDSubject == "" {
-		log.Warn("Web Push is unavailable because no contact URI is configured; set push.vapid_subject or an https webserver.url")
+		// The message names configuration keys only. The derived subject can
+		// hold an owner email address, which must never reach a log.
+		log.Warn("Web Push is unavailable because no contact URI is configured; set push.vapid_subject, an https webserver.url, or owners.emails")
 		return nil
 	}
 	if cfg.Push.HasOperatorVAPIDKeys() {

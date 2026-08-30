@@ -90,11 +90,16 @@ func (c EmailConfig) TransportOrDefault() EmailTransport {
 // pair, the server generates one on first start and keeps it in runtime state.
 // The server contacts a browser push service only after a member grants
 // notification permission on a device.
+//
+// ChattoConfig.ApplyDefaults fills VAPIDSubject when the operator left it
+// empty: first from an https webserver.url, then from mailto: plus the first
+// usable owners.emails address. The server URL comes first so a public https
+// server does not disclose an operator address to third-party push services.
 type PushConfig struct {
 	Enabled         *bool  `toml:"enabled" env:"CHATTO_PUSH_ENABLED" comment:"Enable Web Push notifications. Default: true. The server generates a VAPID key pair when none is configured."`
 	VAPIDPublicKey  string `toml:"vapid_public_key" env:"CHATTO_PUSH_VAPID_PUBLIC_KEY" comment:"VAPID public key (base64url-encoded). Optional. Set it with vapid_private_key to use your own key pair instead of the generated one."`
 	VAPIDPrivateKey string `toml:"vapid_private_key" env:"CHATTO_PUSH_VAPID_PRIVATE_KEY" comment:"VAPID private key (base64url-encoded). Optional, but required with vapid_public_key. NEVER SHARE THIS!"`
-	VAPIDSubject    string `toml:"vapid_subject" env:"CHATTO_PUSH_VAPID_SUBJECT" comment:"VAPID subject (operator email, optional mailto: prefix, or https: URL). Used by push services to contact the operator. Defaults to webserver.url when that is an https URL."`
+	VAPIDSubject    string `toml:"vapid_subject" env:"CHATTO_PUSH_VAPID_SUBJECT" comment:"VAPID subject (operator email, optional mailto: prefix, or https: URL). Used by push services to contact the operator. Defaults to webserver.url when that is an https URL, and then to mailto: plus the first owners.emails address."`
 }
 
 // EnabledOrDefault reports whether Web Push is enabled. Push is on by default;

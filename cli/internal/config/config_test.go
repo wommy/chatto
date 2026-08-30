@@ -461,6 +461,7 @@ func TestChattoConfig_ApplyDefaultsPushSubject(t *testing.T) {
 	tests := []struct {
 		name        string
 		webserver   string
+		ownerEmails []string
 		push        PushConfig
 		wantSubject string
 	}{
@@ -495,12 +496,86 @@ func TestChattoConfig_ApplyDefaultsPushSubject(t *testing.T) {
 			webserver:   "HTTPS://chat.example/",
 			wantSubject: "https://chat.example",
 		},
+		{
+			name:        "falls back to the owner address for an http URL",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"owner@example.com"},
+			wantSubject: "mailto:owner@example.com",
+		},
+		{
+			name:        "falls back to the owner address without a server URL",
+			ownerEmails: []string{"owner@example.com"},
+			wantSubject: "mailto:owner@example.com",
+		},
+		{
+			name:        "prefers an https server URL over the owner address",
+			webserver:   "https://chat.example",
+			ownerEmails: []string{"owner@example.com"},
+			wantSubject: "https://chat.example",
+		},
+		{
+			name:        "prefers a configured subject over the owner address",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"owner@example.com"},
+			push:        PushConfig{VAPIDSubject: "mailto:contact@example.com"},
+			wantSubject: "mailto:contact@example.com",
+		},
+		{
+			name:        "derives no subject without owner addresses",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{},
+			wantSubject: "",
+		},
+		{
+			name:        "uses the first owner address",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"first@example.com", "second@example.com"},
+			wantSubject: "mailto:first@example.com",
+		},
+		{
+			name:        "skips an empty owner entry",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"", "   ", "owner@example.com"},
+			wantSubject: "mailto:owner@example.com",
+		},
+		{
+			name:        "trims an owner address",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"  owner@example.com  "},
+			wantSubject: "mailto:owner@example.com",
+		},
+		{
+			name:        "uses only the address part of a display-name entry",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"Ops Team <ops@example.com>"},
+			wantSubject: "mailto:ops@example.com",
+		},
+		{
+			name:        "skips an owner entry that is not an address",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"not-an-address", "owner@example.com"},
+			wantSubject: "mailto:owner@example.com",
+		},
+		{
+			name:        "skips an owner address that a mailto URI cannot carry",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{`"broken local part"@example.com`, "owner@example.com"},
+			wantSubject: "mailto:owner@example.com",
+		},
+		{
+			name:        "derives no subject when push is off and owners are configured",
+			webserver:   "http://localhost:4000",
+			ownerEmails: []string{"owner@example.com"},
+			push:        PushConfig{Enabled: boolPtr(false)},
+			wantSubject: "",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := validTestConfig()
 			cfg.Webserver.URL = tt.webserver
+			cfg.Owners = OwnersConfig{Emails: tt.ownerEmails}
 			cfg.Push = tt.push
 
 			cfg.ApplyDefaults()

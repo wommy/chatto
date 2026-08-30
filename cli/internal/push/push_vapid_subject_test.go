@@ -27,6 +27,7 @@ func TestSendSignsValidVAPIDSubject(t *testing.T) {
 	tests := []struct {
 		name         string
 		webserverURL string
+		ownerEmails  []string
 		subject      string
 		wantSubject  string
 	}{
@@ -51,11 +52,23 @@ func TestSendSignsValidVAPIDSubject(t *testing.T) {
 			subject:     "admin@example.com",
 			wantSubject: "mailto:admin@example.com",
 		},
+		{
+			name:         "falls back to the owner address for an http server URL",
+			webserverURL: "http://localhost:4000",
+			ownerEmails:  []string{"owner@example.com"},
+			wantSubject:  "mailto:owner@example.com",
+		},
+		{
+			name:         "prefers an https server URL over the owner address",
+			webserverURL: "https://chat.example",
+			ownerEmails:  []string{"owner@example.com"},
+			wantSubject:  "https://chat.example",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := configWithResolvedPush(t, tt.webserverURL, tt.subject)
+			cfg := configWithResolvedPush(t, tt.webserverURL, tt.subject, tt.ownerEmails...)
 
 			var authorization string
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,13 +100,14 @@ func TestSendSignsValidVAPIDSubject(t *testing.T) {
 	}
 }
 
-// A server URL that a VAPID subject cannot be made from must leave push
-// unconfigured. Deriving a subject from it would sign every push with an
-// invalid contact URI instead.
+// A server URL that a VAPID subject cannot be made from, together with no
+// owner address to fall back to, must leave push unconfigured. Deriving a
+// subject from the URL would sign every push with an invalid contact URI
+// instead.
 func TestSendIsUnavailableWithoutAValidSubject(t *testing.T) {
 	cfg := configWithResolvedPush(t, "http://localhost:5173", "")
 	if cfg.Push.VAPIDSubject != "" {
-		t.Fatalf("derived VAPID subject = %q, want none for an http: server URL", cfg.Push.VAPIDSubject)
+		t.Fatalf("derived VAPID subject = %q, want none for an http: server URL without owner addresses", cfg.Push.VAPIDSubject)
 	}
 	if sender := NewSender(cfg.Push, log.New(nil)); sender != nil {
 		t.Fatal("expected no sender when no contact URI is available")
@@ -103,11 +117,12 @@ func TestSendIsUnavailableWithoutAValidSubject(t *testing.T) {
 // configWithResolvedPush mirrors the production boot order: the configuration
 // defaults first, then the key pair that the server generates and stores in
 // runtime state.
-func configWithResolvedPush(t *testing.T, webserverURL, subject string) config.ChattoConfig {
+func configWithResolvedPush(t *testing.T, webserverURL, subject string, ownerEmails ...string) config.ChattoConfig {
 	t.Helper()
 
 	cfg := config.ChattoConfig{}
 	cfg.Webserver.URL = webserverURL
+	cfg.Owners.Emails = ownerEmails
 	cfg.Push.VAPIDSubject = subject
 	cfg.ApplyDefaults()
 

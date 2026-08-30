@@ -119,7 +119,7 @@ func TestChattoConfig_Validate_EnabledIntegrationsRequireWebserverURL(t *testing
 				c.Push.VAPIDPublicKey = "public-key"
 				c.Push.VAPIDPrivateKey = "private-key"
 			},
-			wantError: "push.vapid_subject or an https webserver.url is required when push is enabled",
+			wantError: "push.vapid_subject, an https webserver.url, or an owners.emails address is required when push is enabled",
 		},
 		{
 			name: "LiveKit",
@@ -445,7 +445,7 @@ func TestChattoConfig_Validate_Push(t *testing.T) {
 				c.Push.Enabled = boolPtr(true)
 			},
 			wantError: true,
-			errorMsg:  "push.vapid_subject or an https webserver.url is required when push is enabled",
+			errorMsg:  "push.vapid_subject, an https webserver.url, or an owners.emails address is required when push is enabled",
 		},
 		{
 			name: "disabled push ignores an incomplete key pair",

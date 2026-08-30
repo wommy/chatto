@@ -147,9 +147,9 @@ import ReleaseHero from "../../../components/release-notes/ReleaseHero.astro";
 
   <ReleaseFeatureCard title="Web Push without setup" size="small">
     Web Push is on by default. The server makes its own VAPID key pair at first start and
-    uses the public server URL as its contact address, so operators no longer generate keys
-    to give members push notifications. Configured keys still take precedence, and
-    `push.enabled = false` turns the feature off.
+    uses the public server URL, or the first owner email address, as its contact address, so
+    operators no longer generate keys to give members push notifications. Configured keys
+    still take precedence, and `push.enabled = false` turns the feature off.
   </ReleaseFeatureCard>
 
   <ReleaseFeatureCard title="Test Web Push delivery" size="small">
@@ -246,8 +246,10 @@ import ReleaseHero from "../../../components/release-notes/ReleaseHero.astro";
   member grants notification permission on a device. Set `push.enabled = false`
   (`CHATTO_PUSH_ENABLED=false`) to keep the feature hidden. A configured key
   pair keeps working unchanged; `push.vapid_subject` now defaults to
-  `webserver.url` when that URL uses `https:`, and setting only one of the two
-  VAPID keys is a startup error.
+  `webserver.url` when that URL uses `https:`, and then to `mailto:` plus the
+  first `owners.emails` address, and setting only one of the two VAPID keys is
+  a startup error. Push services receive that contact address as the operator
+  contact, so set `push.vapid_subject` if you want a different one.
 - Existing 0.4 Web Push subscription records remain stored, but 0.5 cannot use
   them until the browser registers them again. The bundled client performs this
   refresh without another permission prompt when the user opens it and
