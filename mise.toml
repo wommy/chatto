@@ -1,5 +1,6 @@
 [tools]
 actionlint = "1.7.12"
+"npm:@action-validator/cli" = "0.6.0"
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:axllent/mailpit" = "1.30.6"
 buf = "latest"
@@ -108,8 +109,20 @@ description = "Check SPDX/REUSE license metadata"
 run = "uvx --with charset-normalizer 'reuse==6.2.0' lint"
 
 [tasks.lint-actions]
-description = "Check GitHub Actions workflows and repository shell scripts"
-run = ["actionlint", "shellcheck --severity=warning tools/*.sh"]
+description = "Check GitHub Actions workflows, composite actions, and shell scripts"
+run = [
+    "actionlint",
+    # actionlint finds `.github/workflows` only, so nothing checked the composite
+    # actions. `action-validator` reads one file for each call: given more than
+    # one path it fails even when every file is correct. `|| exit 1` is
+    # necessary, because the exit status of a loop is the status of its last
+    # command, and a bad file before a good one would pass. GitHub accepts both
+    # spellings of the file name, and the `-f` test discards the unexpanded
+    # pattern that a shell gives for a spelling no action uses.
+    'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do [ -f "$action" ] || continue; action-validator "$action" || exit 1; done',
+    # The git hooks have no file extension, so each one needs its own path.
+    "shellcheck --severity=warning tools/*.sh .claude/hooks/*.sh .claude/hooks/git/pre-commit",
+]
 
 # =============================================================================
 # Code Generation
@@ -144,14 +157,11 @@ run = { task = "codegen-*" }
 
 [tasks.sync-cli-legal]
 description = "Copy root legal files into the CLI module for go:embed"
-run = [
-    "mkdir -p cli/cmd/embedded",
-    "cp LICENSES/AGPL-3.0-or-later.txt cli/LICENSE",
-    "cp NOTICE cli/NOTICE",
-    "cp LICENSES/AGPL-3.0-or-later.txt cli/cmd/embedded/LICENSE",
-    "cp NOTICE cli/cmd/embedded/NOTICE",
-]
-sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE"]
+# The SessionStart hook in `.claude/hooks/` copies the same files, and cannot
+# use this task, because mise is not installed in the remote image. The script
+# keeps one list of the embedded files for both callers.
+run = "tools/sync-cli-legal.sh"
+sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE", "tools/sync-cli-legal.sh"]
 outputs = ["cli/LICENSE", "cli/NOTICE", "cli/cmd/embedded/LICENSE", "cli/cmd/embedded/NOTICE"]
 
 [tasks.build]
