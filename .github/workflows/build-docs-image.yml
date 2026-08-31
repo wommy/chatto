@@ -58,6 +58,10 @@ jobs:
           set -euo pipefail
 
           sha="$(git rev-parse HEAD)"
+          # The image namespace follows the repository owner, so a fork
+          # publishes to its own ghcr.io namespace. GHCR requires a
+          # lowercase name.
+          image_repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chatto-docs"
           case "$CHANNEL" in
             dev)
               docs_tag="main-$(date -u +%Y%m%dT%H%M%SZ)-${sha:0:12}"
@@ -81,6 +85,7 @@ jobs:
 
           {
             echo "sha=${sha}"
+            echo "image_repo=${image_repo}"
             echo "docs_tag=${docs_tag}"
             echo "docs_version=${docs_version}"
             echo "site_url=${site_url}"
@@ -92,7 +97,7 @@ jobs:
             echo "- Channel: \`${CHANNEL}\`"
             echo "- Version: \`${docs_version}\`"
             echo "- Commit: \`${sha}\`"
-            echo "- Image: \`ghcr.io/chattocorp/chatto-docs:${docs_tag}\`"
+            echo "- Image: \`${image_repo}:${docs_tag}\`"
             echo "- Site: \`${site_url}\`"
             echo "- Platform: \`linux/amd64\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -115,7 +120,7 @@ jobs:
           file: ./apps/docs-website/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64
-          tags: ghcr.io/chattocorp/chatto-docs:${{ steps.image.outputs.docs_tag }}
+          tags: ${{ steps.image.outputs.image_repo }}:${{ steps.image.outputs.docs_tag }}
           build-args: |
             CHATTO_DOCS_CHANNEL=${{ inputs.channel || 'dev' }}
             CHATTO_DOCS_VERSION=${{ steps.image.outputs.docs_version }}
@@ -124,7 +129,7 @@ jobs:
           cache-from: type=gha,scope=chatto-docs-amd64
           cache-to: type=gha,mode=max,scope=chatto-docs-amd64
           labels: |
-            org.opencontainers.image.source=https://github.com/chattocorp/chatto
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.image.outputs.sha }}
             org.opencontainers.image.version=${{ steps.image.outputs.docs_version }}
             org.opencontainers.image.licenses=Apache-2.0

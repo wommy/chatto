@@ -73,6 +73,10 @@ jobs:
           set -euo pipefail
 
           sha="$(git rev-parse HEAD)"
+          # The image namespace follows the repository owner, so a fork
+          # publishes to its own ghcr.io namespace. GHCR requires a
+          # lowercase name.
+          image_repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chatto"
           development_version="$(mise env --json | jq -r '.CHATTO_DEVELOPMENT_VERSION // empty')"
           if [[ -n "$development_version" ]]; then
             version="${development_version}+${sha:0:12}"
@@ -88,15 +92,18 @@ jobs:
             version="${release_version}+${sha:0:12}"
           fi
 
-          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          {
+            echo "sha=${sha}"
+            echo "version=${version}"
+            echo "image_repo=${image_repo}"
+          } >> "$GITHUB_OUTPUT"
 
           {
             echo "### Image"
             echo
             echo "- Commit: \`${sha}\`"
             echo "- Version: \`${version}\`"
-            echo "- Image: \`ghcr.io/chattocorp/chatto:${sha}\`"
+            echo "- Image: \`${image_repo}:${sha}\`"
             echo "- Platform: \`linux/amd64\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -148,11 +155,11 @@ jobs:
           file: /tmp/chatto-docker/linux-amd64/Dockerfile
           push: true
           platforms: linux/amd64
-          tags: ghcr.io/chattocorp/chatto:${{ steps.image.outputs.sha }}
+          tags: ${{ steps.image.outputs.image_repo }}:${{ steps.image.outputs.sha }}
           cache-from: type=gha,scope=chatto-manual-amd64
           cache-to: type=gha,mode=max,scope=chatto-manual-amd64
           labels: |
-            org.opencontainers.image.source=https://github.com/chattocorp/chatto
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.image.outputs.sha }}
             org.opencontainers.image.version=${{ steps.image.outputs.version }}
             org.opencontainers.image.licenses=AGPL-3.0-or-later
@@ -711,13 +718,18 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
         run: |
+          # The image namespace follows the repository owner, so a fork
+          # publishes to its own ghcr.io namespace. GHCR requires a
+          # lowercase name.
+          image_repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chatto-client"
+
           {
             echo "tags<<EOF"
-            echo "ghcr.io/chattocorp/chatto-client:${VERSION}"
+            echo "${image_repo}:${VERSION}"
             if [[ "$VERSION" == *-* ]]; then
-              echo "ghcr.io/chattocorp/chatto-client:next"
+              echo "${image_repo}:next"
             elif [[ "$PUSH_LATEST" == "true" ]]; then
-              echo "ghcr.io/chattocorp/chatto-client:latest"
+              echo "${image_repo}:latest"
             fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -733,7 +745,7 @@ jobs:
           cache-from: type=gha,scope=chatto-client
           cache-to: type=gha,scope=chatto-client,mode=max
           labels: |
-            org.opencontainers.image.source=https://github.com/chattocorp/chatto
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.licenses=Apache-2.0
@@ -747,7 +759,7 @@ jobs:
           set -euo pipefail
 
           gh release edit "v${VERSION}" \
-            --repo chattocorp/chatto \
+            --repo "${GITHUB_REPOSITORY}" \
             --draft=false
 
       - name: Update Homebrew tap

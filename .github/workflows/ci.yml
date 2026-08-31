@@ -617,6 +617,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The image namespace follows the repository owner, so a fork publishes
+      # to its own ghcr.io namespace. GHCR requires a lowercase name.
+      - name: Derive image repository
+        id: image-repo
+        shell: bash
+        run: echo "repository=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chatto" >> "$GITHUB_OUTPUT"
+
       - name: Derive immutable main image tag
         id: main-image
         shell: bash
@@ -629,11 +636,11 @@ jobs:
           file: docker-contexts/linux-amd64/Dockerfile
           push: true
           platforms: linux/amd64
-          tags: ghcr.io/chattocorp/chatto:${{ github.sha }}-amd64
+          tags: ${{ steps.image-repo.outputs.repository }}:${{ github.sha }}-amd64
           cache-from: type=gha,scope=chatto-main-amd64
           cache-to: type=gha,scope=chatto-main-amd64,mode=max
           labels: |
-            org.opencontainers.image.source=https://github.com/chattocorp/chatto
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ needs.build-main-image-contexts.outputs.image-version }}
             org.opencontainers.image.licenses=AGPL-3.0-or-later
@@ -645,29 +652,31 @@ jobs:
           file: docker-contexts/linux-arm64/Dockerfile
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/chattocorp/chatto:${{ github.sha }}-arm64
+          tags: ${{ steps.image-repo.outputs.repository }}:${{ github.sha }}-arm64
           cache-from: type=gha,scope=chatto-main-arm64
           cache-to: type=gha,scope=chatto-main-arm64,mode=max
           labels: |
-            org.opencontainers.image.source=https://github.com/chattocorp/chatto
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ needs.build-main-image-contexts.outputs.image-version }}
             org.opencontainers.image.licenses=AGPL-3.0-or-later
 
       - name: Publish multi-platform commit image
         shell: bash
+        env:
+          IMAGE_REPO: ${{ steps.image-repo.outputs.repository }}
         run: |
           docker buildx imagetools create \
-            --tag "ghcr.io/chattocorp/chatto:${GITHUB_SHA}" \
-            --tag "ghcr.io/chattocorp/chatto:${{ steps.main-image.outputs.tag }}" \
-            "ghcr.io/chattocorp/chatto:${GITHUB_SHA}-amd64" \
-            "ghcr.io/chattocorp/chatto:${GITHUB_SHA}-arm64"
+            --tag "${IMAGE_REPO}:${GITHUB_SHA}" \
+            --tag "${IMAGE_REPO}:${{ steps.main-image.outputs.tag }}" \
+            "${IMAGE_REPO}:${GITHUB_SHA}-amd64" \
+            "${IMAGE_REPO}:${GITHUB_SHA}-arm64"
 
           {
             echo "### Main commit image"
             echo
-            echo "\`ghcr.io/chattocorp/chatto:${GITHUB_SHA}\`"
-            echo "\`ghcr.io/chattocorp/chatto:${{ steps.main-image.outputs.tag }}\`"
+            echo "\`${IMAGE_REPO}:${GITHUB_SHA}\`"
+            echo "\`${IMAGE_REPO}:${{ steps.main-image.outputs.tag }}\`"
             echo
             echo "Version: \`${{ needs.build-main-image-contexts.outputs.image-version }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
