@@ -120,7 +120,8 @@ run = [
     # spellings of the file name, and the `-f` test discards the unexpanded
     # pattern that a shell gives for a spelling no action uses.
     'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do [ -f "$action" ] || continue; action-validator "$action" || exit 1; done',
-    "shellcheck --severity=warning tools/*.sh",
+    # The git hooks have no file extension, so each one needs its own path.
+    "shellcheck --severity=warning tools/*.sh .claude/hooks/*.sh .claude/hooks/git/pre-commit",
 ]
 
 # =============================================================================
@@ -156,14 +157,11 @@ run = { task = "codegen-*" }
 
 [tasks.sync-cli-legal]
 description = "Copy root legal files into the CLI module for go:embed"
-run = [
-    "mkdir -p cli/cmd/embedded",
-    "cp LICENSES/AGPL-3.0-or-later.txt cli/LICENSE",
-    "cp NOTICE cli/NOTICE",
-    "cp LICENSES/AGPL-3.0-or-later.txt cli/cmd/embedded/LICENSE",
-    "cp NOTICE cli/cmd/embedded/NOTICE",
-]
-sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE"]
+# The SessionStart hook in `.claude/hooks/` copies the same files, and cannot
+# use this task, because mise is not installed in the remote image. The script
+# keeps one list of the embedded files for both callers.
+run = "tools/sync-cli-legal.sh"
+sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE", "tools/sync-cli-legal.sh"]
 outputs = ["cli/LICENSE", "cli/NOTICE", "cli/cmd/embedded/LICENSE", "cli/cmd/embedded/NOTICE"]
 
 [tasks.build]

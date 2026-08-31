@@ -43,15 +43,10 @@ git config --local core.hooksPath .claude/hooks/git
 echo "git identity: $(git config --get user.name) <$(git config --get user.email)>"
 
 # --- embedded legal files ---------------------------------------------------
-# `cli/cmd/embedded/` is git-ignored, and `cli/cmd/license.go` embeds LICENSE
-# and NOTICE from it, so a fresh clone fails to build the `cmd` package with
-# "pattern embedded/LICENSE: no matching files found". This mirrors the
-# `sync-cli-legal` mise task, which cannot be used here because mise is not
+# A fresh clone cannot build the `cmd` package until the files it embeds exist.
+# `tools/sync-cli-legal.sh` holds the list, and the `sync-cli-legal` mise task
+# runs the same script. The task itself cannot be used here, because mise is not
 # installed in the remote image.
-mkdir -p cli/cmd/embedded
-cp LICENSES/AGPL-3.0-or-later.txt cli/LICENSE
-cp NOTICE cli/NOTICE
-cp LICENSES/AGPL-3.0-or-later.txt cli/cmd/embedded/LICENSE
-cp NOTICE cli/cmd/embedded/NOTICE
+tools/sync-cli-legal.sh
 
 echo "synced embedded legal files for cli/cmd"
