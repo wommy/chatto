@@ -2,33 +2,72 @@
 # Reject a commit that a Claude Code session would attribute to a person.
 #
 # The remote session's clone is configured to commit as the agent. A command
-# that supplies `-c user.email=...`, or an environment that sets GIT_AUTHOR_EMAIL,
-# silently replaces that identity, and GitHub then shows the commit as
-# Unverified under a person's name. This hook makes that failure loud.
+# that supplies `-c user.email=...`, or an environment that sets GIT_AUTHOR_EMAIL
+# or GIT_COMMITTER_EMAIL, silently replaces that identity, and GitHub then shows
+# the commit as Unverified under a person's name. This hook makes that failure
+# loud.
+#
+# Git records two identities for each commit, the author and the committer, and
+# GitHub shows both. An override of only one of them is sufficient to give a
+# person credit for the agent's work, so this hook checks both, and checks the
+# name as well as the address.
 #
 # `session-start.sh` installs it through `core.hooksPath`, and only in a remote
 # session, so a local contributor keeps their own identity and their own hooks.
+# That script also records the identity it accepted in `claude.expectedEmail`
+# and `claude.expectedName`. This hook compares against those records, so the
+# two scripts cannot disagree about which identity is correct.
 #
-# Fail-safe: when the author cannot be determined the commit is allowed. This
+# Fail-safe: when an identity cannot be determined the commit is allowed. This
 # hook exists to catch a wrong identity, never to block work.
 set -uo pipefail
 
-expected="${CLAUDE_GIT_AUTHOR_EMAIL:-noreply@anthropic.com}"
+expected_email="$(git config --local --get claude.expectedEmail || true)"
+expected_name="$(git config --local --get claude.expectedName || true)"
 
-ident="$(git var GIT_AUTHOR_IDENT 2>/dev/null || true)"
-actual="$(printf '%s' "$ident" | sed -n 's/^.*<\([^>]*\)>.*$/\1/p')"
+# A clone whose session-start hook did not record the identity falls back to the
+# same defaults that script uses.
+[ -n "$expected_email" ] || expected_email="${CLAUDE_GIT_AUTHOR_EMAIL:-noreply@anthropic.com}"
+[ -n "$expected_name" ] || expected_name="${CLAUDE_GIT_AUTHOR_NAME:-Claude}"
 
-if [ -z "$actual" ] || [ "$actual" = "$expected" ]; then
+# Prints "<field> <value>" when the identity of $1 (author or committer) does
+# not match, and prints nothing when it matches or cannot be read. `git var`
+# gives "Name <email> 1234567890 +0000".
+mismatch() {
+  local ident actual_email actual_name
+  ident="$(git var "GIT_${1}_IDENT" 2>/dev/null || true)"
+  actual_email="$(printf '%s' "$ident" | sed -n 's/^.*<\([^>]*\)>.*$/\1/p')"
+  actual_name="$(printf '%s' "$ident" | sed -n 's/^\(.*\) <[^>]*>.*$/\1/p')"
+
+  if [ -n "$actual_email" ] && [ "$actual_email" != "$expected_email" ]; then
+    printf 'address %s' "$actual_email"
+  elif [ -n "$actual_name" ] && [ "$actual_name" != "$expected_name" ]; then
+    printf 'name %s' "$actual_name"
+  fi
+}
+
+author_bad="$(mismatch AUTHOR)"
+committer_bad="$(mismatch COMMITTER)"
+
+if [ -z "$author_bad" ] && [ -z "$committer_bad" ]; then
   exit 0
 fi
 
-cat >&2 <<MSG
-pre-commit: refusing to commit as <${actual}>.
+{
+  echo "pre-commit: refusing to make this commit."
+  echo
+  [ -z "$author_bad" ] || echo "  author ${author_bad} is not the identity of this session"
+  [ -z "$committer_bad" ] || echo "  committer ${committer_bad} is not the identity of this session"
+  cat <<MSG
 
-This session must author commits as <${expected}>. A commit made under a
-person's address is shown as Unverified and misattributes the agent's work.
+This session must commit as ${expected_name} <${expected_email}>. A commit made
+under a person's name or address is shown as Unverified and misattributes the
+agent's work. GitHub shows the committer as well as the author, so an override
+of either one is refused.
 
-Do not pass '-c user.email=...' or '-c user.name=...' to git. The clone is
-already configured correctly; run 'git commit' without an identity override.
+Do not pass '-c user.email=...' or '-c user.name=...' to git, and do not set
+GIT_AUTHOR_EMAIL or GIT_COMMITTER_EMAIL. The clone is already configured; run
+'git commit' without an identity override.
 MSG
+} >&2
 exit 1

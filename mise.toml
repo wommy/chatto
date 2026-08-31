@@ -116,8 +116,10 @@ run = [
     # actions. `action-validator` reads one file for each call: given more than
     # one path it fails even when every file is correct. `|| exit 1` is
     # necessary, because the exit status of a loop is the status of its last
-    # command, and a bad file before a good one would pass.
-    'for action in .github/actions/*/action.yml; do action-validator "$action" || exit 1; done',
+    # command, and a bad file before a good one would pass. GitHub accepts both
+    # spellings of the file name, and the `-f` test discards the unexpanded
+    # pattern that a shell gives for a spelling no action uses.
+    'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do [ -f "$action" ] || continue; action-validator "$action" || exit 1; done',
     "shellcheck --severity=warning tools/*.sh",
 ]
 

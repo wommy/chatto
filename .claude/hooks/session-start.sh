@@ -28,6 +28,14 @@ if [ -z "$(git config --local --get user.name || true)" ]; then
   git config --local user.name "$agent_name"
 fi
 
+# Record the identity this session accepted, which is the identity the clone
+# already had when it arrived with one. The pre-commit hook compares against
+# these records instead of computing the expected identity a second time, so a
+# clone configured with a different agent address cannot make the two scripts
+# disagree and refuse every commit.
+git config --local claude.expectedEmail "$(git config --get user.email)"
+git config --local claude.expectedName "$(git config --get user.name)"
+
 # `core.hooksPath` replaces the whole hook directory, so this repository keeps
 # every git hook a session must run under .claude/hooks/git.
 git config --local core.hooksPath .claude/hooks/git
