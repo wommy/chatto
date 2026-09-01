@@ -17,15 +17,7 @@ Change the middle column if the fork starts to use different label names.
 
 ## Labels in the fork
 
-Only `wontfix` exists in the fork now. The other four labels do not exist yet.
-`/triage` fails if it applies a label that is not there. Create the four
-labels before the first triage session:
+All five labels exist in the fork. `/triage` can apply each one.
 
-```sh
-gh label create needs-triage    --color d4c5f9 --description "A maintainer must evaluate this issue"
-gh label create needs-info      --color fbca04 --description "The reporter must give more information"
-gh label create ready-for-agent --color 0e8a16 --description "Fully specified, ready for an AFK agent"
-gh label create ready-for-human --color 1d76db --description "A human must do the work"
-```
-
-Create them in the fork only.
+They exist in the fork only. The upstream repository does not have the four
+new ones.
