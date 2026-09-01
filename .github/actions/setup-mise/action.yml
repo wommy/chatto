@@ -1,0 +1,14 @@
+name: Setup mise
+description: Install mise and the tools mise.toml defines, at one version every job shares
+
+# Three jobs need mise. `setup` needs it alongside Go, pnpm and several caches;
+# `license-check` and `workflow-lint` need it alone and finish in seconds, so
+# they must not pay for the rest of `setup`. Both shapes enter through here, so
+# the mise version is written once instead of three times.
+runs:
+  using: composite
+  steps:
+    - name: Setup mise
+      uses: jdx/mise-action@v4
+      with:
+        experimental: true
