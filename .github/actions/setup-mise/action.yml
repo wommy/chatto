@@ -14,3 +14,8 @@ runs:
       uses: jdx/mise-action@v4
       with:
         experimental: true
+        # Pin the exact version. Without this the action installs
+        # whatever is current, and a cache hit reuses an older mise
+        # than a cache miss installs. Two runs of one commit can then
+        # differ. mise.toml gives contributors a floor instead.
+        version: 2026.9.0
