@@ -144,14 +144,10 @@ run = { task = "codegen-*" }
 
 [tasks.sync-cli-legal]
 description = "Copy root legal files into the CLI module for go:embed"
-run = [
-    "mkdir -p cli/cmd/embedded",
-    "cp LICENSES/AGPL-3.0-or-later.txt cli/LICENSE",
-    "cp NOTICE cli/NOTICE",
-    "cp LICENSES/AGPL-3.0-or-later.txt cli/cmd/embedded/LICENSE",
-    "cp NOTICE cli/cmd/embedded/NOTICE",
-]
-sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE"]
+# The script holds the list of the copied files. The SessionStart hook runs the
+# same script, thus the task and the hook cannot disagree.
+run = "tools/sync-cli-legal.sh"
+sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE", "tools/sync-cli-legal.sh"]
 outputs = ["cli/LICENSE", "cli/NOTICE", "cli/cmd/embedded/LICENSE", "cli/cmd/embedded/NOTICE"]
 
 [tasks.build]
