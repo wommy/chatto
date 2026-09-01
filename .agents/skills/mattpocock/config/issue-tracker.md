@@ -2,8 +2,7 @@
 
 Issues for this work live as GitHub issues in the `wommy/chatto` fork.
 
-Keep them in the fork. Do not open an issue in the upstream repository as part
-of a sidecar workflow.
+Open every sidecar issue in the fork.
 
 ## Which tools to use
 
@@ -28,8 +27,6 @@ Two tool sets reach the same issues. Use the set that your session has.
 | Close an issue  | `gh issue close <n> --comment "..."`            | `issue_write`, `state: closed`        |
 
 Use a heredoc for a body that has more than one line.
-
-Always give a `state_reason` when you close an issue.
 
 ## Pull requests as a triage surface
 

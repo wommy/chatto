@@ -1,59 +1,48 @@
 # Matt Pocock's Skills: Local Sidecar
 
-This directory configures the `mattpocock-skills` plugin for this repository.
+A vendored copy of [mattpocock/skills](https://github.com/mattpocock/skills),
+plus the per-repository configuration that those skills read.
 
-It is a sidecar, and it is private. It lives on this branch only. Nothing here
-goes upstream, and nothing here changes a file that Chatto already tracks.
+The sidecar is private. It lives on this branch, and it stays out of upstream.
 
-## The invisibility rule
+## What is where
 
-The sidecar adds files. The sidecar does not edit files.
+| Path                         | Contents                                             |
+| ---------------------------- | ---------------------------------------------------- |
+| `skills/`                    | The vendored skills. Edit them freely.               |
+| `.claude-plugin/plugin.json` | The upstream skill list. It names the 25 to load.    |
+| `config/`                    | What the skills read about this repository.          |
+| `../<skill-name>`            | One symlink for each skill, so Claude Code finds it. |
 
-Everything the sidecar needs is in this directory and in the
-`mattpocock-skills` line of [`.claude/settings.json`](../../.claude/settings.json).
-No Chatto file points at this directory. `AGENTS.md`, `CLAUDE.md`, and the
-Chatto documentation stay exactly as upstream wrote them.
+## The sidecar adds files
+
+Every part of the sidecar is a new file: this directory, and the symlinks in
+`.agents/skills/` that point into it. Chatto's own files stay as upstream
+wrote them, `AGENTS.md` and `docs/` included.
 
 This keeps two things true:
 
-1. A merge or a rebase from upstream never conflicts with the sidecar.
-2. A diff of this branch against upstream shows the sidecar as added files,
-   and shows no change to Chatto's own content.
+1. A merge from upstream never conflicts with the sidecar.
+2. A diff against upstream shows added files, and shows Chatto's own content
+   unchanged.
 
-To remove the sidecar, delete this directory and that one settings line.
-
-## The read-only boundary
-
-The sidecar skills read Chatto's documentation. They do not write it. These
-skills stay the only writers:
-
-| Documentation surface | The skill that writes it         |
-| --------------------- | -------------------------------- |
-| `docs/GLOSSARY.md`    | `/glossary`                      |
-| `docs/adr/`           | `/adr`                           |
-| `docs/fdr/`           | `/fdr`                           |
-| `docs/architecture/`  | `/chatto-architecture-inventory` |
-
-A sidecar skill that writes one of these documents breaks the invisibility
-rule. [`config/domain.md`](config/domain.md) gives the full rule.
+To remove the sidecar, delete this directory and the symlinks that point into
+it.
 
 ## Files
 
-- [`config/issue-tracker.md`](config/issue-tracker.md) — where issues live, and how to read
-  and write them.
-- [`config/triage-labels.md`](config/triage-labels.md) — the five triage labels.
-- [`config/domain.md`](config/domain.md) — how the sidecar reads Chatto's
-  documentation.
-- [`TRADE-OFFS.md`](TRADE-OFFS.md) — the two known costs. Read it before you
+- [`config/issue-tracker.md`](config/issue-tracker.md) — where issues live, and
+  which tools reach them. Read it to create, read, label, or close a ticket.
+- [`config/triage-labels.md`](config/triage-labels.md) — the five triage
+  labels. Read it before `/triage` applies one.
+- [`config/domain.md`](config/domain.md) — which Chatto documents to read, and
+  which skill owns each one. Read it before you write documentation, name a
+  domain concept, or record a decision.
+- [`TRADE-OFFS.md`](TRADE-OFFS.md) — the three known costs. Read it before you
   change how the skills load, and before you take an upstream change.
 
 ## Why this directory
 
-`/setup-matt-pocock-skills` writes these files to `docs/agents/` by default.
-This repository keeps them here instead. `docs/` is Chatto's documentation
-namespace, and a new directory inside it is intermingling.
-
-One skill, `/code-review`, looks for `docs/agents/issue-tracker.md` at the
-default path. It does not find the file here, and it then tells you to run
-`/setup-matt-pocock-skills`. Point it at
-[`config/issue-tracker.md`](config/issue-tracker.md) instead.
+`/setup-matt-pocock-skills` writes the configuration to `docs/agents/` by
+default. This repository keeps it here, because `docs/` is Chatto's
+documentation namespace, and a new directory inside it is intermingling.

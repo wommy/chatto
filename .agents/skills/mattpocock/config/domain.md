@@ -1,12 +1,12 @@
 # Domain Documentation
 
 This file tells the `mattpocock-skills` sidecar how to use Chatto's
-documentation. [`AGENTS.md`](../../AGENTS.md) stays the primary rule set. If
+documentation. [`AGENTS.md`](../../../../AGENTS.md) stays the primary rule set. If
 this file and `AGENTS.md` disagree, `AGENTS.md` wins.
 
 ## The rule
 
-**Read Chatto's documentation. Do not write it.**
+**Read Chatto's documentation. Route every change through its owner skill.**
 
 The sidecar gets its context from the documents below. Each document has one
 owner skill, and only that skill writes it:
@@ -22,10 +22,10 @@ A change to one of these documents must go through its owner skill. The owner
 skill knows the Chatto conventions: the Simplified Technical English rule, the
 index files, the section order, and the cross-references.
 
-## Do not create CONTEXT.md or CONTEXT-MAP.md
+## `docs/GLOSSARY.md` is this repository's CONTEXT.md
 
-`/domain-modeling` creates a `CONTEXT.md` in a default repository. Do not
-create one here.
+`/domain-modeling` creates a `CONTEXT.md` in a default repository. Here it
+uses `docs/GLOSSARY.md`, which already holds that content.
 
 `/domain-modeling` defines `CONTEXT.md` as "a glossary and nothing else".
 Chatto already has that document. `docs/GLOSSARY.md` calls itself the
@@ -61,9 +61,8 @@ documentation of the product that you work on.
 | Chatto   | root        | `docs/`                   |
 | Authling | `authling/` | `authling/docs/`          |
 
-Authling has its own glossary, ADRs, FDRs, and architecture inventory. Do not
-read a Chatto term into Authling work, and do not read an Authling term into
-Chatto work.
+Authling has its own glossary, ADRs, FDRs, and architecture inventory. Take
+each term from the glossary of the product that you work on.
 
 The shared framework modules `pkg/events/`, `pkg/natsruntime/`,
 `pkg/datacrypto/`, and `pkg/appconfig/` belong to neither product. Each one has
@@ -72,8 +71,8 @@ its own `AGENTS.md`. Read it before you change that module.
 ## Vocabulary
 
 When your output names a domain concept, use the term from `docs/GLOSSARY.md`,
-or from `authling/docs/GLOSSARY.md` for Authling work. Do not use a synonym
-that the glossary does not have.
+or from `authling/docs/GLOSSARY.md` for Authling work. Use the glossary term
+word for word.
 
 If the concept is not in the glossary, that is a signal. Either you invent
 language that the project does not use, and you must think again, or there is
@@ -81,8 +80,7 @@ a true gap. Report the gap, and let `/glossary` fill it.
 
 ## Conflicts
 
-If your output disagrees with an ADR or an FDR, say so. Do not replace the
-decision without a word:
+If your output disagrees with an ADR or an FDR, say so before you continue:
 
 > This is against ADR-045 (protocol compatibility), but it is worth a second
 > look, because...

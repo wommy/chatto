@@ -1,6 +1,6 @@
 # Sidecar Trade-Offs
 
-Two known costs of the sidecar. Read this before you change how the skills
+Three known costs of the sidecar. Read this before you change how the skills
 load, and before you take an upstream change.
 
 ## The bare skill names shadow the bundled skills
@@ -35,3 +35,18 @@ then apply the parts that you want. Keep the local edits. `npx skills update`
 expects its own directory layout, and it does not find this one.
 
 Write the new commit in this file after each update.
+
+## The configuration is not at the default path
+
+`config/` holds what `/setup-matt-pocock-skills` writes to `docs/agents/` by
+default. `docs/` belongs to Chatto, so the sidecar keeps its configuration
+here.
+
+`/code-review` reads `docs/agents/issue-tracker.md` at the default path, and
+that path is empty. The skill then asks you to run
+`/setup-matt-pocock-skills`. Point it at
+[`config/issue-tracker.md`](config/issue-tracker.md) instead.
+
+`/setup-matt-pocock-skills` looks at the same default path when it starts, so
+a second run writes a duplicate set into `docs/agents/`. Edit the files in
+`config/` directly instead.
