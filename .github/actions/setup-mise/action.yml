@@ -1,15 +1,12 @@
 name: Setup mise
 description: Install mise and the tools mise.toml defines
 
-# Three jobs need mise. `setup` needs it with Go, pnpm and several caches.
-# `license-check` and `workflow-lint` need only mise and take about twenty
-# seconds. To route them through `setup` would make two fast jobs slow.
+# A job that needs mise enters here, or through `setup`. That keeps the mise
+# version in one place, so that a pin is a one-line change to this file.
 #
-# This action gives the mise version one home, so that a pin does not add a
-# fourth copy of it. The consolidation is not complete. The `license-check`
-# and `workflow-lint` jobs in ci.yml still call `jdx/mise-action` directly,
-# so the version is still written in three places. Those two jobs will
-# change to use this action.
+# `setup` also installs Go and pnpm and restores several caches. A job that
+# needs mise alone enters here instead, because that extra work would make a
+# job of about twenty seconds much slower.
 runs:
   using: composite
   steps:
