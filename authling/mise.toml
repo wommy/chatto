@@ -1,3 +1,11 @@
+# The oldest mise that runs this configuration. A contributor on an older
+# mise gets an error instead of a silent difference in task behaviour.
+#
+# This is a floor, not a pin. mise advises against locking users to one
+# version, because that hides upstream registry changes. CI pins an exact
+# version instead, where a run must be reproducible.
+min_version = "2026.9.0"
+
 [tools]
 buf = "latest"
 go = "1.26.7"
