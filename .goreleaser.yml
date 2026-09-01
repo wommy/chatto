@@ -18,6 +18,10 @@ builds:
         goarch: amd64
     flags:
       - -trimpath
+    # Keep the nomsgpack tag on this build. It must agree with the other
+    # Chatto binary builds. The Build section of mise.toml gives the reason.
+    tags:
+      - nomsgpack
     ldflags:
       - -s -w
 
