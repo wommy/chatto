@@ -5,11 +5,9 @@ description: Install mise and the tools mise.toml defines
 # `license-check` and `workflow-lint` need only mise and take about twenty
 # seconds. To route them through `setup` would make two fast jobs slow.
 #
-# This action gives the mise version one home, so that a pin does not add a
-# fourth copy of it. The consolidation is not complete. The `license-check`
-# and `workflow-lint` jobs in ci.yml still call `jdx/mise-action` directly,
-# so the version is still written in three places. Those two jobs will
-# change to use this action.
+# Both shapes enter through this action, so the mise version has one home.
+# Keep it that way. A new job that needs mise must use this action, or
+# `setup`, and must not call `jdx/mise-action` directly.
 runs:
   using: composite
   steps:
