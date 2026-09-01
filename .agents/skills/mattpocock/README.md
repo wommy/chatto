@@ -35,14 +35,17 @@ skills stay the only writers:
 | `docs/architecture/`  | `/chatto-architecture-inventory` |
 
 A sidecar skill that writes one of these documents breaks the invisibility
-rule. [`domain.md`](domain.md) gives the full rule.
+rule. [`config/domain.md`](config/domain.md) gives the full rule.
 
 ## Files
 
-- [`issue-tracker.md`](issue-tracker.md) — where issues live, and how to read
+- [`config/issue-tracker.md`](config/issue-tracker.md) — where issues live, and how to read
   and write them.
-- [`triage-labels.md`](triage-labels.md) — the five triage labels.
-- [`domain.md`](domain.md) — how the sidecar reads Chatto's documentation.
+- [`config/triage-labels.md`](config/triage-labels.md) — the five triage labels.
+- [`config/domain.md`](config/domain.md) — how the sidecar reads Chatto's
+  documentation.
+- [`TRADE-OFFS.md`](TRADE-OFFS.md) — the two known costs. Read it before you
+  change how the skills load, and before you take an upstream change.
 
 ## Why this directory
 
@@ -52,5 +55,5 @@ namespace, and a new directory inside it is intermingling.
 
 One skill, `/code-review`, looks for `docs/agents/issue-tracker.md` at the
 default path. It does not find the file here, and it then tells you to run
-`/setup-matt-pocock-skills`. Point it at [`issue-tracker.md`](issue-tracker.md)
-instead.
+`/setup-matt-pocock-skills`. Point it at
+[`config/issue-tracker.md`](config/issue-tracker.md) instead.
