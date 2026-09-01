@@ -1,7 +1,9 @@
 # Trade-Offs
 
-One known cost of installing the skills as a plugin. Read this when a skill
-does not load.
+One known cost of installing the skills as a plugin.
+
+Read this when a skill does not load. [`README.md`](README.md) indexes the
+rest of this directory.
 
 ## A remote session does not install the plugin
 

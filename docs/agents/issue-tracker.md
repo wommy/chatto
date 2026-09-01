@@ -1,8 +1,15 @@
 # Issue Tracker: GitHub
 
-Issues for this work live as GitHub issues in the `wommy/chatto` fork.
+Where issues live, and which tools reach them.
 
-Open every sidecar issue in the fork.
+`/to-tickets`, `/to-spec`, `/triage`, `/wayfinder`, and `/code-review` read
+this file.
+
+Issues live as GitHub issues in the `wommy/chatto` fork. Open every issue
+there.
+
+The label strings that `/triage` applies are in
+[`triage-labels.md`](triage-labels.md).
 
 ## Which tools to use
 

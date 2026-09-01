@@ -1,14 +1,18 @@
 # Domain Documentation
 
-This file tells the `mattpocock-skills` sidecar how to use Chatto's
-documentation. [`AGENTS.md`](../../AGENTS.md) stays the primary rule set. If
-this file and `AGENTS.md` disagree, `AGENTS.md` wins.
+How the plugin skills use Chatto's documentation.
+
+`/grill-with-docs`, `/domain-modeling`, `/to-spec`, `/code-review`, and
+`/improve-codebase-architecture` read this file.
+
+[`AGENTS.md`](../../AGENTS.md) stays the primary rule set. Where this file and
+`AGENTS.md` disagree, `AGENTS.md` wins.
 
 ## The rule
 
 **Read Chatto's documentation. Route every change through its owner skill.**
 
-The sidecar gets its context from the documents below. Each document has one
+The skills get their context from the documents below. Each document has one
 owner skill, and only that skill writes it:
 
 | Document                     | Contents                             | The skill that writes it         |
@@ -33,21 +37,21 @@ canonical vocabulary, and also the naming surface for a thing that we build.
 The two documents have the same job. A second glossary will disagree with the
 first one.
 
-When the sidecar finds a term that is new, unclear, or in conflict:
+When a skill finds a term that is new, unclear, or in conflict:
 
 1. Say so in the session.
 2. Use `/glossary` to change `docs/GLOSSARY.md`.
 
 ## Decisions: an ADR or an FDR
 
-The sidecar skills know about ADRs only. Chatto divides a decision into two
+The plugin skills know about ADRs only. Chatto divides a decision into two
 kinds:
 
 - **ADR** — a cross-cutting architecture decision. Use `/adr`.
 - **FDR** — the behavior of one feature, and why it behaves that way. Use
   `/fdr`.
 
-When a sidecar skill offers to write an ADR, first decide which kind applies.
+When a skill offers to write an ADR, first decide which kind applies.
 Feature rationale goes in an FDR. An ADR that holds feature rationale is
 against `AGENTS.md`.
 

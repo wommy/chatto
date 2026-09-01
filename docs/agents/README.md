@@ -1,11 +1,13 @@
 # Agent Skills Configuration
 
-[`.claude/settings.json`](../../.claude/settings.json) installs
-`mattpocock-skills` from Claude Code's official plugin marketplace. This
-directory holds what those skills read about this repository.
+What the plugin skills read about this repository.
 
-The plugin is a read-only bundle, and it updates when upstream ships. No skill
-file lives in this repository.
+Start here to find the file that answers a question, then read that file.
+
+[`.claude/settings.json`](../../.claude/settings.json) installs
+`mattpocock-skills` from Claude Code's official plugin marketplace. The plugin
+is a read-only bundle that updates when upstream ships, so no skill file lives
+in this repository. [`AGENTS.md`](../../AGENTS.md) stays the primary rule set.
 
 ## Files
 
