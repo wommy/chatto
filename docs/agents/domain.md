@@ -1,7 +1,7 @@
 # Domain Documentation
 
 This file tells the `mattpocock-skills` sidecar how to use Chatto's
-documentation. [`AGENTS.md`](../../../AGENTS.md) stays the primary rule set. If
+documentation. [`AGENTS.md`](../../AGENTS.md) stays the primary rule set. If
 this file and `AGENTS.md` disagree, `AGENTS.md` wins.
 
 ## The rule

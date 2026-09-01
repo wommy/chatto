@@ -161,3 +161,25 @@ Never leave a dev stack running in a detached or yielded terminal session.
   the `workflow` scope. Files in `.github/actions/` do not have this limit. Put
   the logic in a composite action when you can, then give the small remaining
   workflow change to the user as a patch that `git am` applies.
+
+## Agent Skills
+
+`.claude/settings.json` installs the `mattpocock-skills` plugin. It gives an
+optional workflow for alignment, specification, test-driven development, and
+review. The Chatto rules above stay primary.
+
+### Issue tracker
+
+Issues live as GitHub issues in this fork. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: Chatto at the root, Authling under `authling/`, each with its
+own glossary and decision records. The skills read Chatto's documentation, and
+each change goes through the owner skill: `/glossary`, `/adr`, `/fdr`, or
+`/chatto-architecture-inventory`. See `docs/agents/domain.md`.
