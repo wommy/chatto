@@ -13,8 +13,15 @@ in this repository, and the bundled alias `/review` does not reach it.
 These names shadow a bundled skill: `code-review`, `research`, `implement`.
 
 The symlinks keep the bare names on purpose. The skills call each other by
-bare name. `/grill-with-docs` calls `/grill-me`. A prefix on a directory name
-breaks those calls.
+bare name, and the three shadowing names carry that traffic:
+
+- `/implement` calls `/code-review` to close out its work.
+- `/ask-matt` routes into `/implement`, `/code-review`, and `/research`.
+- `/implement-spec` calls `/code-review` on the branch.
+
+A prefix on a directory name breaks each of those calls, so the names stay.
+The sidecar `/code-review` is also the review that Matt's workflow expects,
+so the shadow is the wanted behavior while you use that workflow.
 
 A skills-directory plugin is the other form. It gives each skill the name
 `/mattpocock-skills:<skill>`, and it shadows nothing. It needs the workspace
