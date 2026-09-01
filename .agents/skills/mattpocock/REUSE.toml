@@ -1,0 +1,6 @@
+version = 1
+
+[[annotations]]
+path = "skills/**"
+SPDX-FileCopyrightText = "2026 Matt Pocock"
+SPDX-License-Identifier = "MIT"
