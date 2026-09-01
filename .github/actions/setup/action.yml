@@ -51,12 +51,10 @@ runs:
           go-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-
           go-build-${{ runner.os }}-${{ runner.arch }}-
 
-    # mise-action installs mise and the tools defined in mise.toml (Go, Node)
-    # with automatic caching of the tool installations
+    # setup-mise owns the mise version so every job installs the same one.
+    # It installs the tools mise.toml defines (Go, Node) and caches them.
     - name: Setup mise
-      uses: jdx/mise-action@v4
-      with:
-        experimental: true
+      uses: ./.github/actions/setup-mise
 
     # pnpm is not available as a mise plugin, so install via npm (comes with Node)
     - name: Install pnpm
