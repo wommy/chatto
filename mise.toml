@@ -711,17 +711,9 @@ run = "pnpm check"
 description = "Test the native macOS game-capture helper"
 run = "tools/test-desktop-macos-capture.sh"
 
-[tasks.test-release-image-tags]
-description = "Test the release Docker tag policy"
-run = "pnpm run test:release-image-tags"
-
-[tasks.test-smoke-check-image]
-description = "Test the released container image smoke check"
-run = "pnpm run test:smoke-check-image"
-
-[tasks.test-verify-release-tag]
-description = "Test the release-tag gate"
-run = "pnpm run test:verify-release-tag"
+[tasks.test-tools]
+description = "Test the release tooling in tools/"
+run = "pnpm run test:tools"
 
 [tasks.test-e2e]
 description = "Run E2E tests"
@@ -750,9 +742,6 @@ run = [
     { task = "test-natsruntime" },
     { task = "test-cli" },
     { task = "test-desktop" },
-    { task = "test-release-image-tags" },
-    { task = "test-smoke-check-image" },
-    { task = "test-verify-release-tag" },
     { task = "test-workspace" },
     { task = "test-e2e" },
 ]

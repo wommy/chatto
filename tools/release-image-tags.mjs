@@ -47,10 +47,14 @@
  * command at any time, because the module needs no release in flight.
  */
 
+import { parseArgs as nodeParseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 
 /** Image repository that holds the Chatto server image. */
 export const SERVER_IMAGE = "ghcr.io/chattocorp/chatto";
+
+/** Delimiter for the multi-line GitHub Actions outputs. */
+const OUTPUT_DELIMITER = "CHATTO_IMAGE_TAGS";
 
 /** Image repository that holds the Chatto frontend image. */
 export const CLIENT_IMAGE = "ghcr.io/chattocorp/chatto-client";
@@ -71,9 +75,6 @@ export const SKIP_PUSH_ENV = Object.freeze({
   latest: "CHATTO_SKIP_PUSH_LATEST",
   next: "CHATTO_SKIP_PUSH_NEXT",
 });
-
-/** Delimiter for the multi-line GitHub Actions outputs. */
-const OUTPUT_DELIMITER = "CHATTO_IMAGE_TAGS";
 
 /**
  * Anchored SemVer 2.0.0 pattern. It keeps the prerelease and the build
@@ -131,9 +132,8 @@ export function parseReleaseTag(tag) {
  * @property {string} version The version that the tag names.
  * @property {boolean} isPrerelease
  * @property {string[]} serverTags Full references that GoReleaser publishes.
- * @property {string[]} clientTags Full references that the workflow publishes.
  * @property {string} clientVersionTag The immutable `{version}` reference.
- * @property {string[]} clientFloatingTags The references in `clientTags` that
+ * @property {string[]} clientFloatingTags The client references that
  *   move: `latest`, `next`, or neither. The release workflow pushes the
  *   version tag first, checks that image, then moves these references onto
  *   the digest that it checked. The list is empty for a stable release that
@@ -164,36 +164,37 @@ export function releaseImageTags({ tag, pushLatest = false }) {
   const { version, major, minor, prerelease } = parseReleaseTag(tag);
   const isPrerelease = prerelease !== "";
   const wantsLatest = asBoolean(pushLatest, "pushLatest");
+  const publishLatest = !isPrerelease && wantsLatest;
   const majorMinor = `${major}.${minor}`;
 
-  const serverNames = [version];
-  const clientNames = [version];
-  if (isPrerelease) {
-    serverNames.push("next");
-    clientNames.push("next");
-  } else {
-    serverNames.push(majorMinor);
-    if (wantsLatest) {
-      serverNames.push("latest");
-      clientNames.push("latest");
-    }
-  }
+  // The policy table from the module docblock, as data. Each row says which
+  // image publishes that tag. The `client: false` cell on `{major}.{minor}`
+  // is the one surprising rule, and it is stated here rather than left as an
+  // omission. Issue #43 holds the decision to change it.
+  const rows = [
+    { name: version, server: true, client: true },
+    { name: majorMinor, server: !isPrerelease, client: false },
+    { name: "latest", server: publishLatest, client: publishLatest },
+    { name: "next", server: isPrerelease, client: isPrerelease },
+  ];
 
-  const clientFloatingNames = clientNames.filter((name) => name !== version);
+  const published = (image, key) =>
+    rows.filter((row) => row[key]).map((row) => `${image}:${row.name}`);
+  const skipPush = (name) =>
+    rows.find((row) => row.name === name)?.server ? "false" : "true";
 
   return {
     version,
     isPrerelease,
-    serverTags: serverNames.map((name) => `${SERVER_IMAGE}:${name}`),
-    clientTags: clientNames.map((name) => `${CLIENT_IMAGE}:${name}`),
+    serverTags: published(SERVER_IMAGE, "server"),
     clientVersionTag: `${CLIENT_IMAGE}:${version}`,
-    clientFloatingTags: clientFloatingNames.map(
-      (name) => `${CLIENT_IMAGE}:${name}`,
-    ),
+    clientFloatingTags: rows
+      .filter((row) => row.client && row.name !== version)
+      .map((row) => `${CLIENT_IMAGE}:${row.name}`),
     skipPush: {
-      majorMinor: skipPushValue(serverNames, majorMinor),
-      latest: skipPushValue(serverNames, "latest"),
-      next: skipPushValue(serverNames, "next"),
+      majorMinor: skipPush(majorMinor),
+      latest: skipPush("latest"),
+      next: skipPush("next"),
     },
   };
 }
@@ -201,33 +202,37 @@ export function releaseImageTags({ tag, pushLatest = false }) {
 /**
  * Give the GitHub Actions output lines for a tag plan.
  *
- * The output holds one key for each `CHATTO_SKIP_PUSH_*` variable, in lower
- * case, plus the tag lists. The workflow builds the client image with
- * `client_version_tag`, checks that image, then moves
- * `client_floating_tags` onto it. It keeps `client_tags` and `server_tags` in
- * the job log, where an operator can see which tags the release moves.
+ * Every key is written here in full, so that a reader who greps a key out of
+ * the release workflow lands on this function. The workflow builds the client
+ * image with `client_version_tag`, checks that image, then moves
+ * `client_floating_tags` onto it, and it labels the image with `version`.
+
  *
  * @param {ReleaseImageTags} plan
  * @returns {string} Text that ends with a newline.
  */
 export function formatGithubOutput(plan) {
-  const lines = [];
-  for (const [key, name] of Object.entries(SKIP_PUSH_ENV)) {
-    lines.push(`${name.toLowerCase()}=${plan.skipPush[key]}`);
-  }
-  lines.push(...multilineOutput("server_tags", plan.serverTags));
-  lines.push(...multilineOutput("client_tags", plan.clientTags));
-  lines.push(`client_version_tag=${plan.clientVersionTag}`);
-  lines.push(...multilineOutput("client_floating_tags", plan.clientFloatingTags));
-  return `${lines.join("\n")}\n`;
+  return [
+    `version=${plan.version}`,
+    `chatto_skip_push_major_minor=${plan.skipPush.majorMinor}`,
+    `chatto_skip_push_latest=${plan.skipPush.latest}`,
+    `chatto_skip_push_next=${plan.skipPush.next}`,
+    `client_version_tag=${plan.clientVersionTag}`,
+    ...multilineOutput("client_floating_tags", plan.clientFloatingTags),
+    "",
+  ].join("\n");
 }
 
+/**
+ * Give a multi-line GitHub Actions output.
+ *
+ * The value could be one line, because an image reference holds no space.
+ * It stays a multi-line output until the release workflow can change with
+ * it: the workflow reads this value with a delimiter, and the two must
+ * agree. See the note in the pull request that made this change.
+ */
 function multilineOutput(key, values) {
   return [`${key}<<${OUTPUT_DELIMITER}`, ...values, OUTPUT_DELIMITER];
-}
-
-function skipPushValue(publishedNames, name) {
-  return publishedNames.includes(name) ? "false" : "true";
 }
 
 function asBoolean(value, name) {
@@ -245,27 +250,18 @@ function asBoolean(value, name) {
  * @throws {TypeError} If an option is unknown, or if `--tag` is absent.
  */
 export function parseArgs(argv) {
-  let tag;
-  let pushLatest = false;
-  for (let index = 0; index < argv.length; index += 1) {
-    const option = argv[index];
-    const value = argv[index + 1];
-    if (option === "--tag") {
-      if (value === undefined) throw new TypeError("--tag needs a value");
-      tag = value;
-      index += 1;
-    } else if (option === "--push-latest") {
-      if (value === undefined) {
-        throw new TypeError("--push-latest needs a value");
-      }
-      pushLatest = value;
-      index += 1;
-    } else {
-      throw new TypeError(`Unknown option: ${option}`);
-    }
-  }
-  if (tag === undefined) throw new TypeError("--tag is required");
-  return { tag, pushLatest };
+  // `strict` rejects an unknown option and, with it, a positional argument.
+  // Both give a TypeError, which the command line reports as a usage error.
+  // `--push-latest` stays a string, because the workflow gives a step output.
+  const { values } = nodeParseArgs({
+    args: argv,
+    options: {
+      tag: { type: "string" },
+      "push-latest": { type: "string" },
+    },
+  });
+  if (values.tag === undefined) throw new TypeError("--tag is required");
+  return { tag: values.tag, pushLatest: values["push-latest"] ?? false };
 }
 
 function main(argv) {

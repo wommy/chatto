@@ -58,6 +58,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseArgs as nodeParseArgs } from "node:util";
 
 /**
  * Key of the release-please package that a `v*` tag releases.
@@ -202,8 +203,9 @@ export function releasePleaseAllowlist({ config, configPath, manifestPath }) {
  * @property {string} tag The tag that the gate examined.
  * @property {string} commit Full object name of the tagged commit.
  * @property {string} sourceBranch Branch that holds the tagged commit, such as
- *   `main` or `release-0.5`. The release workflow consumes no output for this
- *   value; it is here because it is the answer to rule 1.
+ *   `main` or `release-0.5`. It is the answer to rule 1, and the gate reports
+ *   it as `source_branch`, because it is the first thing an operator wants
+ *   when a release publishes something unexpected.
  * @property {string} version The tag without its `v` prefix.
  * @property {boolean} isStable False for a prerelease.
  * @property {boolean} pushLatest True when this release is the highest stable
@@ -272,6 +274,8 @@ export function verifyReleaseTag({ tag, allowlist, cwd = process.cwd() }) {
  *
  * The release job reads `push_latest` for the Docker tag policy and exposes
  * `is_stable` as a job output, which the documentation release job needs.
+ * `source_branch` has no consumer: the step pipes this output through `tee`,
+ * so writing it puts the branch that a release came from in the job log.
  *
  * @param {ReleaseTagVerdict} verdict
  * @returns {string} Text that ends with a newline.
@@ -280,6 +284,7 @@ export function formatGithubOutput(verdict) {
   return [
     `push_latest=${verdict.pushLatest}`,
     `is_stable=${verdict.isStable}`,
+    `source_branch=${verdict.sourceBranch}`,
     "",
   ].join("\n");
 }
@@ -292,24 +297,22 @@ export function formatGithubOutput(verdict) {
  * @throws {TypeError} If an option is unknown, or if `--tag` is absent.
  */
 export function parseArgs(argv) {
-  let tag;
-  let configPath = DEFAULT_CONFIG_PATH;
-  let manifestPath = DEFAULT_MANIFEST_PATH;
-  for (let index = 0; index < argv.length; index += 1) {
-    const option = argv[index];
-    const value = argv[index + 1];
-    if (option === "--tag" || option === "--config" || option === "--manifest") {
-      if (value === undefined) throw new TypeError(`${option} needs a value`);
-      if (option === "--tag") tag = value;
-      else if (option === "--config") configPath = value;
-      else manifestPath = value;
-      index += 1;
-    } else {
-      throw new TypeError(`Unknown option: ${option}`);
-    }
-  }
-  if (tag === undefined) throw new TypeError("--tag is required");
-  return { tag, configPath, manifestPath };
+  // `strict` rejects an unknown option and, with it, a positional argument.
+  // Both give a TypeError, which the command line reports as a usage error.
+  const { values } = nodeParseArgs({
+    args: argv,
+    options: {
+      tag: { type: "string" },
+      config: { type: "string" },
+      manifest: { type: "string" },
+    },
+  });
+  if (values.tag === undefined) throw new TypeError("--tag is required");
+  return {
+    tag: values.tag,
+    configPath: values.config ?? DEFAULT_CONFIG_PATH,
+    manifestPath: values.manifest ?? DEFAULT_MANIFEST_PATH,
+  };
 }
 
 /**

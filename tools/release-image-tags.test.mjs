@@ -20,6 +20,20 @@ const repositoryRoot = path.dirname(
 );
 const modulePath = path.join(repositoryRoot, "tools/release-image-tags.mjs");
 
+/**
+ * Give every reference that the workflow publishes for the client image.
+ *
+ * The plan holds the immutable tag and the floating tags separately, because
+ * the workflow pushes the first and moves the second onto the digest that it
+ * checked. The full list is this join, and no plan field stores it.
+ *
+ * @param {import("./release-image-tags.mjs").ReleaseImageTags} plan
+ * @returns {string[]}
+ */
+function clientTags(plan) {
+  return [plan.clientVersionTag, ...plan.clientFloatingTags];
+}
+
 test("a stable highest release publishes version, major.minor and latest", () => {
   const plan = releaseImageTags({ tag: "v0.5.0", pushLatest: true });
 
@@ -30,7 +44,7 @@ test("a stable highest release publishes version, major.minor and latest", () =>
     `${SERVER_IMAGE}:0.5`,
     `${SERVER_IMAGE}:latest`,
   ]);
-  assert.deepEqual(plan.clientTags, [
+  assert.deepEqual(clientTags(plan), [
     `${CLIENT_IMAGE}:0.5.0`,
     `${CLIENT_IMAGE}:latest`,
   ]);
@@ -48,7 +62,7 @@ test("a stable release that is not the highest keeps latest where it is", () => 
     `${SERVER_IMAGE}:0.4.7`,
     `${SERVER_IMAGE}:0.4`,
   ]);
-  assert.deepEqual(plan.clientTags, [`${CLIENT_IMAGE}:0.4.7`]);
+  assert.deepEqual(clientTags(plan), [`${CLIENT_IMAGE}:0.4.7`]);
   assert.deepEqual(plan.skipPush, {
     majorMinor: "false",
     latest: "true",
@@ -64,7 +78,7 @@ test("a prerelease publishes version and next only", () => {
     `${SERVER_IMAGE}:0.5.0-alpha.1`,
     `${SERVER_IMAGE}:next`,
   ]);
-  assert.deepEqual(plan.clientTags, [
+  assert.deepEqual(clientTags(plan), [
     `${CLIENT_IMAGE}:0.5.0-alpha.1`,
     `${CLIENT_IMAGE}:next`,
   ]);
@@ -80,7 +94,7 @@ test("a prerelease never moves latest, even when the caller asks", () => {
 
   assert.equal(plan.skipPush.latest, "true");
   assert.ok(!plan.serverTags.includes(`${SERVER_IMAGE}:latest`));
-  assert.ok(!plan.clientTags.includes(`${CLIENT_IMAGE}:latest`));
+  assert.ok(!clientTags(plan).includes(`${CLIENT_IMAGE}:latest`));
 });
 
 test("the client image gets no major.minor tag", () => {
@@ -90,7 +104,7 @@ test("the client image gets no major.minor tag", () => {
   for (const tag of ["v1.2.3", "v0.5.0", "v2.0.0-rc.1"]) {
     const plan = releaseImageTags({ tag, pushLatest: true });
     const { major, minor } = parseReleaseTag(tag);
-    assert.ok(!plan.clientTags.includes(`${CLIENT_IMAGE}:${major}.${minor}`));
+    assert.ok(!clientTags(plan).includes(`${CLIENT_IMAGE}:${major}.${minor}`));
   }
 });
 
@@ -149,7 +163,7 @@ test("the command line needs a tag and refuses an unknown option", () => {
   assert.throws(() => parseArgs(["--branch", "main"]), TypeError);
 });
 
-test("the output holds one key for each skip_push variable", () => {
+test("the output holds the version and one key for each skip_push variable", () => {
   const output = formatGithubOutput(
     releaseImageTags({ tag: "v0.5.0", pushLatest: true }),
   );
@@ -157,18 +171,10 @@ test("the output holds one key for each skip_push variable", () => {
   assert.equal(
     output,
     [
+      "version=0.5.0",
       "chatto_skip_push_major_minor=false",
       "chatto_skip_push_latest=false",
       "chatto_skip_push_next=true",
-      "server_tags<<CHATTO_IMAGE_TAGS",
-      `${SERVER_IMAGE}:0.5.0`,
-      `${SERVER_IMAGE}:0.5`,
-      `${SERVER_IMAGE}:latest`,
-      "CHATTO_IMAGE_TAGS",
-      "client_tags<<CHATTO_IMAGE_TAGS",
-      `${CLIENT_IMAGE}:0.5.0`,
-      `${CLIENT_IMAGE}:latest`,
-      "CHATTO_IMAGE_TAGS",
       `client_version_tag=${CLIENT_IMAGE}:0.5.0`,
       "client_floating_tags<<CHATTO_IMAGE_TAGS",
       `${CLIENT_IMAGE}:latest`,
@@ -194,22 +200,6 @@ test("the client tags are split into the version tag and the floating tags", () 
   const older = releaseImageTags({ tag: "v0.4.7", pushLatest: false });
   assert.equal(older.clientVersionTag, `${CLIENT_IMAGE}:0.4.7`);
   assert.deepEqual(older.clientFloatingTags, []);
-});
-
-test("the two client tag lists always agree with each other", () => {
-  for (const [tag, pushLatest] of [
-    ["v0.5.0", true],
-    ["v0.4.7", false],
-    ["v0.5.0-alpha.1", false],
-    ["v1.0.0", true],
-  ]) {
-    const plan = releaseImageTags({ tag, pushLatest });
-    assert.deepEqual(
-      [plan.clientVersionTag, ...plan.clientFloatingTags],
-      plan.clientTags,
-      `the parts do not rebuild clientTags for ${tag}`,
-    );
-  }
 });
 
 test("a release with no floating client tag gives an empty output value", () => {
@@ -267,6 +257,62 @@ test("goreleaser reads every skip_push value and computes none", () => {
   }
 
   assert.deepEqual(names, new Set(Object.values(SKIP_PUSH_ENV)));
+});
+
+test("the documented tag table names exactly the tags that the policy publishes", () => {
+  // docs/RELEASING.md holds the table that a releaser reads. The module holds
+  // the same policy as data. This asserts that the two name the same tags, so
+  // that a new row in one is not forgotten in the other. It does not compare
+  // the wording of a cell, which an editor may improve freely.
+  const document = readFileSync(
+    path.join(repositoryRoot, "docs/RELEASING.md"),
+    "utf8",
+  );
+  const section = /## Container image tags\n([\s\S]*?)\n## /.exec(document);
+  assert.ok(section, "docs/RELEASING.md must hold a container image tag section");
+
+  const documented = new Set(
+    [...section[1].matchAll(/^\| `([^`]+)`\s*\|/gm)].map((match) => match[1]),
+  );
+
+  // The table names every tag that any release publishes, so the comparison
+  // needs both a stable release and a prerelease: `latest` and `1.2` come
+  // from the first, `next` from the second.
+  const tagsOf = (plan) =>
+    [...plan.serverTags, plan.clientVersionTag, ...plan.clientFloatingTags].map(
+      (reference) => reference.split(":").pop(),
+    );
+  const published = new Set([
+    ...tagsOf(releaseImageTags({ tag: "v1.2.3", pushLatest: true })),
+    ...tagsOf(releaseImageTags({ tag: "v1.2.3-rc.1" })),
+  ]);
+  // The prerelease plan names its own version; the table gives the stable one.
+  published.delete("1.2.3-rc.1");
+
+  assert.deepEqual(
+    documented,
+    published,
+    "docs/RELEASING.md and the policy table must name the same tags",
+  );
+});
+
+test("the release workflow sets every skip_push variable that goreleaser reads", () => {
+  // GoReleaser templates use `missingkey=error`, so an unset variable fails
+  // the manifest push in the middle of a release, after images are pushed.
+  // The test above proves `.goreleaser.yml` reads these names; this one
+  // proves the workflow supplies them.
+  const workflow = readFileSync(
+    path.join(repositoryRoot, ".github/workflows/release.yml"),
+    "utf8",
+  );
+
+  for (const name of Object.values(SKIP_PUSH_ENV)) {
+    assert.match(
+      workflow,
+      new RegExp(`^\\s*${name}:\\s*\\S`, "m"),
+      `.github/workflows/release.yml must set ${name} for GoReleaser`,
+    );
+  }
 });
 
 test("goreleaser publishes the server manifests that the policy names", () => {
