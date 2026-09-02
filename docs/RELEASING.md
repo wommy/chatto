@@ -28,6 +28,38 @@ Stable docs images are immutable release snapshots. Corrections to the stable
 documentation ship with the next Chatto patch release rather than replacing an
 existing `vX.Y.Z` image.
 
+## Container image tags
+
+A release publishes two images: `ghcr.io/chattocorp/chatto` (the server) and
+`ghcr.io/chattocorp/chatto-client` (the frontend).
+
+| Tag         | `chatto`                   | `chatto-client`            |
+| ----------- | -------------------------- | -------------------------- |
+| `1.2.3`     | always                     | always                     |
+| `1.2`       | stable release             | not published              |
+| `latest`    | the highest stable release | the highest stable release |
+| `next`      | prerelease                 | prerelease                 |
+
+Image tags have no `v` prefix, because GoReleaser removes the prefix from the
+release tag. The documentation image `ghcr.io/chattocorp/chatto-docs` keeps the
+`v` prefix, because a different workflow publishes it.
+
+The client image gets no `1.2` tag. This is not intended. Issue #43 keeps the
+tag set unchanged until a separate change adds that tag.
+
+`tools/release-image-tags.mjs` holds this policy for both images.
+`.goreleaser.yml` and the release workflow read the result and decide nothing.
+To see the tags for a release tag before you push it, run:
+
+```sh
+node tools/release-image-tags.mjs --tag v1.2.3 --push-latest true
+```
+
+Use `--push-latest true` only if the tag is the highest stable version. The
+release workflow computes that value from the Git tags.
+Run `mise test-release-image-tags` to test the policy. The workspace test job
+runs the same test on every pull request.
+
 ## Prereleases from main
 
 The release-please configuration on `main` uses prerelease versioning. Feature

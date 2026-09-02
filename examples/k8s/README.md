@@ -155,11 +155,16 @@ kubectl -n chatto rollout status deployment/chatto
 
 ```bash
 # Update to a new image
-kubectl -n chatto set image deployment/chatto chatto=ghcr.io/chattocorp/chatto:v1.2.3
+kubectl -n chatto set image deployment/chatto chatto=ghcr.io/chattocorp/chatto:1.2.3
 
 # Or update the manifest and apply
 kubectl apply -f chatto.yaml
 ```
+
+Image tags have no `v` prefix. A stable release publishes `1.2.3` and `1.2`,
+and the highest stable release also moves `latest`. A prerelease publishes
+`1.2.3-alpha.1` and moves `next`. `docs/RELEASING.md` gives the full tag list
+for both images.
 
 The deployment uses a rolling update strategy with `maxUnavailable: 0` to ensure zero-downtime updates.
 

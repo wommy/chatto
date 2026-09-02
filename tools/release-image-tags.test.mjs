@@ -1,0 +1,236 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+  CLIENT_IMAGE,
+  SERVER_IMAGE,
+  SKIP_PUSH_ENV,
+  formatGithubOutput,
+  parseArgs,
+  parseReleaseTag,
+  releaseImageTags,
+} from "./release-image-tags.mjs";
+
+const repositoryRoot = path.dirname(
+  path.dirname(fileURLToPath(import.meta.url)),
+);
+const modulePath = path.join(repositoryRoot, "tools/release-image-tags.mjs");
+
+test("a stable highest release publishes version, major.minor and latest", () => {
+  const plan = releaseImageTags({ tag: "v0.5.0", pushLatest: true });
+
+  assert.equal(plan.version, "0.5.0");
+  assert.equal(plan.isPrerelease, false);
+  assert.deepEqual(plan.serverTags, [
+    `${SERVER_IMAGE}:0.5.0`,
+    `${SERVER_IMAGE}:0.5`,
+    `${SERVER_IMAGE}:latest`,
+  ]);
+  assert.deepEqual(plan.clientTags, [
+    `${CLIENT_IMAGE}:0.5.0`,
+    `${CLIENT_IMAGE}:latest`,
+  ]);
+  assert.deepEqual(plan.skipPush, {
+    majorMinor: "false",
+    latest: "false",
+    next: "true",
+  });
+});
+
+test("a stable release that is not the highest keeps latest where it is", () => {
+  const plan = releaseImageTags({ tag: "v0.4.7", pushLatest: false });
+
+  assert.deepEqual(plan.serverTags, [
+    `${SERVER_IMAGE}:0.4.7`,
+    `${SERVER_IMAGE}:0.4`,
+  ]);
+  assert.deepEqual(plan.clientTags, [`${CLIENT_IMAGE}:0.4.7`]);
+  assert.deepEqual(plan.skipPush, {
+    majorMinor: "false",
+    latest: "true",
+    next: "true",
+  });
+});
+
+test("a prerelease publishes version and next only", () => {
+  const plan = releaseImageTags({ tag: "v0.5.0-alpha.1" });
+
+  assert.equal(plan.isPrerelease, true);
+  assert.deepEqual(plan.serverTags, [
+    `${SERVER_IMAGE}:0.5.0-alpha.1`,
+    `${SERVER_IMAGE}:next`,
+  ]);
+  assert.deepEqual(plan.clientTags, [
+    `${CLIENT_IMAGE}:0.5.0-alpha.1`,
+    `${CLIENT_IMAGE}:next`,
+  ]);
+  assert.deepEqual(plan.skipPush, {
+    majorMinor: "true",
+    latest: "true",
+    next: "false",
+  });
+});
+
+test("a prerelease never moves latest, even when the caller asks", () => {
+  const plan = releaseImageTags({ tag: "v0.5.0-alpha.1", pushLatest: true });
+
+  assert.equal(plan.skipPush.latest, "true");
+  assert.ok(!plan.serverTags.includes(`${SERVER_IMAGE}:latest`));
+  assert.ok(!plan.clientTags.includes(`${CLIENT_IMAGE}:latest`));
+});
+
+test("the client image gets no major.minor tag", () => {
+  // Today's releases publish no `chatto-client:{major}.{minor}` tag. To add
+  // it is a change of behaviour, and issue #43 keeps it out of the change
+  // that made this module. This test fails if the tag appears by accident.
+  for (const tag of ["v1.2.3", "v0.5.0", "v2.0.0-rc.1"]) {
+    const plan = releaseImageTags({ tag, pushLatest: true });
+    const { major, minor } = parseReleaseTag(tag);
+    assert.ok(!plan.clientTags.includes(`${CLIENT_IMAGE}:${major}.${minor}`));
+  }
+});
+
+test("the v prefix makes no difference to the plan", () => {
+  assert.deepEqual(
+    releaseImageTags({ tag: "v1.2.3", pushLatest: true }),
+    releaseImageTags({ tag: "1.2.3", pushLatest: true }),
+  );
+});
+
+test("push-latest accepts the string that a workflow step supplies", () => {
+  assert.deepEqual(
+    releaseImageTags({ tag: "v1.2.3", pushLatest: "true" }),
+    releaseImageTags({ tag: "v1.2.3", pushLatest: true }),
+  );
+  assert.deepEqual(
+    releaseImageTags({ tag: "v1.2.3", pushLatest: "false" }),
+    releaseImageTags({ tag: "v1.2.3", pushLatest: false }),
+  );
+  assert.throws(
+    () => releaseImageTags({ tag: "v1.2.3", pushLatest: "yes" }),
+    TypeError,
+  );
+});
+
+test("build metadata is not a prerelease", () => {
+  // SemVer keeps the prerelease and the build metadata apart, and so does the
+  // parse that GoReleaser uses. A substring test for `-` does not. Issue #41
+  // owns the other places that still use a substring test. No Chatto release
+  // has used build metadata, and Docker refuses a `+` in a tag, so this test
+  // pins the classification and nothing more.
+  const parsed = parseReleaseTag("v1.0.0+build.1");
+
+  assert.equal(parsed.prerelease, "");
+  assert.equal(parsed.build, "build.1");
+  assert.equal(releaseImageTags({ tag: "v1.0.0+build.1" }).isPrerelease, false);
+});
+
+test("an invalid tag is refused", () => {
+  for (const tag of ["", "v", "1.2", "1.2.3.4", "v01.2.3", "release-1.2.3"]) {
+    assert.throws(() => parseReleaseTag(tag), TypeError, `accepted: ${tag}`);
+  }
+});
+
+test("the command line needs a tag and refuses an unknown option", () => {
+  assert.deepEqual(parseArgs(["--tag", "v1.2.3"]), {
+    tag: "v1.2.3",
+    pushLatest: false,
+  });
+  assert.deepEqual(parseArgs(["--tag", "v1.2.3", "--push-latest", "true"]), {
+    tag: "v1.2.3",
+    pushLatest: "true",
+  });
+  assert.throws(() => parseArgs([]), TypeError);
+  assert.throws(() => parseArgs(["--tag"]), TypeError);
+  assert.throws(() => parseArgs(["--branch", "main"]), TypeError);
+});
+
+test("the output holds one key for each skip_push variable", () => {
+  const output = formatGithubOutput(
+    releaseImageTags({ tag: "v0.5.0", pushLatest: true }),
+  );
+
+  assert.equal(
+    output,
+    [
+      "chatto_skip_push_major_minor=false",
+      "chatto_skip_push_latest=false",
+      "chatto_skip_push_next=true",
+      "server_tags<<CHATTO_IMAGE_TAGS",
+      `${SERVER_IMAGE}:0.5.0`,
+      `${SERVER_IMAGE}:0.5`,
+      `${SERVER_IMAGE}:latest`,
+      "CHATTO_IMAGE_TAGS",
+      "client_tags<<CHATTO_IMAGE_TAGS",
+      `${CLIENT_IMAGE}:0.5.0`,
+      `${CLIENT_IMAGE}:latest`,
+      "CHATTO_IMAGE_TAGS",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("the command writes the output of a prerelease to stdout", () => {
+  const stdout = execFileSync(
+    process.execPath,
+    [modulePath, "--tag", "v0.5.0-alpha.2", "--push-latest", "false"],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(
+    stdout,
+    formatGithubOutput(releaseImageTags({ tag: "v0.5.0-alpha.2" })),
+  );
+});
+
+test("the command fails on a tag that it cannot parse", () => {
+  assert.throws(() =>
+    execFileSync(process.execPath, [modulePath, "--tag", "nightly"], {
+      encoding: "utf8",
+      stdio: "pipe",
+    }),
+  );
+});
+
+test("goreleaser reads every skip_push value and computes none", () => {
+  // `.goreleaser.yml` must stay a passthrough. A condition in a template is a
+  // decision that no test can reach, because nothing evaluates a GoReleaser
+  // template before the push that acts on it.
+  const configuration = readFileSync(
+    path.join(repositoryRoot, ".goreleaser.yml"),
+    "utf8",
+  );
+  const templates = [...configuration.matchAll(/^\s*skip_push:\s*(.+)$/gm)].map(
+    (match) => match[1].trim(),
+  );
+  const names = new Set();
+
+  for (const template of templates) {
+    const match = /^'\{\{ \.Env\.([A-Z_]+) \}\}'$/.exec(template);
+    assert.ok(match, `skip_push must be a bare variable, found: ${template}`);
+    names.add(match[1]);
+  }
+
+  assert.deepEqual(names, new Set(Object.values(SKIP_PUSH_ENV)));
+});
+
+test("goreleaser publishes the server manifests that the policy names", () => {
+  const configuration = readFileSync(
+    path.join(repositoryRoot, ".goreleaser.yml"),
+    "utf8",
+  );
+  const manifests = [
+    ...configuration.matchAll(/^\s*- name_template:\s*"(.+)"$/gm),
+  ].map((match) => match[1]);
+
+  assert.deepEqual(manifests, [
+    `${SERVER_IMAGE}:{{ .Version }}`,
+    `${SERVER_IMAGE}:{{ .Major }}.{{ .Minor }}`,
+    `${SERVER_IMAGE}:latest`,
+    `${SERVER_IMAGE}:next`,
+  ]);
+});
