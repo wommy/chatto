@@ -29,6 +29,13 @@ on:
 permissions:
   contents: read
 
+# The release-please configuration and manifest paths. The release-please
+# action reads them, and tools/verify-release-tag.mjs derives the files that a
+# release commit may change from the configuration, so both jobs need them.
+env:
+  CONFIG_FILE: .release-please-config.json
+  MANIFEST_FILE: .release-please-manifest.json
+
 jobs:
   release-please:
     if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' }}
@@ -41,8 +48,6 @@ jobs:
       cancel-in-progress: false
     env:
       TARGET_BRANCH: ${{ github.event.workflow_run.head_branch }}
-      CONFIG_FILE: .release-please-config.json
-      MANIFEST_FILE: .release-please-manifest.json
     steps:
       - uses: googleapis/release-please-action@v5
         with:
@@ -587,82 +592,21 @@ jobs:
       - name: Fetch release branches
         run: git fetch origin '+refs/heads/main:refs/remotes/origin/main' '+refs/heads/release-*:refs/remotes/origin/release-*'
 
+      # tools/verify-release-tag.mjs owns the gate: which commits may
+      # release, and whether this release may move `latest`. Its test runs on
+      # every pull request against Git fixture repositories, so the rules are
+      # proven before the tag that acts on them. This step runs before the
+      # environment setup, so it uses the Node of the runner.
       - name: Verify release-please tag
         id: release_meta
         shell: bash
         run: |
           set -euo pipefail
 
-          tag_commit="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
-
-          source_branch=""
-          if git merge-base --is-ancestor "$tag_commit" origin/main; then
-            source_branch="main"
-          else
-            while IFS= read -r ref; do
-              if git merge-base --is-ancestor "$tag_commit" "$ref"; then
-                source_branch="${ref#refs/remotes/origin/}"
-                break
-              fi
-            done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/release-*')
-          fi
-
-          if [[ -z "$source_branch" ]]; then
-            echo "::error::Refusing to release ${GITHUB_REF_NAME}: tagged commit is not reachable from origin/main or an origin/release-* branch."
-            exit 1
-          fi
-
-          echo "source_branch=${source_branch}" >> "$GITHUB_OUTPUT"
-
-          parent_count="$(git rev-list --parents -n 1 "$tag_commit" | awk '{ print NF - 1 }')"
-          if [[ "$parent_count" -lt 1 ]]; then
-            echo "::error::Refusing to release ${GITHUB_REF_NAME}: tagged commit has no parent to compare against."
-            exit 1
-          fi
-
-          disallowed=()
-          while IFS= read -r path; do
-            case "$path" in
-              .release-please-config.json|\
-              .release-please-config-main.json|\
-              .release-please-manifest.json|\
-              .release-please-manifest-main.json|\
-              CHANGELOG.md|\
-              cli/version.go|\
-              apps/frontend/package.json)
-                ;;
-              *)
-                disallowed+=("$path")
-                ;;
-            esac
-          done < <(git diff --name-only "${tag_commit}^" "$tag_commit")
-
-          if (( ${#disallowed[@]} > 0 )); then
-            echo "::error::Refusing to release ${GITHUB_REF_NAME}: tagged commit contains non-release-please files."
-            printf 'Disallowed file: %s\n' "${disallowed[@]}"
-            exit 1
-          fi
-
-          version="${GITHUB_REF_NAME#v}"
-          push_latest=false
-          is_stable=false
-          if [[ "$version" != *-* ]]; then
-            is_stable=true
-            highest_stable="$(
-              git tag --list 'v[0-9]*.[0-9]*.[0-9]*' |
-                sed 's/^v//' |
-                grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' |
-                sort -V |
-                tail -n 1
-            )"
-
-            if [[ "$version" == "$highest_stable" ]]; then
-              push_latest=true
-            fi
-          fi
-
-          echo "push_latest=${push_latest}" >> "$GITHUB_OUTPUT"
-          echo "is_stable=${is_stable}" >> "$GITHUB_OUTPUT"
+          node tools/verify-release-tag.mjs \
+            --tag "$GITHUB_REF_NAME" \
+            --config "$CONFIG_FILE" \
+            --manifest "$MANIFEST_FILE" | tee -a "$GITHUB_OUTPUT"
 
       - name: Setup environment
         uses: ./.github/actions/setup
