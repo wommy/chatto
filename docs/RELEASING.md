@@ -105,14 +105,19 @@ serve. The job is red.
 new version number does not repair the tags. Do these steps:
 
 1. Find the cause in the job log, and correct it.
-2. Do the tag move again. Run the `release` job again for the same tag, or
-   move each tag by hand with the same command that the step uses:
+2. Do the tag move again. Move each tag by hand with the same command that
+   the step uses. First log in to `ghcr.io` with a token that can write
+   packages:
 
    ```sh
    docker buildx imagetools create \
      --tag ghcr.io/chattocorp/chatto-client:latest \
      ghcr.io/chattocorp/chatto-client:1.2.3
    ```
+
+   A re-run of the full `release` job also moves the tag, but it runs
+   GoReleaser again against a release that is already published. Prefer the
+   command above.
 
 3. To move a tag back to the release before it, use the digest that the
    tag-move step wrote to the job log before it moved that tag:
@@ -127,10 +132,10 @@ A tag name does not do this. `imagetools` reads the tag at the time of the
 command, so a tag that already moved gives the new digest and not the old one.
 
 A red `release` job also stops the stable documentation snapshot, because
-`publish-stable-docs` needs the `release` job. The tag move alone does not
-publish it. To publish the documentation for that release, run the `release`
-job again, or start the *build docs image* workflow by hand with `channel:
-stable` and the release tag as the `ref`.
+`publish-stable-docs` needs the `release` job. A tag move by hand does not
+publish it. To publish the documentation for that release, start the *build
+docs image* workflow by hand with `channel: stable` and the release tag as the
+`ref`, or make the `release` job green with a full re-run.
 
 ## Prereleases from main
 
