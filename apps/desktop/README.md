@@ -177,6 +177,13 @@ The main `chatto-desktop.exe` must also report the expected ChattoCorp publisher
 bundled third-party libraries may retain their original valid publisher, such
 as Microsoft.
 
+`scripts/windows-signing.mjs` holds these two checks: the check of the settings
+before the build, and the check of the signature records after the signing
+step. The workflow collects the signature records with
+`Get-AuthenticodeSignature` and gives them to the module as JSON. Thus
+`scripts/windows-signing.test.mjs` can run the checks on each platform, and
+`mise test-desktop` runs that test.
+
 Before the first tagged release, manually run the `release` workflow with the
 `desktop` target on `main`, approve the protected environment, and inspect the
 Windows verification ZIP on a clean supported Windows installation. In File
