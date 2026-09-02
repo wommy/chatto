@@ -26,6 +26,20 @@
  * 4. **`latest` moves for the highest stable version only.** This rule sets
  *    the `push_latest` output rather than refusing the tag.
  *
+ * ## One parser answers "is this a prerelease?"
+ *
+ * The gate classifies the version with `parseReleaseTag` from
+ * `tools/release-image-tags.mjs`, which is the parser that the Docker tag
+ * policy uses. SemVer keeps the prerelease and the build metadata in separate
+ * fields, and the metadata after `+` may hold a `-`. A substring test for `-`
+ * therefore calls `v1.0.0+build-1` a prerelease, and a parse calls it stable.
+ * The gate uses the parse, so it agrees with the tag policy and with
+ * GoReleaser. Issue #41 removed the last two substring tests.
+ *
+ * A tag that the parser refuses is a refusal of the release, and not a usage
+ * error. Before issue #41 a malformed tag such as `v0.5` was stable to this
+ * gate, and it released when the repository held some other stable tag.
+ *
  * ## Why this is a module and not workflow script
  *
  * The gate is the one thing between a hand-pushed `v*` tag and a published
@@ -58,6 +72,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
+
+import { parseReleaseTag } from "./release-image-tags.mjs";
 
 /**
  * Key of the release-please package that a `v*` tag releases.
@@ -205,7 +221,8 @@ export function releasePleaseAllowlist({ config, configPath, manifestPath }) {
  *   `main` or `release-0.5`. The release workflow consumes no output for this
  *   value; it is here because it is the answer to rule 1.
  * @property {string} version The tag without its `v` prefix.
- * @property {boolean} isStable False for a prerelease.
+ * @property {boolean} isStable False for a prerelease. Build metadata after
+ *   `+` does not make a version a prerelease. See {@link parseReleaseTag}.
  * @property {boolean} pushLatest True when this release is the highest stable
  *   version, so `latest` may move to it.
  */
@@ -248,14 +265,21 @@ export function verifyReleaseTag({ tag, allowlist, cwd = process.cwd() }) {
     );
   }
 
-  const version = tag.replace(/^v/, "");
-  // A version that holds a `-` is a prerelease. This is the test that the
-  // workflow script used, and this module keeps it. SemVer build metadata
-  // after `+` may also hold a `-`, so this test differs from the SemVer
-  // parser in `tools/release-image-tags.mjs`. No Chatto release has used
-  // build metadata. Issue #41 owns making one parser answer this question in
-  // every place that asks it.
-  const isStable = !version.includes("-");
+  // `parseReleaseTag` is the one parser that classifies a Chatto release
+  // version. It keeps the prerelease and the build metadata apart, so a tag
+  // such as `v1.0.0+build-1` is stable here and stable in the Docker tag
+  // policy. A tag that it cannot parse is a refusal and not a usage error,
+  // because the gate answers one question and its answer is "no".
+  let parsed;
+  try {
+    parsed = parseReleaseTag(tag);
+  } catch {
+    throw new ReleaseTagRefusal(
+      `Refusing to release ${tag}: the tag is not a valid SemVer version.`,
+    );
+  }
+  const { version } = parsed;
+  const isStable = parsed.prerelease === "";
 
   return {
     tag,
@@ -319,6 +343,17 @@ export function parseArgs(argv) {
  * metadata, because the pattern accepts three numbers and nothing else. The
  * released tag is itself in the repository, so a stable release always finds
  * at least its own version.
+ *
+ * This is a rule for candidate selection, and it is not a second answer to
+ * "is this a prerelease?". It agrees with {@link parseReleaseTag} about every
+ * prerelease: a version that holds a prerelease field cannot match a pattern
+ * of three numbers. The two differ for build metadata only, where this
+ * function refuses the candidate and the parser calls the version stable. A
+ * stable release that carries build metadata is therefore stable, and it does
+ * not move `latest`. That is the safe direction, and Docker refuses a `+`
+ * character in a tag, so such a release publishes no image. Whether such a
+ * release should move `latest` is a policy question of its own, and it is not
+ * part of issue #41.
  *
  * @param {string} cwd
  * @param {string} tag The tag under examination, for the refusal message.

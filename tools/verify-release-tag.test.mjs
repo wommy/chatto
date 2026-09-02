@@ -17,6 +17,7 @@ import {
   releasePleaseAllowlist,
   verifyReleaseTag,
 } from "./verify-release-tag.mjs";
+import { releaseImageTags } from "./release-image-tags.mjs";
 
 const repositoryRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const modulePath = path.join(repositoryRoot, "tools/verify-release-tag.mjs");
@@ -424,20 +425,113 @@ test("a prerelease tag is no candidate for the highest stable version", (t) => {
   assert.equal(verify(repository, "v0.5.0").pushLatest, true);
 });
 
-test("a stable tag with no stable version to compare against is refused", (t) => {
-  // `v0.5` is stable by the prerelease test, and the pattern for a stable tag
-  // does not match it, so no version can hold `latest`. The workflow script
-  // failed here as well, because its pipeline found nothing.
+test("a tag that is no SemVer version is refused", (t) => {
+  // `v0.5` was stable to the substring test, and the pattern for a stable tag
+  // did not match it. With one other stable tag in the repository the gate
+  // accepted it and called it stable. `parseReleaseTag` refuses it, so the
+  // gate refuses the release.
   const repository = createRepository(t);
   const release = releaseCommit(repository, "0.5");
   repository.setRemoteBranch("main", release);
+  repository.tag("v0.4.9", repository.base);
   repository.tag("v0.5", release);
 
   assert.throws(() => verify(repository, "v0.5"), (error) => {
     assert.ok(error instanceof ReleaseTagRefusal);
+    assert.match(error.message, /the tag is not a valid SemVer version/);
+    return true;
+  });
+});
+
+test("a stable tag with no stable version to compare against is refused", (t) => {
+  // A version that carries build metadata is stable, and the pattern for a
+  // stable candidate does not match it. With no other stable tag the sorted
+  // list is empty, and rule 4 cannot answer. The gate refuses rather than
+  // guess. The substring test never reached this branch for such a tag,
+  // because it called the version a prerelease and stopped.
+  const repository = createRepository(t);
+  const release = releaseCommit(repository, "1.0.0+build-1");
+  repository.setRemoteBranch("main", release);
+  repository.tag("v1.0.0+build-1", release);
+
+  assert.throws(() => verify(repository, "v1.0.0+build-1"), (error) => {
+    assert.ok(error instanceof ReleaseTagRefusal);
     assert.match(error.message, /holds no stable release tag/);
     return true;
   });
+});
+
+// ---------------------------------------------------------------------------
+// One parser answers "is this a prerelease?"
+// ---------------------------------------------------------------------------
+
+test("build metadata does not make a stable version a prerelease", (t) => {
+  // This is the case that the substring test got wrong. SemVer keeps the
+  // prerelease and the build metadata in separate fields, and the metadata
+  // after `+` holds a `-` here. `!version.includes("-")` called this version
+  // a prerelease; `parseReleaseTag` calls it stable, which agrees with the
+  // Docker tag policy and with GoReleaser.
+  const repository = createRepository(t);
+  const release = releaseCommit(repository, "1.0.0+build-1");
+  repository.setRemoteBranch("main", release);
+  repository.tag("v0.4.9", repository.base);
+  repository.tag("v1.0.0+build-1", release);
+
+  const verdict = verify(repository, "v1.0.0+build-1");
+
+  assert.equal(verdict.version, "1.0.0+build-1");
+  assert.equal(verdict.isStable, true);
+  // The substring test that this replaces gave the opposite answer.
+  assert.equal(!verdict.version.includes("-"), false);
+});
+
+test("a stable version with build metadata does not move latest", (t) => {
+  // `highestStableVersion` selects candidates with a pattern of three
+  // numbers, so a tag with build metadata is no candidate and the equality
+  // test cannot hold. The release is stable and `latest` stays where it is.
+  // This is the safe direction, and Docker refuses a `+` character in a tag,
+  // so such a release publishes no image. This test pins the behaviour so
+  // that a change to it shows in a diff.
+  const repository = createRepository(t);
+  const release = releaseCommit(repository, "1.0.0+build-1");
+  repository.setRemoteBranch("main", release);
+  repository.tag("v0.4.9", repository.base);
+  repository.tag("v1.0.0+build-1", release);
+
+  const verdict = verify(repository, "v1.0.0+build-1");
+
+  assert.equal(verdict.isStable, true);
+  assert.equal(verdict.pushLatest, false);
+});
+
+test("build metadata on a prerelease keeps the version a prerelease", (t) => {
+  const repository = createRepository(t);
+  const release = releaseCommit(repository, "1.0.0-rc.1+build-1");
+  repository.setRemoteBranch("main", release);
+  repository.tag("v0.4.9", repository.base);
+  repository.tag("v1.0.0-rc.1+build-1", release);
+
+  const verdict = verify(repository, "v1.0.0-rc.1+build-1");
+
+  assert.equal(verdict.isStable, false);
+  assert.equal(verdict.pushLatest, false);
+});
+
+test("the gate and the Docker tag policy read one parser", (t) => {
+  // `releaseImageTags` owns the tag policy, and this gate owns `is_stable`.
+  // The two must not disagree about a version. `isPrerelease` and `isStable`
+  // are the same answer with opposite signs.
+  const repository = createRepository(t);
+  const release = releaseCommit(repository, "1.0.0+build-1");
+  repository.setRemoteBranch("main", release);
+  repository.tag("v0.4.9", repository.base);
+  repository.tag("v1.0.0+build-1", release);
+
+  const verdict = verify(repository, "v1.0.0+build-1");
+  const plan = releaseImageTags({ tag: "v1.0.0+build-1" });
+
+  assert.equal(verdict.isStable, !plan.isPrerelease);
+  assert.equal(verdict.version, plan.version);
 });
 
 // ---------------------------------------------------------------------------

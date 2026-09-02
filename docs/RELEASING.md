@@ -231,13 +231,22 @@ the tag if one of these rules does not apply:
   the release-please configuration, the release-please manifest, the changelog,
   and each file that the configuration lists in `extra-files`. A commit that
   also changes product code is a hand-made tag, and the workflow refuses it.
+- **The tag must hold a SemVer version.** The workflow parses the tag with the
+  parser that the container image tag policy uses. A tag such as `v0.5`, which
+  has no patch number, is not a SemVer version, and the workflow refuses it.
+
+A version is a prerelease when it holds a prerelease field, such as
+`0.6.0-alpha.1`. SemVer build metadata after `+` is not a prerelease, so
+`1.0.0+build-1` is a stable version. One parser gives this answer, and the
+release tag gate, the container image tag policy, the Homebrew tap step and
+GoReleaser all use it.
 
 `tools/verify-release-tag.mjs` holds these rules, and it reads the file list
 from `.release-please-config.json`. The same command tells the workflow whether
 this release is stable, and whether it is the highest stable version. The
 workflow gives those two values to the policy in [Container image
-tags](#container-image-tags). To see the result for a tag before you push it,
-run:
+tags](#container-image-tags), and it updates the Homebrew tap for a stable
+release only. To see the result for a tag before you push it, run:
 
 ```sh
 node tools/verify-release-tag.mjs --tag v1.2.3
