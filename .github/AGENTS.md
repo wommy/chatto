@@ -86,6 +86,25 @@ No floating tag moves, so the rehearsal publishes nothing that a user tracks.
 a prerelease tag publishes `:next`, which the development cluster deploys. Keep
 real tags for the credentialed desktop paths, which have no other rehearsal.
 
+## A coding agent usually cannot write this directory
+
+Most agent sessions hold a token without the GitHub `workflow` scope, and the
+GitHub App refuses a write under `.github/workflows/` as well. The refusal
+arrives late, at the push, and one server reports it as an expired token, which
+sends you looking for the wrong cause. Test a small write early when a change
+needs this directory.
+
+Split the work when the push is refused. Put every file the session can write
+in one pull request, and give the workflow half to a session that has the
+scope. Two rules make the split safe:
+
+- Never leave a half that changes a value the other half reads. The tag list
+  that `tools/release-image-tags.mjs` writes and the release workflow reads is
+  such a value: one half alone gives a broken release, and a green test suite
+  does not show it.
+- Say in the pull request body which half is missing and why, so that a
+  reviewer does not read the branch as the complete change.
+
 ## Where the reasoning lives
 
 [Issue #36](https://github.com/wommy/chatto/issues/36) holds standing rule 1 in

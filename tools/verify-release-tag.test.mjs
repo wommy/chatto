@@ -444,15 +444,37 @@ test("a stable tag with no stable version to compare against is refused", (t) =>
 // Output and command line
 // ---------------------------------------------------------------------------
 
-test("the output holds the two values that the release job reads", () => {
+test("the output holds the values that the release job reads and logs", () => {
   assert.equal(
-    formatGithubOutput({ pushLatest: true, isStable: true }),
-    "push_latest=true\nis_stable=true\n",
+    formatGithubOutput({ pushLatest: true, isStable: true, sourceBranch: "main" }),
+    "push_latest=true\nis_stable=true\nsource_branch=main\n",
   );
   assert.equal(
-    formatGithubOutput({ pushLatest: false, isStable: false }),
-    "push_latest=false\nis_stable=false\n",
+    formatGithubOutput({
+      pushLatest: false,
+      isStable: false,
+      sourceBranch: "release-0.4",
+    }),
+    "push_latest=false\nis_stable=false\nsource_branch=release-0.4\n",
   );
+});
+
+test("the default config and manifest paths match the release workflow", () => {
+  // The module documents these constants as the same paths the workflow
+  // passes. Without this test the claim is only a comment, and the two can
+  // drift until a release refuses every tag.
+  const workflow = readFileSync(
+    path.join(repositoryRoot, ".github/workflows/release.yml"),
+    "utf8",
+  );
+  const valueOf = (key) => {
+    const match = new RegExp(`^\\s*${key}:\\s*(\\S+)\\s*$`, "m").exec(workflow);
+    assert.ok(match, `.github/workflows/release.yml must set ${key}`);
+    return match[1];
+  };
+
+  assert.equal(DEFAULT_CONFIG_PATH, valueOf("CONFIG_FILE"));
+  assert.equal(DEFAULT_MANIFEST_PATH, valueOf("MANIFEST_FILE"));
 });
 
 test("the command line needs a tag and refuses an unknown option", () => {
@@ -484,7 +506,7 @@ test("the command writes the outputs of an accepted tag to stdout", (t) => {
     encoding: "utf8",
   });
 
-  assert.equal(stdout, "push_latest=true\nis_stable=true\n");
+  assert.equal(stdout, "push_latest=true\nis_stable=true\nsource_branch=main\n");
 });
 
 test("the command exits non-zero and annotates the refusal", (t) => {
