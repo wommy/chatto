@@ -711,6 +711,10 @@ run = "tools/test-desktop-macos-capture.sh"
 description = "Test the release Docker tag policy"
 run = "pnpm run test:release-image-tags"
 
+[tasks.test-smoke-check-image]
+description = "Test the released container image smoke check"
+run = "pnpm run test:smoke-check-image"
+
 [tasks.test-verify-release-tag]
 description = "Test the release-tag gate"
 run = "pnpm run test:verify-release-tag"
@@ -743,6 +747,7 @@ run = [
     { task = "test-cli" },
     { task = "test-desktop" },
     { task = "test-release-image-tags" },
+    { task = "test-smoke-check-image" },
     { task = "test-verify-release-tag" },
     { task = "test-workspace" },
     { task = "test-e2e" },

@@ -132,6 +132,12 @@ export function parseReleaseTag(tag) {
  * @property {boolean} isPrerelease
  * @property {string[]} serverTags Full references that GoReleaser publishes.
  * @property {string[]} clientTags Full references that the workflow publishes.
+ * @property {string} clientVersionTag The immutable `{version}` reference.
+ * @property {string[]} clientFloatingTags The references in `clientTags` that
+ *   move: `latest`, `next`, or neither. The release workflow pushes the
+ *   version tag first, checks that image, then moves these references onto
+ *   the digest that it checked. The list is empty for a stable release that
+ *   is not the highest version.
  * @property {{majorMinor: string, latest: string, next: string}} skipPush
  *   Value for each `CHATTO_SKIP_PUSH_*` variable. See {@link SKIP_PUSH_ENV}.
  */
@@ -173,11 +179,17 @@ export function releaseImageTags({ tag, pushLatest = false }) {
     }
   }
 
+  const clientFloatingNames = clientNames.filter((name) => name !== version);
+
   return {
     version,
     isPrerelease,
     serverTags: serverNames.map((name) => `${SERVER_IMAGE}:${name}`),
     clientTags: clientNames.map((name) => `${CLIENT_IMAGE}:${name}`),
+    clientVersionTag: `${CLIENT_IMAGE}:${version}`,
+    clientFloatingTags: clientFloatingNames.map(
+      (name) => `${CLIENT_IMAGE}:${name}`,
+    ),
     skipPush: {
       majorMinor: skipPushValue(serverNames, majorMinor),
       latest: skipPushValue(serverNames, "latest"),
@@ -190,9 +202,10 @@ export function releaseImageTags({ tag, pushLatest = false }) {
  * Give the GitHub Actions output lines for a tag plan.
  *
  * The output holds one key for each `CHATTO_SKIP_PUSH_*` variable, in lower
- * case, plus the two tag lists. The workflow uses `client_tags` to build the
- * client image. It keeps `server_tags` in the job log, where an operator can
- * see which tags the release moves.
+ * case, plus the tag lists. The workflow builds the client image with
+ * `client_version_tag`, checks that image, then moves
+ * `client_floating_tags` onto it. It keeps `client_tags` and `server_tags` in
+ * the job log, where an operator can see which tags the release moves.
  *
  * @param {ReleaseImageTags} plan
  * @returns {string} Text that ends with a newline.
@@ -204,6 +217,8 @@ export function formatGithubOutput(plan) {
   }
   lines.push(...multilineOutput("server_tags", plan.serverTags));
   lines.push(...multilineOutput("client_tags", plan.clientTags));
+  lines.push(`client_version_tag=${plan.clientVersionTag}`);
+  lines.push(...multilineOutput("client_floating_tags", plan.clientFloatingTags));
   return `${lines.join("\n")}\n`;
 }
 
