@@ -711,6 +711,10 @@ run = "tools/test-desktop-macos-capture.sh"
 description = "Test the release Docker tag policy"
 run = "pnpm run test:release-image-tags"
 
+[tasks.test-verify-release-tag]
+description = "Test the release-tag gate"
+run = "pnpm run test:verify-release-tag"
+
 [tasks.test-e2e]
 description = "Run E2E tests"
 depends = ["setup-frontend", "build-e2e-server"]
@@ -739,6 +743,7 @@ run = [
     { task = "test-cli" },
     { task = "test-desktop" },
     { task = "test-release-image-tags" },
+    { task = "test-verify-release-tag" },
     { task = "test-workspace" },
     { task = "test-e2e" },
 ]
