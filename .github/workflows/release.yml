@@ -687,6 +687,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # tools/release-image-tags.mjs owns the tag policy for both images. Its
+      # test runs on every pull request, so the decision is proven before the
+      # push that acts on it. `tee` keeps the complete plan in the job log.
+      - name: Resolve release image tags
+        id: image_tags
+        shell: bash
+        env:
+          PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
+        run: |
+          set -euo pipefail
+
+          mise x -- node tools/release-image-tags.mjs \
+            --tag "$GITHUB_REF_NAME" \
+            --push-latest "$PUSH_LATEST" | tee -a "$GITHUB_OUTPUT"
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -698,29 +713,15 @@ jobs:
           # than github-actions[bot]. Bot-authored releases don't get
           # GitHub's autolink rendering for commit SHAs and #NNN PR refs.
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          CHATTO_PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
+          # .goreleaser.yml reads these three and decides nothing itself. All
+          # three must be set: GoReleaser templates use missingkey=error.
+          CHATTO_SKIP_PUSH_MAJOR_MINOR: ${{ steps.image_tags.outputs.chatto_skip_push_major_minor }}
+          CHATTO_SKIP_PUSH_LATEST: ${{ steps.image_tags.outputs.chatto_skip_push_latest }}
+          CHATTO_SKIP_PUSH_NEXT: ${{ steps.image_tags.outputs.chatto_skip_push_next }}
 
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build frontend Docker tags
-        id: frontend_tags
-        shell: bash
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
-        run: |
-          {
-            echo "tags<<EOF"
-            echo "ghcr.io/chattocorp/chatto-client:${VERSION}"
-            if [[ "$VERSION" == *-* ]]; then
-              echo "ghcr.io/chattocorp/chatto-client:next"
-            elif [[ "$PUSH_LATEST" == "true" ]]; then
-              echo "ghcr.io/chattocorp/chatto-client:latest"
-            fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push frontend Docker image
         uses: docker/build-push-action@v6
@@ -729,7 +730,7 @@ jobs:
           file: docker/Dockerfile.frontend.prebuilt
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.frontend_tags.outputs.tags }}
+          tags: ${{ steps.image_tags.outputs.client_tags }}
           cache-from: type=gha,scope=chatto-client
           cache-to: type=gha,scope=chatto-client,mode=max
           labels: |
