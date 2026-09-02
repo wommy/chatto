@@ -176,7 +176,9 @@ test("the output holds the version and one key for each skip_push variable", () 
       "chatto_skip_push_latest=false",
       "chatto_skip_push_next=true",
       `client_version_tag=${CLIENT_IMAGE}:0.5.0`,
-      `client_floating_tags=${CLIENT_IMAGE}:latest`,
+      "client_floating_tags<<CHATTO_IMAGE_TAGS",
+      `${CLIENT_IMAGE}:latest`,
+      "CHATTO_IMAGE_TAGS",
       "",
     ].join("\n"),
   );
@@ -207,7 +209,10 @@ test("a release with no floating client tag gives an empty output value", () => 
     releaseImageTags({ tag: "v0.4.7", pushLatest: false }),
   );
 
-  assert.match(output, /client_floating_tags=\n$/);
+  assert.match(
+    output,
+    /client_floating_tags<<CHATTO_IMAGE_TAGS\nCHATTO_IMAGE_TAGS\n$/,
+  );
 });
 
 test("the command writes the output of a prerelease to stdout", () => {

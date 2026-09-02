@@ -53,6 +53,9 @@ import { pathToFileURL } from "node:url";
 /** Image repository that holds the Chatto server image. */
 export const SERVER_IMAGE = "ghcr.io/chattocorp/chatto";
 
+/** Delimiter for the multi-line GitHub Actions outputs. */
+const OUTPUT_DELIMITER = "CHATTO_IMAGE_TAGS";
+
 /** Image repository that holds the Chatto frontend image. */
 export const CLIENT_IMAGE = "ghcr.io/chattocorp/chatto-client";
 
@@ -203,10 +206,7 @@ export function releaseImageTags({ tag, pushLatest = false }) {
  * the release workflow lands on this function. The workflow builds the client
  * image with `client_version_tag`, checks that image, then moves
  * `client_floating_tags` onto it, and it labels the image with `version`.
- *
- * `client_floating_tags` holds the references on one line, with a space
- * between them. An image reference cannot hold a space, so the workflow reads
- * the list with word splitting and no multi-line output is necessary.
+
  *
  * @param {ReleaseImageTags} plan
  * @returns {string} Text that ends with a newline.
@@ -218,9 +218,21 @@ export function formatGithubOutput(plan) {
     `chatto_skip_push_latest=${plan.skipPush.latest}`,
     `chatto_skip_push_next=${plan.skipPush.next}`,
     `client_version_tag=${plan.clientVersionTag}`,
-    `client_floating_tags=${plan.clientFloatingTags.join(" ")}`,
+    ...multilineOutput("client_floating_tags", plan.clientFloatingTags),
     "",
   ].join("\n");
+}
+
+/**
+ * Give a multi-line GitHub Actions output.
+ *
+ * The value could be one line, because an image reference holds no space.
+ * It stays a multi-line output until the release workflow can change with
+ * it: the workflow reads this value with a delimiter, and the two must
+ * agree. See the note in the pull request that made this change.
+ */
+function multilineOutput(key, values) {
+  return [`${key}<<${OUTPUT_DELIMITER}`, ...values, OUTPUT_DELIMITER];
 }
 
 function asBoolean(value, name) {
