@@ -57,7 +57,7 @@ node tools/release-image-tags.mjs --tag v1.2.3 --push-latest true
 
 Use `--push-latest true` only if the tag is the highest stable version. The
 release workflow computes that value from the Git tags.
-Run `mise test-release-image-tags` to test the policy. The workspace test job
+Run `mise test-tools` to test the policy. The workspace test job
 runs the same test on every pull request.
 
 ## The client image floating tags move last
@@ -85,7 +85,7 @@ node tools/smoke-check-image.mjs \
   --expect-version 1.2.3
 ```
 
-Run `mise test-smoke-check-image` to test the check. The workspace test job
+Run `mise test-tools` to test the check. The workspace test job
 runs the same test on every pull request.
 
 The tag move uses `docker buildx imagetools create`. That command copies the
@@ -245,7 +245,7 @@ node tools/verify-release-tag.mjs --tag v1.2.3
 
 The command reads the Git repository and the release-please configuration. It
 needs no network and no credentials, and it changes nothing.
-Run `mise test-verify-release-tag` to test the rules. The workspace test job
+Run `mise test-tools` to test the rules. The workspace test job
 runs the same test on every pull request.
 
 ## Maintain a stable release

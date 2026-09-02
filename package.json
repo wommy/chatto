@@ -18,11 +18,9 @@
     "knip:prepare": "pnpm run build:lingua && pnpm --dir apps/frontend run prepare",
     "lint": "pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run lint",
     "lint:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend lint",
-    "test": "pnpm run test:release-image-tags && pnpm run test:smoke-check-image && pnpm run test:verify-release-tag && pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run test",
+    "test": "pnpm run test:tools && pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run test",
     "test:lingua": "pnpm --filter @chatto/lingua test",
-    "test:release-image-tags": "node --test tools/release-image-tags.test.mjs",
-    "test:smoke-check-image": "node --test tools/smoke-check-image.test.mjs",
-    "test:verify-release-tag": "node --test tools/verify-release-tag.test.mjs",
+    "test:tools": "node --test tools/*.test.mjs",
     "test:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend test:unit:run"
   },
   "pnpm": {

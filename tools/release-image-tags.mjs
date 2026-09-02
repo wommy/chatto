@@ -131,9 +131,8 @@ export function parseReleaseTag(tag) {
  * @property {string} version The version that the tag names.
  * @property {boolean} isPrerelease
  * @property {string[]} serverTags Full references that GoReleaser publishes.
- * @property {string[]} clientTags Full references that the workflow publishes.
  * @property {string} clientVersionTag The immutable `{version}` reference.
- * @property {string[]} clientFloatingTags The references in `clientTags` that
+ * @property {string[]} clientFloatingTags The client references that
  *   move: `latest`, `next`, or neither. The release workflow pushes the
  *   version tag first, checks that image, then moves these references onto
  *   the digest that it checked. The list is empty for a stable release that
@@ -164,36 +163,37 @@ export function releaseImageTags({ tag, pushLatest = false }) {
   const { version, major, minor, prerelease } = parseReleaseTag(tag);
   const isPrerelease = prerelease !== "";
   const wantsLatest = asBoolean(pushLatest, "pushLatest");
+  const publishLatest = !isPrerelease && wantsLatest;
   const majorMinor = `${major}.${minor}`;
 
-  const serverNames = [version];
-  const clientNames = [version];
-  if (isPrerelease) {
-    serverNames.push("next");
-    clientNames.push("next");
-  } else {
-    serverNames.push(majorMinor);
-    if (wantsLatest) {
-      serverNames.push("latest");
-      clientNames.push("latest");
-    }
-  }
+  // The policy table from the module docblock, as data. Each row says which
+  // image publishes that tag. The `client: false` cell on `{major}.{minor}`
+  // is the one surprising rule, and it is stated here rather than left as an
+  // omission. Issue #43 holds the decision to change it.
+  const rows = [
+    { name: version, server: true, client: true },
+    { name: majorMinor, server: !isPrerelease, client: false },
+    { name: "latest", server: publishLatest, client: publishLatest },
+    { name: "next", server: isPrerelease, client: isPrerelease },
+  ];
 
-  const clientFloatingNames = clientNames.filter((name) => name !== version);
+  const published = (image, key) =>
+    rows.filter((row) => row[key]).map((row) => `${image}:${row.name}`);
+  const skipPush = (name) =>
+    rows.find((row) => row.name === name)?.server ? "false" : "true";
 
   return {
     version,
     isPrerelease,
-    serverTags: serverNames.map((name) => `${SERVER_IMAGE}:${name}`),
-    clientTags: clientNames.map((name) => `${CLIENT_IMAGE}:${name}`),
+    serverTags: published(SERVER_IMAGE, "server"),
     clientVersionTag: `${CLIENT_IMAGE}:${version}`,
-    clientFloatingTags: clientFloatingNames.map(
-      (name) => `${CLIENT_IMAGE}:${name}`,
-    ),
+    clientFloatingTags: rows
+      .filter((row) => row.client && row.name !== version)
+      .map((row) => `${CLIENT_IMAGE}:${row.name}`),
     skipPush: {
-      majorMinor: skipPushValue(serverNames, majorMinor),
-      latest: skipPushValue(serverNames, "latest"),
-      next: skipPushValue(serverNames, "next"),
+      majorMinor: skipPush(majorMinor),
+      latest: skipPush("latest"),
+      next: skipPush("next"),
     },
   };
 }
@@ -201,33 +201,28 @@ export function releaseImageTags({ tag, pushLatest = false }) {
 /**
  * Give the GitHub Actions output lines for a tag plan.
  *
- * The output holds one key for each `CHATTO_SKIP_PUSH_*` variable, in lower
- * case, plus the tag lists. The workflow builds the client image with
- * `client_version_tag`, checks that image, then moves
- * `client_floating_tags` onto it. It keeps `client_tags` and `server_tags` in
- * the job log, where an operator can see which tags the release moves.
+ * Every key is written here in full, so that a reader who greps a key out of
+ * the release workflow lands on this function. The workflow builds the client
+ * image with `client_version_tag`, checks that image, then moves
+ * `client_floating_tags` onto it, and it labels the image with `version`.
  *
  * @param {ReleaseImageTags} plan
  * @returns {string} Text that ends with a newline.
  */
 export function formatGithubOutput(plan) {
-  const lines = [];
-  for (const [key, name] of Object.entries(SKIP_PUSH_ENV)) {
-    lines.push(`${name.toLowerCase()}=${plan.skipPush[key]}`);
-  }
-  lines.push(...multilineOutput("server_tags", plan.serverTags));
-  lines.push(...multilineOutput("client_tags", plan.clientTags));
-  lines.push(`client_version_tag=${plan.clientVersionTag}`);
-  lines.push(...multilineOutput("client_floating_tags", plan.clientFloatingTags));
-  return `${lines.join("\n")}\n`;
+  return [
+    `version=${plan.version}`,
+    `chatto_skip_push_major_minor=${plan.skipPush.majorMinor}`,
+    `chatto_skip_push_latest=${plan.skipPush.latest}`,
+    `chatto_skip_push_next=${plan.skipPush.next}`,
+    `client_version_tag=${plan.clientVersionTag}`,
+    ...multilineOutput("client_floating_tags", plan.clientFloatingTags),
+    "",
+  ].join("\n");
 }
 
 function multilineOutput(key, values) {
   return [`${key}<<${OUTPUT_DELIMITER}`, ...values, OUTPUT_DELIMITER];
-}
-
-function skipPushValue(publishedNames, name) {
-  return publishedNames.includes(name) ? "false" : "true";
 }
 
 function asBoolean(value, name) {

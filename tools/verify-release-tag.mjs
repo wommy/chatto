@@ -202,8 +202,9 @@ export function releasePleaseAllowlist({ config, configPath, manifestPath }) {
  * @property {string} tag The tag that the gate examined.
  * @property {string} commit Full object name of the tagged commit.
  * @property {string} sourceBranch Branch that holds the tagged commit, such as
- *   `main` or `release-0.5`. The release workflow consumes no output for this
- *   value; it is here because it is the answer to rule 1.
+ *   `main` or `release-0.5`. It is the answer to rule 1, and the gate reports
+ *   it as `source_branch`, because it is the first thing an operator wants
+ *   when a release publishes something unexpected.
  * @property {string} version The tag without its `v` prefix.
  * @property {boolean} isStable False for a prerelease.
  * @property {boolean} pushLatest True when this release is the highest stable
@@ -272,6 +273,8 @@ export function verifyReleaseTag({ tag, allowlist, cwd = process.cwd() }) {
  *
  * The release job reads `push_latest` for the Docker tag policy and exposes
  * `is_stable` as a job output, which the documentation release job needs.
+ * `source_branch` has no consumer: the step pipes this output through `tee`,
+ * so writing it puts the branch that a release came from in the job log.
  *
  * @param {ReleaseTagVerdict} verdict
  * @returns {string} Text that ends with a newline.
@@ -280,6 +283,7 @@ export function formatGithubOutput(verdict) {
   return [
     `push_latest=${verdict.pushLatest}`,
     `is_stable=${verdict.isStable}`,
+    `source_branch=${verdict.sourceBranch}`,
     "",
   ].join("\n");
 }
