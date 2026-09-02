@@ -20,7 +20,7 @@
     "lint:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend lint",
     "test": "pnpm run test:tools && pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run test",
     "test:lingua": "pnpm --filter @chatto/lingua test",
-    "test:tools": "node --test tools/*.test.mjs",
+    "test:tools": "node --test \"tools/*.test.mjs\"",
     "test:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend test:unit:run"
   },
   "pnpm": {

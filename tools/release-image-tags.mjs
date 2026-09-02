@@ -72,9 +72,6 @@ export const SKIP_PUSH_ENV = Object.freeze({
   next: "CHATTO_SKIP_PUSH_NEXT",
 });
 
-/** Delimiter for the multi-line GitHub Actions outputs. */
-const OUTPUT_DELIMITER = "CHATTO_IMAGE_TAGS";
-
 /**
  * Anchored SemVer 2.0.0 pattern. It keeps the prerelease and the build
  * metadata in separate groups.
@@ -206,6 +203,10 @@ export function releaseImageTags({ tag, pushLatest = false }) {
  * image with `client_version_tag`, checks that image, then moves
  * `client_floating_tags` onto it, and it labels the image with `version`.
  *
+ * `client_floating_tags` holds the references on one line, with a space
+ * between them. An image reference cannot hold a space, so the workflow reads
+ * the list with word splitting and no multi-line output is necessary.
+ *
  * @param {ReleaseImageTags} plan
  * @returns {string} Text that ends with a newline.
  */
@@ -216,13 +217,9 @@ export function formatGithubOutput(plan) {
     `chatto_skip_push_latest=${plan.skipPush.latest}`,
     `chatto_skip_push_next=${plan.skipPush.next}`,
     `client_version_tag=${plan.clientVersionTag}`,
-    ...multilineOutput("client_floating_tags", plan.clientFloatingTags),
+    `client_floating_tags=${plan.clientFloatingTags.join(" ")}`,
     "",
   ].join("\n");
-}
-
-function multilineOutput(key, values) {
-  return [`${key}<<${OUTPUT_DELIMITER}`, ...values, OUTPUT_DELIMITER];
 }
 
 function asBoolean(value, name) {
