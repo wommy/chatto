@@ -259,6 +259,43 @@ test("goreleaser reads every skip_push value and computes none", () => {
   assert.deepEqual(names, new Set(Object.values(SKIP_PUSH_ENV)));
 });
 
+test("the documented tag table names exactly the tags that the policy publishes", () => {
+  // docs/RELEASING.md holds the table that a releaser reads. The module holds
+  // the same policy as data. This asserts that the two name the same tags, so
+  // that a new row in one is not forgotten in the other. It does not compare
+  // the wording of a cell, which an editor may improve freely.
+  const document = readFileSync(
+    path.join(repositoryRoot, "docs/RELEASING.md"),
+    "utf8",
+  );
+  const section = /## Container image tags\n([\s\S]*?)\n## /.exec(document);
+  assert.ok(section, "docs/RELEASING.md must hold a container image tag section");
+
+  const documented = new Set(
+    [...section[1].matchAll(/^\| `([^`]+)`\s*\|/gm)].map((match) => match[1]),
+  );
+
+  // The table names every tag that any release publishes, so the comparison
+  // needs both a stable release and a prerelease: `latest` and `1.2` come
+  // from the first, `next` from the second.
+  const tagsOf = (plan) =>
+    [...plan.serverTags, plan.clientVersionTag, ...plan.clientFloatingTags].map(
+      (reference) => reference.split(":").pop(),
+    );
+  const published = new Set([
+    ...tagsOf(releaseImageTags({ tag: "v1.2.3", pushLatest: true })),
+    ...tagsOf(releaseImageTags({ tag: "v1.2.3-rc.1" })),
+  ]);
+  // The prerelease plan names its own version; the table gives the stable one.
+  published.delete("1.2.3-rc.1");
+
+  assert.deepEqual(
+    documented,
+    published,
+    "docs/RELEASING.md and the policy table must name the same tags",
+  );
+});
+
 test("the release workflow sets every skip_push variable that goreleaser reads", () => {
   // GoReleaser templates use `missingkey=error`, so an unset variable fails
   // the manifest push in the middle of a release, after images are pushed.
