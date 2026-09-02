@@ -65,6 +65,9 @@ as its permanent home. Do not add coupling that makes this move more difficult.
 - [proto/chatto/realtime/v1/AGENTS.md](proto/chatto/realtime/v1/AGENTS.md) — realtime WebSocket protobuf protocol rules for `chatto.realtime.v1`.
 - [apps/desktop/AGENTS.md](apps/desktop/AGENTS.md) — desktop integration and native-helper testing guidance.
 - [apps/docs-website/AGENTS.md](apps/docs-website/AGENTS.md) — public docs website guidance.
+- [.github/AGENTS.md](.github/AGENTS.md) — release-surface rules: which evidence a
+  change to `.github/workflows/`, `.github/actions/` or `.goreleaser.yml` must
+  carry, and when it must pre-register a rollback.
 - `.agents/skills/**` — discoverable workflow skills. Skills prefixed
   `authling-` are Authling-specific; existing generic and `chatto-` skills are
   Chatto-specific unless their text explicitly says otherwise.
