@@ -169,8 +169,59 @@ test("the output holds one key for each skip_push variable", () => {
       `${CLIENT_IMAGE}:0.5.0`,
       `${CLIENT_IMAGE}:latest`,
       "CHATTO_IMAGE_TAGS",
+      `client_version_tag=${CLIENT_IMAGE}:0.5.0`,
+      "client_floating_tags<<CHATTO_IMAGE_TAGS",
+      `${CLIENT_IMAGE}:latest`,
+      "CHATTO_IMAGE_TAGS",
       "",
     ].join("\n"),
+  );
+});
+
+test("the client tags are split into the version tag and the floating tags", () => {
+  // `docker buildx imagetools create` takes the source reference and the
+  // target references apart, and the release workflow must not filter the tag
+  // list itself. To filter it in the workflow is to make a second copy of the
+  // policy in a place that no test reaches.
+  const stable = releaseImageTags({ tag: "v0.5.0", pushLatest: true });
+  assert.equal(stable.clientVersionTag, `${CLIENT_IMAGE}:0.5.0`);
+  assert.deepEqual(stable.clientFloatingTags, [`${CLIENT_IMAGE}:latest`]);
+
+  const prerelease = releaseImageTags({ tag: "v0.5.0-alpha.1" });
+  assert.equal(prerelease.clientVersionTag, `${CLIENT_IMAGE}:0.5.0-alpha.1`);
+  assert.deepEqual(prerelease.clientFloatingTags, [`${CLIENT_IMAGE}:next`]);
+
+  const older = releaseImageTags({ tag: "v0.4.7", pushLatest: false });
+  assert.equal(older.clientVersionTag, `${CLIENT_IMAGE}:0.4.7`);
+  assert.deepEqual(older.clientFloatingTags, []);
+});
+
+test("the two client tag lists always agree with each other", () => {
+  for (const [tag, pushLatest] of [
+    ["v0.5.0", true],
+    ["v0.4.7", false],
+    ["v0.5.0-alpha.1", false],
+    ["v1.0.0", true],
+  ]) {
+    const plan = releaseImageTags({ tag, pushLatest });
+    assert.deepEqual(
+      [plan.clientVersionTag, ...plan.clientFloatingTags],
+      plan.clientTags,
+      `the parts do not rebuild clientTags for ${tag}`,
+    );
+  }
+});
+
+test("a release with no floating client tag gives an empty output value", () => {
+  // A stable release that is not the highest version publishes the version
+  // tag only. The tag-move step then moves nothing, and it must stay green.
+  const output = formatGithubOutput(
+    releaseImageTags({ tag: "v0.4.7", pushLatest: false }),
+  );
+
+  assert.match(
+    output,
+    /client_floating_tags<<CHATTO_IMAGE_TAGS\nCHATTO_IMAGE_TAGS\n$/,
   );
 });
 

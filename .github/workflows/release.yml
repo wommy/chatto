@@ -632,6 +632,10 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      # Only the immutable {version} tag is pushed here. The floating tags
+      # move in the last step of this job, after the smoke check proved that
+      # this image works and after the GitHub Release published. Issue #38
+      # holds the decision.
       - name: Build and push frontend Docker image
         uses: docker/build-push-action@v6
         with:
@@ -639,7 +643,7 @@ jobs:
           file: docker/Dockerfile.frontend.prebuilt
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.image_tags.outputs.client_tags }}
+          tags: ${{ steps.image_tags.outputs.client_version_tag }}
           cache-from: type=gha,scope=chatto-client
           cache-to: type=gha,scope=chatto-client,mode=max
           labels: |
@@ -647,6 +651,26 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.licenses=Apache-2.0
+
+      # tools/smoke-check-image.mjs pulls the image that was pushed above and
+      # proves that it starts and carries the bundle of this release. Its unit
+      # tests run on every pull request; the container path first runs here.
+      # The `release` job sets no timeout, so this step sets its own, and the
+      # module bounds its own attempts as well.
+      - name: Smoke check the client image
+        shell: bash
+        timeout-minutes: 10
+        env:
+          CLIENT_VERSION_TAG: ${{ steps.image_tags.outputs.client_version_tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          mise x -- node tools/smoke-check-image.mjs \
+            --image "$CLIENT_VERSION_TAG" \
+            --port 80 \
+            --probe-path / \
+            --expect-version "$VERSION"
 
       - name: Publish GitHub Release
         shell: bash
@@ -754,6 +778,67 @@ jobs:
           git -C "${tap_dir}" add Formula/chatto.rb
           git -C "${tap_dir}" commit -m "chore: update chatto to v${VERSION}"
           git -C "${tap_dir}" push origin HEAD:main
+
+      # The last step of the release moves the client image floating tags.
+      # Any earlier failure means this step never runs, the job is red, and
+      # `chatto-client:latest` keeps the previous release serving.
+      #
+      # `imagetools create` copies the manifest that the smoke check tested,
+      # so the tag points at the digest that was checked. A second
+      # `build-push-action` would push a new manifest instead, and nothing
+      # would tie that manifest to the checked image. The same command moves a
+      # tag back, so the rollback is the mechanism that each release exercises.
+      # `docs/RELEASING.md` holds the recovery.
+      - name: Move the client image floating tags
+        shell: bash
+        timeout-minutes: 10
+        env:
+          CLIENT_VERSION_TAG: ${{ steps.image_tags.outputs.client_version_tag }}
+          CLIENT_FLOATING_TAGS: ${{ steps.image_tags.outputs.client_floating_tags }}
+        run: |
+          set -euo pipefail
+
+          floating=()
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] && floating+=("$tag")
+          done <<< "$CLIENT_FLOATING_TAGS"
+
+          if (( ${#floating[@]} == 0 )); then
+            echo "This release publishes no floating client tag."
+            exit 0
+          fi
+
+          # Write the rollback command for each tag before it moves. An
+          # operator then finds the previous digest in this job log.
+          digest_of() {
+            printf '%s\n' "$1" |
+              awk '/^Digest:/ { if (!found) { print $2; found = 1 } }'
+          }
+
+          repository="${CLIENT_VERSION_TAG%:*}"
+          for tag in "${floating[@]}"; do
+            if inspected="$(docker buildx imagetools inspect "$tag" 2>/dev/null)"; then
+              previous="$(digest_of "$inspected")"
+              echo "Roll ${tag} back with:"
+              echo "  docker buildx imagetools create --tag ${tag} ${repository}@${previous}"
+            else
+              echo "${tag} does not exist yet, so it has no previous digest."
+            fi
+          done
+
+          create=()
+          for tag in "${floating[@]}"; do
+            create+=(--tag "$tag")
+          done
+
+          docker buildx imagetools create "${create[@]}" "$CLIENT_VERSION_TAG"
+
+          # The assignment makes a failed read of the moved tag red. To put
+          # the command in the `echo` arguments would hide that failure.
+          for tag in "${floating[@]}"; do
+            moved="$(docker buildx imagetools inspect "$tag")"
+            echo "${tag} now holds $(digest_of "$moved")"
+          done
 
   publish-stable-docs:
     needs: release

@@ -60,6 +60,83 @@ release workflow computes that value from the Git tags.
 Run `mise test-release-image-tags` to test the policy. The workspace test job
 runs the same test on every pull request.
 
+## The client image floating tags move last
+
+The release publishes `chatto-client:1.2.3` first. It then checks that image.
+The floating tags `latest` and `next` move in the last step of the `release`
+job, after the GitHub Release publishes.
+
+The order is not a preference. GoReleaser pushes images before it creates the
+GitHub Release, so `draft: true` cannot hold an image back. The gate must be
+outside GoReleaser. The server image keeps the old order until issue #52
+changes it.
+
+The check pulls the version image, starts a container, requests `/` until the
+answer is 200, and compares `/_app/version.json` with the release version. An
+image that does not start, or that holds a different bundle, makes the job red
+and no floating tag moves. `tools/smoke-check-image.mjs` holds the check, and
+you can run it against any image:
+
+```sh
+node tools/smoke-check-image.mjs \
+  --image ghcr.io/chattocorp/chatto-client:1.2.3 \
+  --port 80 \
+  --probe-path / \
+  --expect-version 1.2.3
+```
+
+Run `mise test-smoke-check-image` to test the check. The workspace test job
+runs the same test on every pull request.
+
+The tag move uses `docker buildx imagetools create`. That command copies the
+manifest of the version image, so a floating tag points at the digest that the
+check tested. A second image build would make a different manifest.
+
+A change to this order is a change to the release surface.
+[`.github/AGENTS.md`](../.github/AGENTS.md) says which proof such a change must
+carry, and it gives the same command as the rollback for a tag that moved.
+
+### If the release stops before the tags move
+
+The floating tags stay where they are, and the previous release continues to
+serve. The job is red.
+
+**Do not cut a new release.** The version image is correct and immutable, and a
+new version number does not repair the tags. Do these steps:
+
+1. Find the cause in the job log, and correct it.
+2. Do the tag move again. Move each tag by hand with the same command that
+   the step uses. First log in to `ghcr.io` with a token that can write
+   packages:
+
+   ```sh
+   docker buildx imagetools create \
+     --tag ghcr.io/chattocorp/chatto-client:latest \
+     ghcr.io/chattocorp/chatto-client:1.2.3
+   ```
+
+   A re-run of the full `release` job also moves the tag, but it runs
+   GoReleaser again against a release that is already published. Prefer the
+   command above.
+
+3. To move a tag back to the release before it, use the digest that the
+   tag-move step wrote to the job log before it moved that tag:
+
+   ```sh
+   docker buildx imagetools create \
+     --tag ghcr.io/chattocorp/chatto-client:latest \
+     ghcr.io/chattocorp/chatto-client@sha256:<previous digest>
+   ```
+
+A tag name does not do this. `imagetools` reads the tag at the time of the
+command, so a tag that already moved gives the new digest and not the old one.
+
+A red `release` job also stops the stable documentation snapshot, because
+`publish-stable-docs` needs the `release` job. A tag move by hand does not
+publish it. To publish the documentation for that release, start the *build
+docs image* workflow by hand with `channel: stable` and the release tag as the
+`ref`, or make the `release` job green with a full re-run.
+
 ## Prereleases from main
 
 The release-please configuration on `main` uses prerelease versioning. Feature
