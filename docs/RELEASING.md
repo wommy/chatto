@@ -114,7 +114,9 @@ three platforms, generates the same checksum file used by a tagged release, and
 uploads the assembled files as a one-day verification artifact.
 
 Desktop release tags must also point to commits reachable from `origin/main`.
-The signing jobs enforce this before running repository code.
+The signing jobs enforce this before running repository code. This rule is
+stricter than the rule for a `vX.Y.Z` server tag, which also accepts a commit
+on an `origin/release-*` branch. See [Release tag rules](#release-tag-rules).
 
 ## Create a stable release branch
 
@@ -134,6 +136,40 @@ git push -u origin release-0.5
 
 Release-please then prepares the stable `0.5.0` release PR on `release-0.5`.
 Stable releases publish `latest` only when they are the highest stable version.
+
+## Release tag rules
+
+A push of a `vX.Y.Z` tag starts the release. That release publishes container
+image tags and a Homebrew formula, and you cannot withdraw them. Thus the
+release workflow examines the tagged commit first, and it refuses to release
+the tag if one of these rules does not apply:
+
+- **The tagged commit must be on a release branch.** It must be an ancestor of
+  `origin/main` or of an `origin/release-*` branch. A stricter rule applies to
+  Chatto Desktop tags; see [Chatto Desktop
+  releases](#chatto-desktop-releases).
+- **The tagged commit must have a parent.** The next rule compares the commit
+  with its first parent, and a first commit has none.
+- **The tagged commit must change release-please files only.** These files are
+  the release-please configuration, the release-please manifest, the changelog,
+  and each file that the configuration lists in `extra-files`. A commit that
+  also changes product code is a hand-made tag, and the workflow refuses it.
+
+`tools/verify-release-tag.mjs` holds these rules, and it reads the file list
+from `.release-please-config.json`. The same command tells the workflow whether
+this release is stable, and whether it is the highest stable version. The
+workflow gives those two values to the policy in [Container image
+tags](#container-image-tags). To see the result for a tag before you push it,
+run:
+
+```sh
+node tools/verify-release-tag.mjs --tag v1.2.3
+```
+
+The command reads the Git repository and the release-please configuration. It
+needs no network and no credentials, and it changes nothing.
+Run `mise test-verify-release-tag` to test the rules. The workspace test job
+runs the same test on every pull request.
 
 ## Maintain a stable release
 
