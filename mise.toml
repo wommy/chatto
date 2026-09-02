@@ -711,6 +711,10 @@ run = "pnpm check"
 description = "Test the native macOS game-capture helper"
 run = "tools/test-desktop-macos-capture.sh"
 
+[tasks.test-release-image-tags]
+description = "Test the release Docker tag policy"
+run = "pnpm run test:release-image-tags"
+
 [tasks.test-e2e]
 description = "Run E2E tests"
 depends = ["setup-frontend", "build-e2e-server"]
@@ -738,6 +742,7 @@ run = [
     { task = "test-natsruntime" },
     { task = "test-cli" },
     { task = "test-desktop" },
+    { task = "test-release-image-tags" },
     { task = "test-workspace" },
     { task = "test-e2e" },
 ]
