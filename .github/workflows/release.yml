@@ -345,30 +345,14 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          AZURE_CLIENT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID }}
-          SIGNING_ENDPOINT: ${{ vars.CHATTO_WINDOWS_SIGNING_ENDPOINT }}
-          SIGNING_ACCOUNT_NAME: ${{ vars.CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME }}
-          CERTIFICATE_PROFILE_NAME: ${{ vars.CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME }}
-          EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
-        run: |
-          $required = @{
-            CHATTO_WINDOWS_AZURE_CLIENT_ID = $env:AZURE_CLIENT_ID
-            CHATTO_WINDOWS_AZURE_TENANT_ID = $env:AZURE_TENANT_ID
-            CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID = $env:AZURE_SUBSCRIPTION_ID
-            CHATTO_WINDOWS_SIGNING_ENDPOINT = $env:SIGNING_ENDPOINT
-            CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME = $env:SIGNING_ACCOUNT_NAME
-            CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME = $env:CERTIFICATE_PROFILE_NAME
-            CHATTO_WINDOWS_EXPECTED_PUBLISHER = $env:EXPECTED_PUBLISHER
-          }
-          $missing = @($required.GetEnumerator() | Where-Object {
-            [string]::IsNullOrWhiteSpace([string]$_.Value)
-          } | ForEach-Object Key)
-          if ($missing.Count -gt 0) {
-            Write-Error "The following Windows release settings are not configured: $($missing -join ', ')"
-            exit 1
-          }
+          CHATTO_WINDOWS_AZURE_CLIENT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_CLIENT_ID }}
+          CHATTO_WINDOWS_AZURE_TENANT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_TENANT_ID }}
+          CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID }}
+          CHATTO_WINDOWS_SIGNING_ENDPOINT: ${{ vars.CHATTO_WINDOWS_SIGNING_ENDPOINT }}
+          CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME: ${{ vars.CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME }}
+          CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME: ${{ vars.CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME }}
+          CHATTO_WINDOWS_EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
+        run: mise x -- node apps/desktop/scripts/windows-signing.mjs check-settings
 
       - name: Build desktop bundle
         shell: bash
@@ -419,49 +403,30 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
+          CHATTO_WINDOWS_EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
         run: |
+          # Collect the signature records only. windows-signing.mjs decides
+          # which record passes, and it has a test beside it.
           $bundle = Resolve-Path "apps/desktop/dist/windows"
-          $files = @(Get-ChildItem -LiteralPath $bundle -File -Recurse | Where-Object {
-            $_.Extension -in '.exe', '.dll', '.node'
-          })
-          if ($files.Count -eq 0) {
-            Write-Error "The Windows bundle contains no executable files to verify."
-            exit 1
-          }
           $application = Join-Path $bundle "chatto-desktop.exe"
-          if (-not (Test-Path -LiteralPath $application -PathType Leaf)) {
-            Write-Error "The Windows bundle does not contain chatto-desktop.exe."
-            exit 1
+          $report = [ordered]@{
+            mainBinaryPath = $application
+            mainBinaryPresent = [bool](Test-Path -LiteralPath $application -PathType Leaf)
+            files = @(Get-ChildItem -LiteralPath $bundle -File -Recurse |
+              Where-Object { $_.Extension -in '.exe', '.dll', '.node' } |
+              ForEach-Object {
+                $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
+                [ordered]@{
+                  fullName = $_.FullName
+                  status = [string]$signature.Status
+                  publisher = $signature.SignerCertificate.Subject
+                  hasTimestamp = $null -ne $signature.TimeStamperCertificate
+                }
+              })
           }
-
-          $failed = $false
-          foreach ($file in $files) {
-            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
-            $publisher = $signature.SignerCertificate.Subject
-            $hasExpectedPublisher = [string]::Equals(
-              $publisher,
-              $env:EXPECTED_PUBLISHER,
-              [System.StringComparison]::OrdinalIgnoreCase
-            )
-            $requiresExpectedPublisher = [string]::Equals(
-              $file.FullName,
-              $application,
-              [System.StringComparison]::OrdinalIgnoreCase
-            )
-            if (
-              $signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -or
-              ($requiresExpectedPublisher -and -not $hasExpectedPublisher) -or
-              $null -eq $signature.TimeStamperCertificate
-            ) {
-              Write-Error "$($file.FullName): status=$($signature.Status), publisher='$publisher', timestamped=$($null -ne $signature.TimeStamperCertificate)"
-              $failed = $true
-            }
-          }
-          if ($failed) {
-            exit 1
-          }
-          Write-Host "Verified $($files.Count) valid, timestamped Windows executable signatures; chatto-desktop.exe is published by '$env:EXPECTED_PUBLISHER'."
+          $reportPath = Join-Path $env:RUNNER_TEMP "windows-signature-report.json"
+          [System.IO.File]::WriteAllText($reportPath, ($report | ConvertTo-Json -Depth 4))
+          mise x -- node apps/desktop/scripts/windows-signing.mjs verify-signatures $reportPath
 
       - name: Package macOS release
         if: runner.os == 'macOS'
