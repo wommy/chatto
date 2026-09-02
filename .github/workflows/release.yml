@@ -684,8 +684,11 @@ jobs:
             --repo chattocorp/chatto \
             --draft=false
 
+      # `release_meta` classified this version with the one parser that the
+      # repository uses. A substring test for `-` here disagreed with that
+      # parser for a version that carries build metadata.
       - name: Update Homebrew tap
-        if: ${{ !contains(steps.version.outputs.version, '-') }}
+        if: ${{ steps.release_meta.outputs.is_stable == 'true' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
