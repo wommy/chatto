@@ -47,6 +47,7 @@
  * command at any time, because the module needs no release in flight.
  */
 
+import { parseArgs as nodeParseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 
 /** Image repository that holds the Chatto server image. */
@@ -237,27 +238,18 @@ function asBoolean(value, name) {
  * @throws {TypeError} If an option is unknown, or if `--tag` is absent.
  */
 export function parseArgs(argv) {
-  let tag;
-  let pushLatest = false;
-  for (let index = 0; index < argv.length; index += 1) {
-    const option = argv[index];
-    const value = argv[index + 1];
-    if (option === "--tag") {
-      if (value === undefined) throw new TypeError("--tag needs a value");
-      tag = value;
-      index += 1;
-    } else if (option === "--push-latest") {
-      if (value === undefined) {
-        throw new TypeError("--push-latest needs a value");
-      }
-      pushLatest = value;
-      index += 1;
-    } else {
-      throw new TypeError(`Unknown option: ${option}`);
-    }
-  }
-  if (tag === undefined) throw new TypeError("--tag is required");
-  return { tag, pushLatest };
+  // `strict` rejects an unknown option and, with it, a positional argument.
+  // Both give a TypeError, which the command line reports as a usage error.
+  // `--push-latest` stays a string, because the workflow gives a step output.
+  const { values } = nodeParseArgs({
+    args: argv,
+    options: {
+      tag: { type: "string" },
+      "push-latest": { type: "string" },
+    },
+  });
+  if (values.tag === undefined) throw new TypeError("--tag is required");
+  return { tag: values.tag, pushLatest: values["push-latest"] ?? false };
 }
 
 function main(argv) {

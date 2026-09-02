@@ -425,6 +425,11 @@ export async function requestUrl(url) {
  *   absent.
  */
 export function parseArgs(argv) {
+  // This parser stays hand written. `--arg` carries the command that the
+  // container runs, and such a value can begin with a dash (`-c`). The
+  // `parseArgs` of `node:util` refuses a value that looks like an option,
+  // so it cannot read this command line. The other two release tools take
+  // no such option and use `node:util`.
   const options = { command: [] };
   const single = {
     "--image": "image",

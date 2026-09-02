@@ -58,6 +58,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseArgs as nodeParseArgs } from "node:util";
 
 /**
  * Key of the release-please package that a `v*` tag releases.
@@ -296,24 +297,22 @@ export function formatGithubOutput(verdict) {
  * @throws {TypeError} If an option is unknown, or if `--tag` is absent.
  */
 export function parseArgs(argv) {
-  let tag;
-  let configPath = DEFAULT_CONFIG_PATH;
-  let manifestPath = DEFAULT_MANIFEST_PATH;
-  for (let index = 0; index < argv.length; index += 1) {
-    const option = argv[index];
-    const value = argv[index + 1];
-    if (option === "--tag" || option === "--config" || option === "--manifest") {
-      if (value === undefined) throw new TypeError(`${option} needs a value`);
-      if (option === "--tag") tag = value;
-      else if (option === "--config") configPath = value;
-      else manifestPath = value;
-      index += 1;
-    } else {
-      throw new TypeError(`Unknown option: ${option}`);
-    }
-  }
-  if (tag === undefined) throw new TypeError("--tag is required");
-  return { tag, configPath, manifestPath };
+  // `strict` rejects an unknown option and, with it, a positional argument.
+  // Both give a TypeError, which the command line reports as a usage error.
+  const { values } = nodeParseArgs({
+    args: argv,
+    options: {
+      tag: { type: "string" },
+      config: { type: "string" },
+      manifest: { type: "string" },
+    },
+  });
+  if (values.tag === undefined) throw new TypeError("--tag is required");
+  return {
+    tag: values.tag,
+    configPath: values.config ?? DEFAULT_CONFIG_PATH,
+    manifestPath: values.manifest ?? DEFAULT_MANIFEST_PATH,
+  };
 }
 
 /**
