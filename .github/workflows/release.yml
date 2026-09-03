@@ -230,7 +230,8 @@ jobs:
           # old release-branch builds use the module that shipped with that
           # branch's YAML, not a retargeted newer module from main.
           mkdir -p "$RUNNER_TEMP"
-          git fetch --depth=1 origin "$GITHUB_SHA"
+          # Skip fetch if ref already exists locally (e.g., from fetch-depth: 0).
+          git cat-file -e "$GITHUB_SHA^{commit}" 2>/dev/null || git fetch --depth=1 origin "$GITHUB_SHA"
           git show "$GITHUB_SHA:tools/build-version.mjs" > "$RUNNER_TEMP/build-version.mjs"
 
       - name: Resolve desktop version
