@@ -478,3 +478,4 @@ export class AdminEventLogEntry extends Message<AdminEventLogEntry> {
     return proto3.util.equals(AdminEventLogEntry, a, b);
   }
 }
+

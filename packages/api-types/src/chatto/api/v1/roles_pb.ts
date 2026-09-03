@@ -325,3 +325,4 @@ export class BatchGetRolesResponse extends Message<BatchGetRolesResponse> {
     return proto3.util.equals(BatchGetRolesResponse, a, b);
   }
 }
+

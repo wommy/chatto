@@ -47,3 +47,4 @@ export const AssetService = {
     },
   }
 } as const;
+

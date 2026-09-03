@@ -426,3 +426,4 @@ export class ListFollowedThreadsResponse extends Message<ListFollowedThreadsResp
     return proto3.util.equals(ListFollowedThreadsResponse, a, b);
   }
 }
+

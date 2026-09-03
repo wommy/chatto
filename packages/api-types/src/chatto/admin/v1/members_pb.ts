@@ -1005,3 +1005,4 @@ export class DeleteUserResponse extends Message<DeleteUserResponse> {
     return proto3.util.equals(DeleteUserResponse, a, b);
   }
 }
+

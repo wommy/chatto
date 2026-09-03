@@ -532,3 +532,4 @@ export class ConfirmExternalIdentityLinkResponse extends Message<ConfirmExternal
     return proto3.util.equals(ConfirmExternalIdentityLinkResponse, a, b);
   }
 }
+

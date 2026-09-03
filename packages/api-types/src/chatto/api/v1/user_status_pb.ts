@@ -234,3 +234,4 @@ export class DeleteCustomStatusResponse extends Message<DeleteCustomStatusRespon
     return proto3.util.equals(DeleteCustomStatusResponse, a, b);
   }
 }
+

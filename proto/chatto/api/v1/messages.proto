@@ -26,7 +26,7 @@ message CreateMessageRequest {
   // Required. Room where the message should be created.
   string room_id = 1 [(buf.validate.field).string.min_len = 1];
   // Message body text. Required unless attachment_asset_ids is non-empty.
-  string body = 2;
+  string body = 2 [(buf.validate.field).string.max_len = 10000];
   // Completed room-scoped asset IDs uploaded by the caller and not yet attached
   // to a message. The server attaches them exclusively and atomically to this
   // message. At most 10 IDs may be supplied.

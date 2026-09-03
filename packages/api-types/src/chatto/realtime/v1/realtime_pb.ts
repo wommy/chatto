@@ -2351,3 +2351,4 @@ export class RealtimeSessionTerminatedEvent extends Message<RealtimeSessionTermi
     return proto3.util.equals(RealtimeSessionTerminatedEvent, a, b);
   }
 }
+

@@ -1584,3 +1584,4 @@ export class MoveSidebarLinkToGroupResponse extends Message<MoveSidebarLinkToGro
     return proto3.util.equals(MoveSidebarLinkToGroupResponse, a, b);
   }
 }
+

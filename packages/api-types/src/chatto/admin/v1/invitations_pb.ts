@@ -450,3 +450,4 @@ export class RevokeInviteLinkResponse extends Message<RevokeInviteLinkResponse> 
     return proto3.util.equals(RevokeInviteLinkResponse, a, b);
   }
 }
+

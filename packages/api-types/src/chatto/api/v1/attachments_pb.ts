@@ -373,3 +373,4 @@ export class BatchGetAssetsResponse extends Message<BatchGetAssetsResponse> {
     return proto3.util.equals(BatchGetAssetsResponse, a, b);
   }
 }
+

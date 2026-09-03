@@ -288,3 +288,4 @@ export class SendTestPushNotificationResponse extends Message<SendTestPushNotifi
     return proto3.util.equals(SendTestPushNotificationResponse, a, b);
   }
 }
+

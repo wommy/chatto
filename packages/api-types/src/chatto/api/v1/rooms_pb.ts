@@ -2072,3 +2072,4 @@ export class UpdateTypingIndicatorResponse extends Message<UpdateTypingIndicator
     return proto3.util.equals(UpdateTypingIndicatorResponse, a, b);
   }
 }
+

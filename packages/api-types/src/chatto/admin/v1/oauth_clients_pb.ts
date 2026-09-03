@@ -450,3 +450,4 @@ export class UpdateOAuthClientPolicyResponse extends Message<UpdateOAuthClientPo
     return proto3.util.equals(UpdateOAuthClientPolicyResponse, a, b);
   }
 }
+

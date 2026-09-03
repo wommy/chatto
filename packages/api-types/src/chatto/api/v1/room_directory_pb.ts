@@ -879,3 +879,4 @@ export class BatchGetRoomsResponse extends Message<BatchGetRoomsResponse> {
     return proto3.util.equals(BatchGetRoomsResponse, a, b);
   }
 }
+

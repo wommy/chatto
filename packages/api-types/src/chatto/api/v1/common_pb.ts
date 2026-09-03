@@ -292,3 +292,4 @@ export class ProviderMetadata extends Message<ProviderMetadata> {
     return proto3.util.equals(ProviderMetadata, a, b);
   }
 }
+

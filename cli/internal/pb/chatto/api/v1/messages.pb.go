@@ -830,10 +830,10 @@ var File_chatto_api_v1_messages_proto protoreflect.FileDescriptor
 
 const file_chatto_api_v1_messages_proto_rawDesc = "" +
 	"\n" +
-	"\x1cchatto/api/v1/messages.proto\x12\rchatto.api.v1\x1a\x1bbuf/validate/validate.proto\x1a!chatto/api/v1/link_previews.proto\x1a!chatto/api/v1/message_types.proto\x1a\x1dchatto/api/v1/reactions.proto\"\xae\x03\n" +
+	"\x1cchatto/api/v1/messages.proto\x12\rchatto.api.v1\x1a\x1bbuf/validate/validate.proto\x1a!chatto/api/v1/link_previews.proto\x1a!chatto/api/v1/message_types.proto\x1a\x1dchatto/api/v1/reactions.proto\"\xb8\x03\n" +
 	"\x14CreateMessageRequest\x12 \n" +
-	"\aroom_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06roomId\x12\x12\n" +
-	"\x04body\x18\x02 \x01(\tR\x04body\x12B\n" +
+	"\aroom_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06roomId\x12\x1c\n" +
+	"\x04body\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x90NR\x04body\x12B\n" +
 	"\x14attachment_asset_ids\x18\x03 \x03(\tB\x10\xbaH\r\x92\x01\n" +
 	"\x10\n" +
 	"\"\x06r\x04\x10\x01(\x0fR\x12attachmentAssetIds\x12/\n" +

@@ -805,3 +805,4 @@ export class Message extends Message$1<Message> {
     return proto3.util.equals(Message, a, b);
   }
 }
+

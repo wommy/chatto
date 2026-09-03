@@ -1215,3 +1215,4 @@ export class ReassignBotOwnerResponse extends Message<ReassignBotOwnerResponse> 
     return proto3.util.equals(ReassignBotOwnerResponse, a, b);
   }
 }
+

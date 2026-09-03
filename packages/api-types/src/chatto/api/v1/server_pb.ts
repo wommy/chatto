@@ -195,3 +195,4 @@ export class ServerLogin extends Message<ServerLogin> {
     return proto3.util.equals(ServerLogin, a, b);
   }
 }
+
