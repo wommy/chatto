@@ -42,13 +42,31 @@ jobs:
         shell: bash
         run: mise setup-go
 
-      - name: Setup frontend (required by build-e2e-server depends)
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: pnpm install
+
+      - name: Build API types and lingua
         shell: bash
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
-          mise setup-frontend
-          mise build-api-types
-          mise build-lingua
+          cd packages/api-types && pnpm run build && cd ../..
+          cd packages/lingua && pnpm run build && cd ../..
 
       - name: Verify GOCACHE location
         shell: bash
@@ -113,13 +131,31 @@ jobs:
         shell: bash
         run: mise setup-go
 
-      - name: Setup frontend (required by build-e2e-server depends)
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: pnpm install
+
+      - name: Build API types and lingua
         shell: bash
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
-          mise setup-frontend
-          mise build-api-types
-          mise build-lingua
+          cd packages/api-types && pnpm run build && cd ../..
+          cd packages/lingua && pnpm run build && cd ../..
 
       - name: Check cache restore result
         shell: bash
@@ -169,13 +205,31 @@ jobs:
         shell: bash
         run: mise setup-go
 
-      - name: Setup frontend (required by build-e2e-server depends)
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: pnpm install
+
+      - name: Build API types and lingua
         shell: bash
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
-          mise setup-frontend
-          mise build-api-types
-          mise build-lingua
+          cd packages/api-types && pnpm run build && cd ../..
+          cd packages/lingua && pnpm run build && cd ../..
 
       - name: Clean build cache
         shell: bash
@@ -238,13 +292,31 @@ jobs:
         shell: bash
         run: mise setup-go
 
-      - name: Setup frontend (required by build-e2e-server depends)
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: pnpm install
+
+      - name: Build API types and lingua
         shell: bash
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
-          mise setup-frontend
-          mise build-api-types
-          mise build-lingua
+          cd packages/api-types && pnpm run build && cd ../..
+          cd packages/lingua && pnpm run build && cd ../..
 
       - name: Check cache restore result
         shell: bash
@@ -294,13 +366,31 @@ jobs:
         shell: bash
         run: mise setup-go
 
-      - name: Setup frontend (required by build-e2e-server depends)
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: pnpm install
+
+      - name: Build API types and lingua
         shell: bash
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
-          mise setup-frontend
-          mise build-api-types
-          mise build-lingua
+          cd packages/api-types && pnpm run build && cd ../..
+          cd packages/lingua && pnpm run build && cd ../..
 
       - name: Clean build cache
         shell: bash
@@ -362,13 +452,31 @@ jobs:
         shell: bash
         run: mise setup-go
 
-      - name: Setup frontend (required by build-e2e-server depends)
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: pnpm install
+
+      - name: Build API types and lingua
         shell: bash
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
-          mise setup-frontend
-          mise build-api-types
-          mise build-lingua
+          cd packages/api-types && pnpm run build && cd ../..
+          cd packages/lingua && pnpm run build && cd ../..
 
       - name: Check cache restore result
         shell: bash
