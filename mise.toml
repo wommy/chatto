@@ -771,7 +771,6 @@ run = [
     "rm -rf cli/bin/*",
     "rm -rf cli/cmd/embedded",
     "rm -rf cli/internal/http_server/.client",
-    "rm -f cli/LICENSE cli/NOTICE",
     "rm -rf apps/frontend/build",
     "rm -rf apps/desktop/dist",
     "rm -f apps/frontend/e2e/fixtures/bin/chatto apps/frontend/e2e/fixtures/bin/chatto-current",
