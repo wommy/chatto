@@ -1,6 +1,6 @@
 # ADR-002: Protect User Data with Hierarchical Keys and Cryptographic Erasure
 
-**Status:** Accepted; application-data scope superseded by [ADR-007](ADR-007-limit-authling-to-identity-provider.md)
+**Status:** Accepted; application-data scope superseded by [ADR-007](ADR-007-limit-authling-to-identity-provider.md); the "Key hierarchy" purpose split and the erasure workflow below are not yet built, see [Implementation status](#implementation-status)
 
 **Date:** 2026-07-31
 
@@ -70,6 +70,9 @@ by the user's key. Initial purpose boundaries will distinguish at least:
 
 - core account and profile data;
 - authentication credentials and linked identities.
+
+(This split is not built yet. The current runtime has one purpose. See
+[Implementation status](#implementation-status).)
 
 Key granularity follows the promised erasure boundary. A feature that promises
 independent cryptographic erasure of one credential must give that scope
@@ -207,7 +210,9 @@ events. Both products continue to own those decisions.
 Compromise of event, runtime, snapshot, object, or ordinary backup storage does
 not by itself reveal protected user data. Full account erasure can render
 historical ciphertext permanently unreadable while preserving enough
-non-sensitive event structure for deterministic replay.
+non-sensitive event structure for deterministic replay. (The erasure workflow
+that does this does not exist yet. See
+[Implementation status](#implementation-status).)
 
 The design does not protect plaintext from an authorized response, a
 compromised live Authling process with working KMS access, endpoint compromise,
@@ -228,3 +233,50 @@ Purpose-scoped keys add storage and operational overhead, but they constrain
 the blast radius of key use and leave room for finer erasure guarantees where
 the product needs them. Extraction work can reduce duplicated cryptographic
 mechanics, but application-specific policy remains explicit in Authling.
+
+## Implementation status
+
+*Added 2026-09-03. Tracked in
+[issue #129](https://github.com/wommy/chatto/issues/129).*
+
+An audit found that this ADR describes a larger system than the one Authling
+runs today. This section states the difference plainly so a reader does not
+take the sections above as a report of the current runtime.
+
+- **One key purpose exists, not two.** `credentialKeyPurpose = "credentials"`
+  is the only purpose in `keyvault.go`. `ProvisionCredentialKeys` creates one
+  user key and one wrapped data key per account. The "core account and
+  profile data" purpose in "Key hierarchy" above does not exist.
+- **Profile fields use the credentials key.** `AccountCreatedEvent`,
+  `PasswordChangedEvent`, `EmailChangedEvent`, and `ProfileUpdatedEvent`
+  (which carries the preferred username and full name) all reference the same
+  `credential_key_ref`. Each field is its own authenticated field with its own
+  Additional Authenticated Data, so one ciphertext cannot substitute for
+  another. That is field-level authentication, not purpose-level erasure:
+  destroying the one data key destroys profile data and credentials together.
+- **No erasure workflow exists.** Nothing in Authling today commits an
+  erasure-requested event, projects a denial tombstone, destroys a
+  committed account's user or data key as an erasure step, or commits an
+  erasure-completed event. (Failed provisioning and signing-key retirement
+  already purge their own key material, but neither is account erasure.)
+  `TODO.md` already lists "Implement durable account erasure" and its
+  supporting orphan-key and two-phase-replay work as outstanding.
+
+This is a documentation and design gap, not a live data-protection failure:
+because no code path erases account data yet, nothing today depends on or
+advertises independent erasure of credentials from profile data. Authling has
+not reached its first release (`version.go` is `0.0.0`, `CHANGELOG.md` has no
+entries, there is no `authling/v*` tag), so closing this gap needs no
+migration of previously wrapped records.
+
+Closing the gap needs the durable erasure workflow this ADR already
+specifies; a product decision on the exact profile-versus-credential field
+boundary, including where `preferred_username` belongs, since it is both an
+`AccountCreatedEvent` credential field and a `ProfileUpdatedEvent` profile
+field today; additive `profile_key_ref` fields on the affected events; and
+provisioning changes so account creation can create both data keys
+atomically with the same crash-safety guarantees `ProvisionCredentialKeys`
+already gives the credentials key. A second purpose that no erasure workflow
+ever exercises is speculative, so the second purpose should land no later
+than the erasure workflow, though the team may choose to build it earlier
+for defense-in-depth. Issue #129 has the full breakdown.
