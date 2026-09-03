@@ -44,7 +44,10 @@ jobs:
 
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
-        run: mise setup-web
+        run: |
+          mise setup-frontend
+          mise build-api-types
+          mise build-lingua
 
       - name: Verify GOCACHE location
         shell: bash
@@ -111,7 +114,10 @@ jobs:
 
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
-        run: mise setup-web
+        run: |
+          mise setup-frontend
+          mise build-api-types
+          mise build-lingua
 
       - name: Check cache restore result
         shell: bash
@@ -163,7 +169,10 @@ jobs:
 
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
-        run: mise setup-web
+        run: |
+          mise setup-frontend
+          mise build-api-types
+          mise build-lingua
 
       - name: Clean build cache
         shell: bash
@@ -228,7 +237,10 @@ jobs:
 
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
-        run: mise setup-web
+        run: |
+          mise setup-frontend
+          mise build-api-types
+          mise build-lingua
 
       - name: Check cache restore result
         shell: bash
