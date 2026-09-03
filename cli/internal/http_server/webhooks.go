@@ -19,7 +19,7 @@ func (s *HTTPServer) setupWebhookRoutes() {
 	webhooks := s.router.Group("/webhooks")
 	webhooks.POST("/incoming/:credential", limitLegacyRequestBody(), s.handleIncomingWebhook)
 	if s.config.LiveKit.IsConfigured() {
-		webhooks.POST("/livekit", s.handleLiveKitWebhook)
+		webhooks.POST("/livekit", limitLegacyRequestBody(), s.handleLiveKitWebhook)
 	}
 	registerTestWebhookEndpoints(webhooks, s)
 }
