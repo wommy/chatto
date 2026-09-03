@@ -34,7 +34,6 @@ permissions:
 
 jobs:
   build-main-image-contexts:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -79,6 +78,7 @@ jobs:
           version: ${{ steps.image-version.outputs.version }}
 
       - name: Build production image contexts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
         env:
           VERSION: ${{ steps.image-version.outputs.version }}
@@ -104,10 +104,23 @@ jobs:
           done
 
       - name: Upload production image contexts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: production-image-contexts
           path: .context/ci/docker
+          retention-days: 1
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: frontend-build
+          path: |
+            apps/frontend/build/
+            cli/internal/http_server/.client/
+            packages/api-types/dist/
+            packages/lingua/dist/
+          include-hidden-files: true
           retention-days: 1
 
   license-check:
@@ -428,6 +441,7 @@ jobs:
         run: pnpm test
 
   test-cli:
+    needs: [build-main-image-contexts]
     # runs-on: ubicloud-standard-4
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -440,6 +454,11 @@ jobs:
         with:
           # PR caches are isolated from main and cannot accelerate a merge run.
           save-go-build-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: frontend-build
 
       - name: Run Authling tests
         working-directory: authling
@@ -499,6 +518,7 @@ jobs:
           retention-days: 14
 
   test-e2e:
+    needs: [build-main-image-contexts]
     # runs-on: ubicloud-standard-4
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -518,6 +538,11 @@ jobs:
         uses: ./.github/actions/setup-playwright
         timeout-minutes: 15
 
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: frontend-build
+
       - name: Build E2E server
         run: mise build-e2e-server
 
@@ -533,6 +558,7 @@ jobs:
           retention-days: 14
 
   test-e2e-media:
+    needs: [build-main-image-contexts]
     # runs-on: ubicloud-standard-4
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -550,6 +576,11 @@ jobs:
         uses: ./.github/actions/setup-playwright
         timeout-minutes: 15
 
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: frontend-build
+
       - name: Build E2E server
         run: mise build-e2e-server
 
@@ -566,7 +597,7 @@ jobs:
 
   test-e2e-performance:
     if: needs.changes.outputs.docs_only != 'true'
-    needs: [changes]
+    needs: [changes, build-main-image-contexts]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -618,6 +649,11 @@ jobs:
           base_result=$(find "$RUNNER_TEMP/chatto-performance-base/apps/frontend/test-results/performance" -name performance-results.json -print -quit)
           cp "$base_result" "$comparison_dir/base.json"
           cp -R "$RUNNER_TEMP/chatto-performance-base/apps/frontend/playwright-report-performance" apps/frontend/playwright-report-performance-base
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: frontend-build
 
       - name: Build E2E server
         run: mise build-e2e-server
