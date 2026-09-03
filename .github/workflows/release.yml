@@ -776,7 +776,11 @@ jobs:
           git -C "${tap_dir}" config user.name "github-actions[bot]"
           git -C "${tap_dir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git -C "${tap_dir}" diff --quiet -- Casks/chatto.rb; then
+          # On a fresh tap clone, the file does not exist in the index. `git diff --quiet`
+          # compares the index to the worktree, so an untracked file produces no diff and
+          # `git diff --quiet` exits 0 even though the file is new. Use `git status --porcelain`
+          # to detect both untracked (`??`) and modified (` M`) files.
+          if [[ -z "$(git -C "${tap_dir}" status --porcelain -- Casks/chatto.rb)" ]]; then
             echo "Homebrew tap already contains the cask for Chatto ${VERSION}."
             exit 0
           fi
