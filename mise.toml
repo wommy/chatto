@@ -156,6 +156,21 @@ run = [
     "node ../tools/split-connectrpc-docs.mjs",
     "node ../tools/trim-proto-codegen-output.mjs",
 ]
+sources = [
+    "buf.yaml",
+    "buf.gen.yaml",
+    "buf.lock",
+    "chatto/**/*.proto",
+    "templates/**/*",
+    "../tools/split-connectrpc-docs.mjs",
+    "../tools/trim-proto-codegen-output.mjs",
+    "../tools/connectrpc-raw-mdx-files.mjs",
+]
+outputs = [
+    "../cli/internal/pb/**/*",
+    "../packages/api-types/src/chatto/**/*",
+    "../apps/docs-website/src/generated/connectrpc-api/**/*",
+]
 
 [tasks.codegen-emoji]
 description = "Generate Go emoji map from gemoji npm package"
@@ -528,6 +543,14 @@ description = "Build the documentation website"
 depends = ["setup-frontend"]
 dir = "apps/docs-website"
 run = "pnpm build"
+sources = [
+    "package.json",
+    "tsconfig.json",
+    "astro.config.mjs",
+    "src/**/*",
+    "public/**/*",
+]
+outputs = ["dist/**/*"]
 
 [tasks.dev-docs-website]
 description = "Run the docs website development server with Portless"
