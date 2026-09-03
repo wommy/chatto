@@ -1,7 +1,7 @@
 # FDR-028: Operator API & CLI
 
 **Status:** Active
-**Last reviewed:** 2026-08-29
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -16,7 +16,7 @@ The Operator API gives server operators a local, root-equivalent user administra
 - There are no operator bearer tokens, CIDR allow-lists, sessions, cookies, or CORS policy in this local-socket model. Socket filesystem permissions are the access boundary.
 - The server refuses to start if the operator socket parent directory is not private to the Chatto process user or if an existing operator socket has a mode other than `0600`. A stale existing socket with mode `0600` may be removed and replaced.
 - Operator actions are attributed to the system actor. They are not tied to a Chatto user account, cookie session, bearer session, or RBAC role.
-- The user-administration surface lives in `chatto.operator.v1.OperatorUserService` and can list and look up users, create users, update login/display name, set passwords, delete users, add verified email addresses, assign roles, and revoke roles.
+- The user-administration surface lives in `chatto.operator.v1.OperatorUserService` and can list and look up users, create users, update login/display name, set passwords, delete users, add verified email addresses, assign roles, revoke roles, and clear a user's self-service username-change cooldown (`ClearUsernameCooldown`). No `chatto operator user ...` CLI subcommand calls `ClearUsernameCooldown` today; this is a known gap in the CLI, not the API.
 - The CLI groups these commands under `chatto operator user ...`, for example `chatto operator user create`, `chatto operator user set-password`, and `chatto operator user role add`.
 - CLI clients read the socket path from `--operator-socket`, `CHATTO_OPERATOR_API_SOCKET_PATH`, or `operator_api.socket_path` in `chatto.toml`.
 - Password-setting commands prompt on interactive terminals when a password flag is not supplied. Non-interactive use must pass the password explicitly with `--password-stdin`, `--password-file`, or `--password`.
@@ -42,11 +42,11 @@ The Operator API gives server operators a local, root-equivalent user administra
 **Why:** Public Admin API calls use user authentication and RBAC. Operator calls bypass RBAC by design and should not share a service surface with public clients.
 **Tradeoff:** Some protobuf shapes overlap with admin-member UI data, but the service boundary is explicit and transport mounting can enforce it mechanically.
 
-### 4. Socket mode is strict
+### 4. Socket mode is strict and not configurable
 
-**Decision:** Chatto verifies the socket mode at startup and refuses to boot when an existing socket has a different mode than configured.
-**Why:** Silent chmod of a pre-existing socket can hide packaging or deployment mistakes around a root-equivalent control surface.
-**Tradeoff:** Operators must fix stale or incorrectly provisioned socket files instead of relying on Chatto to repair them automatically.
+**Decision:** The operator socket mode is hardcoded to `0600`. Chatto verifies the socket mode at startup and refuses to boot when an existing socket has any other mode. The `operator_api.socket_mode` setting is no longer accepted; setting it is a configuration error.
+**Why:** Silent chmod of a pre-existing socket can hide packaging or deployment mistakes around a root-equivalent control surface. Removing the setting closes the option to weaken the mode by configuration mistake.
+**Tradeoff:** Operators must fix stale or incorrectly provisioned socket files instead of relying on Chatto to repair them automatically, and cannot choose a different mode for a deployment that needs one.
 
 ### 5. Docker-first default path
 
