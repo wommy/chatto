@@ -597,7 +597,7 @@ run = [
     "../tools/dev-supervisor_test.sh",
     "go test -trimpath -p ${CHATTO_GO_TEST_P:-4} -tags test_endpoints ./...",
 ]
-sources = ["**/*.go", "cmd/embedded/LICENSE", "cmd/embedded/NOTICE"]
+sources = ["**/*.go", "cmd/embedded/LICENSE", "cmd/embedded/NOTICE", "../tools/dev-supervisor*.sh"]
 
 [tasks.test-appconfig]
 description = "Run application configuration tests standalone and in the repository workspace"
