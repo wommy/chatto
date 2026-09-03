@@ -45,8 +45,7 @@ jobs:
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
         run: |
-          which mise || echo "mise not found"
-          eval "$(mise activate bash)"
+          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
           mise setup-frontend
           mise build-api-types
           mise build-lingua
@@ -117,8 +116,7 @@ jobs:
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
         run: |
-          which mise || echo "mise not found"
-          eval "$(mise activate bash)"
+          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
           mise setup-frontend
           mise build-api-types
           mise build-lingua
@@ -174,8 +172,7 @@ jobs:
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
         run: |
-          which mise || echo "mise not found"
-          eval "$(mise activate bash)"
+          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
           mise setup-frontend
           mise build-api-types
           mise build-lingua
@@ -244,8 +241,7 @@ jobs:
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
         run: |
-          which mise || echo "mise not found"
-          eval "$(mise activate bash)"
+          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
           mise setup-frontend
           mise build-api-types
           mise build-lingua
@@ -301,8 +297,7 @@ jobs:
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
         run: |
-          which mise || echo "mise not found"
-          eval "$(mise activate bash)"
+          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
           mise setup-frontend
           mise build-api-types
           mise build-lingua
@@ -370,8 +365,7 @@ jobs:
       - name: Setup frontend (required by build-e2e-server depends)
         shell: bash
         run: |
-          which mise || echo "mise not found"
-          eval "$(mise activate bash)"
+          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/bin:$PATH"
           mise setup-frontend
           mise build-api-types
           mise build-lingua
