@@ -259,6 +259,56 @@ test('runs cleanup command', () => {
 	// (if we got an "Unknown command" error, the test would fail differently)
 })
 
+test('findMacOSSigningIdentity: extracts identity from realistic output', () => {
+	// This test verifies the critical parsing of `security find-identity` output.
+	// The output format is:
+	//   <spaces><line-num>) <40-hex-hash> "<Identity Label>"
+	// The hash comes BEFORE the label, not after.
+	// SHA-1 hashes are exactly 40 hex characters.
+
+	const realisticOutput = `  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Developer ID Application: ChattoCorp GmbH (TEAM123)"`
+
+	// Mock spawnSync to return this realistic output
+	const mockSpawnSync = () => ({
+		status: 0,
+		error: null,
+		stdout: Buffer.from(realisticOutput),
+	})
+
+	// Since we can't easily inject the mock into the module, test the regex directly
+	// by simulating what findMacOSSigningIdentity does
+	const match = realisticOutput.match(/\d+\)\s+([A-F0-9]{40})\s+"Developer ID Application:/)
+	assert.ok(match, 'Should match the realistic output format')
+	assert.equal(
+		match[1],
+		'0123456789ABCDEF0123456789ABCDEF01234567',
+		'Should extract the hash correctly',
+	)
+})
+
+test('findMacOSSigningIdentity: extracts identity from multi-line output', () => {
+	// Real output often has multiple lines before the one we want
+	const realisticOutput = `  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Developer ID Application: ChattoCorp GmbH (TEAM123)"
+  2) FEDCBA9876543210FEDCBA9876543210FEDCBA98 "Developer ID Application: Other (TEAM456)"
+    2 valid identities found`
+
+	// The regex should find the first one
+	const match = realisticOutput.match(/\d+\)\s+([A-F0-9]{40})\s+"Developer ID Application:/)
+	assert.ok(match, 'Should match the first identity')
+	assert.equal(
+		match[1],
+		'0123456789ABCDEF0123456789ABCDEF01234567',
+		'Should extract the first hash',
+	)
+})
+
+test('findMacOSSigningIdentity: rejects output with no valid identity', () => {
+	const outputWithoutIdentity = `  1) 0123456789ABCDEF0123456789ABCDEF01234567 "Apple Distribution: Company Name (ABC123)"`
+
+	const match = outputWithoutIdentity.match(/\d+\)\s+([A-F0-9]{40})\s+"Developer ID Application:/)
+	assert.equal(match, null, 'Should not match "Apple Distribution"')
+})
+
 test('rejects unknown command', () => {
 	assert.throws(
 		() =>

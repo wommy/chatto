@@ -243,7 +243,9 @@ export function findMacOSSigningIdentity(keychainPath) {
 		)
 	}
 	const output = result.stdout.toString('utf8')
-	const match = output.match(/Developer ID Application:.*?([A-F0-9]{40})/)
+	// The output format is: `  1) <40-hex-hash> "Developer ID Application: ..."`
+	// Match: line number, closing paren, spaces, hash, spaces, then label.
+	const match = output.match(/\d+\)\s+([A-F0-9]{40})\s+"Developer ID Application:/)
 	if (!match) {
 		throw new Error('The certificate does not contain a Developer ID Application identity.')
 	}
