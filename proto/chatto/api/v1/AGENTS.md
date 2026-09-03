@@ -4,6 +4,10 @@ This directory contains the public `chatto.api.v1` ConnectRPC API. Treat these
 protos as an integration API first, even when the bundled frontend is the first
 user.
 
+The rules below restate the service, message, and naming conventions decided in
+[ADR-044](../../../../docs/adr/ADR-044-connectrpc-service-conventions.md). Read
+that record for the rationale behind each rule.
+
 ## API Surface
 
 - Keep ordinary public/frontend-used API in `package chatto.api.v1`.

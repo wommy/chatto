@@ -35,8 +35,10 @@ atomicity, not process-local locks or singleton goroutines.
 
 Related decisions: [ADR-033](../adr/ADR-033-event-sourced-state-with-projections.md),
 [ADR-034](../adr/ADR-034-single-event-stream.md),
-[ADR-036](../adr/ADR-036-runtime-state-kv-boundary.md), and
-[ADR-045](../adr/ADR-045-public-api-stability-tiers.md).
+[ADR-036](../adr/ADR-036-runtime-state-kv-boundary.md),
+[ADR-045](../adr/ADR-045-public-api-stability-tiers.md), and
+[ADR-073](../adr/ADR-073-define-the-loom-architecture.md) (names this shape the
+Loom Architecture).
 
 ## Inventories
 

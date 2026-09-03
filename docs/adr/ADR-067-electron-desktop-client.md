@@ -61,9 +61,11 @@ code.
 Chatto Desktop remains an independently versioned product artifact. Release
 Please owns `apps/desktop/CHANGELOG.md` and `apps/desktop/package.json`; tags use
 `chatto-desktop/v{version}`. CI checks and packages host-platform bundles on
-macOS, Windows, and Linux. Trusted code signing, notarisation, installers,
-auto-update, and clean-machine WebRTC verification remain release-hardening
-work.
+macOS, Windows, and Linux. The protected release workflow now signs and
+notarises trusted release builds: Developer ID signing and notarisation for
+macOS, and Microsoft Artifact Signing for Windows executables and libraries.
+Installers, auto-update, and clean-machine WebRTC verification remain
+release-hardening work. See FDR-034 for the current shipped behavior.
 
 ## Consequences
 
@@ -85,3 +87,8 @@ remote redirects and browser networking retain their native semantics.
 Desktop clients using the custom callback require Chatto 0.5 or newer;
 older servers reject its non-HTTPS redirect URI. Identity providers that reject
 embedded user agents still require a future system-browser OAuth handoff.
+
+Trusted release builds are now code-signed and notarised on macOS and signed on
+Windows; see [FDR-034](../fdr/FDR-034-chatto-desktop.md) for the shipped
+signing behavior and its remaining open questions on installers and
+auto-update.

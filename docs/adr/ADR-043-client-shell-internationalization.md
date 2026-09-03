@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-22
 **Updated:** 2026-08-19
-**Status:** Superseded by [ADR-065](ADR-065-runtime-json-client-internationalization.md)
+**Status:** Partially superseded by [ADR-065](ADR-065-runtime-json-client-internationalization.md). ADR-065 replaces the compile-time message-catalog mechanism. It keeps this record's locale set, negotiation, client-owned persistence, canonical unlocalized routes, language-neutral events, translation-quality policy, and RTL policy in force.
 
 ## Context
 

@@ -314,3 +314,11 @@ No new durable projection or NATS resource is introduced. EVT remains the
 source of durable facts, existing read models remain the source of public
 resource shapes, and the process-wide hub remains the sole live ingress per
 Chatto process.
+
+## Related
+
+- [ADR-054](ADR-054-optional-projection-persistence.md) — Projection
+  persistence is optional. A catch-up here waits for every registered
+  projection to become current; how fast a projection reaches that state after
+  a restart depends on whether it opted into ADR-054's portable snapshot or
+  checkpoint persistence, or cold-replays instead.
