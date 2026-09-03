@@ -80,7 +80,8 @@ and still move `:latest`.
 To rehearse a change to the image build, run the `build-image` job:
 `workflow_dispatch` on `release.yml` with `target: image`. It builds any ref
 whose `mise.toml` defines `CHATTO_DEVELOPMENT_VERSION` through the release
-`Dockerfile` and pushes one tag that carries the commit SHA.
+`Dockerfile` and pushes one tag prefixed `rehearsal-` with the commit SHA
+(e.g., `ghcr.io/chattocorp/chatto:rehearsal-<sha>`).
 No floating tag moves, so the rehearsal publishes nothing that a user tracks.
 A pre-push guard confirms the tag does not already exist as a multi-platform
 manifest; if it does, the rehearsal fails rather than silently degrading the

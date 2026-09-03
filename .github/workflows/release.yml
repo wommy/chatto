@@ -106,7 +106,7 @@ jobs:
             echo
             echo "- Commit: \`${sha}\`"
             echo "- Version: \`${version}\`"
-            echo "- Image: \`ghcr.io/chattocorp/chatto:${sha}\`"
+            echo "- Image: \`ghcr.io/chattocorp/chatto:rehearsal-${sha}\`"
             echo "- Platform: \`linux/amd64\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -134,7 +134,7 @@ jobs:
       - name: Guard against multi-platform manifest downgrade
         uses: ./.github/actions/guard-multiarch-push
         with:
-          image: ghcr.io/chattocorp/chatto:${{ steps.image.outputs.sha }}
+          image: ghcr.io/chattocorp/chatto:rehearsal-${{ steps.image.outputs.sha }}
           platforms: linux/amd64
 
       - name: Build and push Chatto image
@@ -144,7 +144,7 @@ jobs:
           file: /tmp/chatto-docker/linux-amd64/Dockerfile
           push: true
           platforms: linux/amd64
-          tags: ghcr.io/chattocorp/chatto:${{ steps.image.outputs.sha }}
+          tags: ghcr.io/chattocorp/chatto:rehearsal-${{ steps.image.outputs.sha }}
           cache-from: type=gha,scope=chatto-manual-amd64
           cache-to: type=gha,mode=max,scope=chatto-manual-amd64
           labels: |
