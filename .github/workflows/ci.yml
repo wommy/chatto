@@ -46,6 +46,18 @@ jobs:
       - name: Setup environment
         uses: ./.github/actions/setup
 
+      - name: Fetch build-version module from workflow commit
+        shell: bash
+        run: |
+          # Fetch the module from the exact commit executing this YAML.
+          # $GITHUB_SHA pins the module code to the workflow's own revision,
+          # not to a later change on main. This ensures reproducibility:
+          # old release-branch builds use the module that shipped with that
+          # branch's YAML, not a retargeted newer module from main.
+          mkdir -p "$RUNNER_TEMP"
+          git fetch --depth=1 origin "$GITHUB_SHA"
+          git show "$GITHUB_SHA:tools/build-version.mjs" > "$RUNNER_TEMP/build-version.mjs"
+
       - name: Derive main image version
         id: image-version
         shell: bash
@@ -58,7 +70,8 @@ jobs:
             exit 1
           fi
 
-          echo "version=${development_version}+${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
+          version="$(node "$RUNNER_TEMP/build-version.mjs" --base "$development_version" --sha "$GITHUB_SHA")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Build frontend for production image
         env:
