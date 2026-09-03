@@ -46,6 +46,15 @@ mise setup
 mise test
 ```
 
+If `mise` reports that `authling/mise.toml` is not trusted, run `mise trust`
+from the `authling/` directory. Running `mise trust` at the repository root does
+not trust `authling/mise.toml`.
+
+```sh
+cd authling
+mise trust
+```
+
 `mise setup` installs the Go and web dependencies, including Playwright's
 Chromium build. You can then run the browser end-to-end suite with:
 
