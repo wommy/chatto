@@ -145,5 +145,4 @@ description = "Clean Authling build artifacts"
 run = [
     "rm -rf bin",
     "rm -rf internal/web/assets",
-    "rm -rf e2e/.generated",
 ]
