@@ -812,6 +812,7 @@ description = "Clean all build artifacts"
 run = [
     "rm -rf cli/bin/*",
     "rm -rf cli/cmd/embedded",
+    "rm -f cli/LICENSE cli/NOTICE",
     "rm -f cli/cmd/embedded/LICENSE cli/cmd/embedded/NOTICE",
     "rm -rf cli/internal/http_server/.client",
     "rm -rf apps/frontend/build",
