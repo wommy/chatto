@@ -33,6 +33,7 @@ or thread pane. Shows small avatars of typing users with animated dots.
 {#if typingUserIds.length > 0}
   <div
     class="pointer-events-none absolute end-2 bottom-0 z-10 flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 shadow-md"
+    data-testid="typing-indicator"
     transition:fade={{ duration: 150 }}
   >
     {#each typingMembers as member (member.id)}

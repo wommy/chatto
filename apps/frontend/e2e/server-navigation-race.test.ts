@@ -6,6 +6,7 @@ import {
   getDefaultRoomGroupIdViaConnect,
   joinRoomViaConnect
 } from './fixtures/connectHelpers';
+import { collectBrowserErrors } from './fixtures/browserErrors';
 import { loginAsAdminAndUsePrimaryServer } from './fixtures/testUser';
 import * as routes from './routes';
 
@@ -60,6 +61,8 @@ test.describe('Server navigation race condition fix', () => {
     page,
     adminPage
   }) => {
+    const browserErrors = collectBrowserErrors(page);
+
     // Prepare the server with a banner and room.
     const space = await usePrimaryServerViaAPI(page, 'Rapid Nav Test');
     const roomId = await createRoomViaAPI(page, space.id, 'test-room');
@@ -81,5 +84,7 @@ test.describe('Server navigation race condition fix', () => {
       timeout: TIMEOUTS.REALTIME_EVENT
     });
     await expect(page.locator('img[alt="Server banner"]')).toBeVisible();
+
+    expect(browserErrors).toEqual([]);
   });
 });

@@ -11,6 +11,7 @@ import {
   getRoomOnRemote,
   connectRemoteInstance
 } from './fixtures/multiServer';
+import { collectBrowserErrors } from './fixtures/browserErrors';
 import { RoomPage } from './pages';
 import type { ServerInfo } from './fixtures/server';
 import { TIMEOUTS, POLLING_INTERVALS } from './constants';
@@ -123,6 +124,8 @@ test.describe('Multi-Instance Identity', () => {
   });
 
   test('user does not see own typing indicator on remote instance', async ({ page, chatPage }) => {
+    const browserErrors = collectBrowserErrors(page);
+
     // Home instance: log in so the SPA works
     await createAndLoginTestUser(page);
     await chatPage.goto();
@@ -146,21 +149,47 @@ test.describe('Multi-Instance Identity', () => {
     const roomPage = new RoomPage(page);
     await roomPage.waitForInputEditable();
 
+    // Install a MutationObserver on document.body to detect if the typing indicator
+    // is ever added to the DOM, even briefly. This catches insertions that might
+    // be hidden again before polling samples them.
+    await page.evaluate(() => {
+      window.__typingSeen = false;
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList') {
+            for (const node of mutation.addedNodes) {
+              if (
+                node.nodeType === 1 && // Element node
+                (node as Element).querySelector('[data-testid="typing-indicator"]')
+              ) {
+                window.__typingSeen = true;
+              }
+            }
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+
     // Start typing (simulates keystrokes to trigger typing indicator mutation)
     await roomPage.messageInput.pressSequentially('Hello remote', { delay: 50 });
 
-    // Wait and assert typing dots do NOT appear for own typing.
+    // Wait for any typing events to be delivered (same duration as the positive case).
     // The backend filters own typing events, and the frontend uses the per-instance
-    // user ID for defense-in-depth filtering.
-    await expect(async () => {
-      await expect(page.locator('.typing-dots')).not.toBeVisible();
-    }).toPass({
-      timeout: TIMEOUTS.POLLING_EXTENDED,
-      intervals: POLLING_INTERVALS
-    });
+    // user ID for defense-in-depth filtering. We wait the full REALTIME_EVENT timeout
+    // to ensure that if a typing indicator were going to appear, it would have by now.
+    await page.waitForTimeout(TIMEOUTS.REALTIME_EVENT);
+
+    // Assert that the typing indicator was never added to the DOM
+    const typingSeen = await page.evaluate(() => window.__typingSeen);
+    expect(typingSeen).toBe(false);
+
+    expect(browserErrors).toEqual([]);
   });
 
   test('user sees other user typing on remote instance', async ({ page, chatPage }) => {
+    const browserErrors = collectBrowserErrors(page);
+
     // Home instance: log in so the SPA works
     await createAndLoginTestUser(page);
     await chatPage.goto();
@@ -188,8 +217,10 @@ test.describe('Multi-Instance Identity', () => {
     await sendTypingOnRemote(baseURL, remoteOwner.token, roomId);
 
     // Viewer should see the typing indicator
-    await expect(page.locator('.typing-dots')).toBeVisible({
+    await expect(page.getByTestId('typing-indicator')).toBeVisible({
       timeout: TIMEOUTS.REALTIME_EVENT
     });
+
+    expect(browserErrors).toEqual([]);
   });
 });

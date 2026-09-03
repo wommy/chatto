@@ -1588,6 +1588,9 @@ test.describe('Message Threading', () => {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     for (let i = 0; i < 15; i++) {
       await page.mouse.wheel(0, -800);
+      // Pause between wheel events to allow scroll animation and virtua re-render to complete.
+      // Playwright's mouse.wheel() does not wait for scrolling to finish; without this pause,
+      // rapid successive events may not produce cumulative scroll. See apps/frontend/CLAUDE.md.
       await page.waitForTimeout(TIMEOUTS.SCROLL_SETTLE);
     }
 

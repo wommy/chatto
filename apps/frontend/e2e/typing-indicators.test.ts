@@ -38,14 +38,14 @@ test.describe('Typing indicators', () => {
         });
 
         // Verify no typing indicator initially (no avatar for user2 in typing indicator)
-        await expect(page.locator('.typing-dots')).not.toBeVisible();
+        await expect(page.getByTestId('typing-indicator')).not.toBeVisible();
 
         // User 2: Start typing (without sending) - use type() to simulate keystrokes
         await roomPage2.messageInput.click();
         await roomPage2.messageInput.pressSequentially('Hello', { delay: 50 });
 
         // User 1: Should see typing indicator appear
-        await expect(page.locator('.typing-dots')).toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
 
@@ -53,7 +53,7 @@ test.describe('Typing indicators', () => {
         await roomPage2.messageInput.fill('');
 
         // User 1: Typing indicator should disappear after timeout (~6 seconds)
-        await expect(page.locator('.typing-dots')).not.toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).not.toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
       },
@@ -85,13 +85,13 @@ test.describe('Typing indicators', () => {
         await roomPage2.messageInput.fill('Typing something...');
 
         // User 1: Should see typing indicator appear
-        await expect(page.locator('.typing-dots')).toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
 
         // Wait for the typing indicator to disappear (timeout is 6 seconds)
         // We don't send any more typing events, so it should auto-clear
-        await expect(page.locator('.typing-dots')).not.toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).not.toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
       },
@@ -139,12 +139,12 @@ test.describe('Typing indicators', () => {
         await roomPage2.threadReplyInput.fill('Thread reply...');
 
         // User 1: Should see typing indicator in the THREAD pane (avatar visible)
-        const threadTypingDots = roomPage.threadPane.locator('.typing-dots');
+        const threadTypingDots = roomPage.threadPane.getByTestId('typing-indicator');
         await expect(threadTypingDots).toBeVisible({ timeout: TIMEOUTS.REALTIME_EVENT });
 
         // User 1: Should NOT see typing indicator in the MAIN room
         // The typing dots should only appear once (in the thread pane)
-        const allTypingDots = await page.locator('.typing-dots').count();
+        const allTypingDots = await page.getByTestId('typing-indicator').count();
         expect(allTypingDots).toBe(1);
       },
       { viewport: { width: 1280, height: 720 } }
@@ -190,13 +190,13 @@ test.describe('Typing indicators', () => {
 
         // User 1: Should NOT see typing indicator in the thread pane
         // Use toPass() to give the typing event time to propagate, then verify absence
-        const threadTypingDots = roomPage.threadPane.locator('.typing-dots');
+        const threadTypingDots = roomPage.threadPane.getByTestId('typing-indicator');
         await expect(async () => {
           await expect(threadTypingDots).not.toBeVisible();
         }).toPass({ timeout: TIMEOUTS.REALTIME_EVENT, intervals: [500, 1000, 2000] });
 
         // But should see it somewhere on the page (main room area)
-        await expect(page.locator('.typing-dots')).toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
       },
@@ -245,7 +245,7 @@ test.describe('Typing indicators', () => {
             await roomPage2.messageInput.fill('User 2 typing...');
 
             // User 1: Should see typing indicator appear
-            await expect(page.locator('.typing-dots')).toBeVisible({
+            await expect(page.getByTestId('typing-indicator')).toBeVisible({
               timeout: TIMEOUTS.REALTIME_EVENT
             });
 
@@ -253,7 +253,7 @@ test.describe('Typing indicators', () => {
             await roomPage3.messageInput.fill('User 3 typing...');
 
             // User 1: Should still see typing indicator (now with two user initials)
-            await expect(page.locator('.typing-dots')).toBeVisible({
+            await expect(page.getByTestId('typing-indicator')).toBeVisible({
               timeout: TIMEOUTS.REALTIME_EVENT
             });
           },
@@ -304,26 +304,25 @@ test.describe('Typing indicators', () => {
         await roomPage2.messageInput.pressSequentially(' Third', { delay: 100 });
 
         // Wait for typing indicator to appear (avatar visible)
-        await expect(page.locator('.typing-dots')).toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
 
         // Wait for it to disappear (6 second timeout + buffer)
-        await expect(page.locator('.typing-dots')).not.toBeVisible({
+        await expect(page.getByTestId('typing-indicator')).not.toBeVisible({
           timeout: TIMEOUTS.REALTIME_EVENT
         });
 
-        // Check for critical errors
-        const criticalErrors = [
-          ...consoleErrors.filter(
-            (e) => e.includes('lifecycle_outside_component') || e.includes('getContext')
-          ),
-          ...pageErrors.filter(
-            (e) => e.includes('lifecycle_outside_component') || e.includes('getContext')
-          )
+        // Fail on any unexpected errors, except for known benign messages.
+        // Empty allowlist because no benign noise was observed in clean test runs.
+        const BENIGN_BROWSER_ERRORS: string[] = [];
+
+        const unexpectedErrors = [
+          ...consoleErrors.filter((e) => !BENIGN_BROWSER_ERRORS.some((p) => e.includes(p))),
+          ...pageErrors.filter((e) => !BENIGN_BROWSER_ERRORS.some((p) => e.includes(p)))
         ];
 
-        expect(criticalErrors).toEqual([]);
+        expect(unexpectedErrors).toEqual([]);
       },
       { viewport: { width: 1280, height: 720 } }
     );
