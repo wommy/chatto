@@ -460,6 +460,13 @@ jobs:
         with:
           name: frontend-build
 
+      - name: Refresh restored artifact timestamps
+        shell: bash
+        run: |
+          find apps/frontend/build cli/internal/http_server/.client \
+               packages/api-types/dist packages/lingua/dist \
+               -exec touch {} +
+
       - name: Run Authling tests
         working-directory: authling
         run: mise test
@@ -543,6 +550,13 @@ jobs:
         with:
           name: frontend-build
 
+      - name: Refresh restored artifact timestamps
+        shell: bash
+        run: |
+          find apps/frontend/build cli/internal/http_server/.client \
+               packages/api-types/dist packages/lingua/dist \
+               -exec touch {} +
+
       - name: Build E2E server
         run: mise build-e2e-server
 
@@ -580,6 +594,13 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: frontend-build
+
+      - name: Refresh restored artifact timestamps
+        shell: bash
+        run: |
+          find apps/frontend/build cli/internal/http_server/.client \
+               packages/api-types/dist packages/lingua/dist \
+               -exec touch {} +
 
       - name: Build E2E server
         run: mise build-e2e-server
@@ -654,6 +675,13 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: frontend-build
+
+      - name: Refresh restored artifact timestamps
+        shell: bash
+        run: |
+          find apps/frontend/build cli/internal/http_server/.client \
+               packages/api-types/dist packages/lingua/dist \
+               -exec touch {} +
 
       - name: Build E2E server
         run: mise build-e2e-server
