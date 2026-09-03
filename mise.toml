@@ -516,6 +516,12 @@ exec portless \
   ./node_modules/.bin/vite dev --host 127.0.0.1
 '''
 
+[tasks.build-docs-website]
+description = "Build the documentation website"
+depends = ["setup-frontend"]
+dir = "apps/docs-website"
+run = "pnpm build"
+
 [tasks.dev-docs-website]
 description = "Run the docs website development server with Portless"
 depends = ["setup-frontend"]

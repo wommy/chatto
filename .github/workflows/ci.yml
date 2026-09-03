@@ -231,7 +231,7 @@ jobs:
           install-cli-deps: "false"
 
       - name: Build documentation site
-        run: mise x -- pnpm --filter docs-website build
+        run: mise build-docs-website
 
   desktop:
     name: desktop (${{ matrix.platform }})

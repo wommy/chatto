@@ -7,7 +7,6 @@
   "scripts": {
     "build:api-types": "pnpm --filter @chatto/api-types build",
     "build:lingua": "pnpm --filter @chatto/lingua build",
-    "build:docs": "pnpm --filter docs-website build",
     "build:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend build",
     "build:storybook": "pnpm run build:lingua && pnpm --filter chatto-frontend build-storybook",
     "check": "pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run check",
