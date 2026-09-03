@@ -401,6 +401,17 @@ capacity rejections through `chatto_realtime_catch_ups`,
 `chatto_realtime_catch_ups_timed_out_total`, and
 `chatto_realtime_catch_ups_rejected_total`.
 
+After catch-up completes and the connection enters steady-state, each authenticated
+user is limited to a configurable maximum number of concurrent open realtime
+WebSocket connections (default: 30; configurable via
+`webserver.realtime_steady_state_connection_cap`, set to 0 to disable). This limit
+prevents a single user from exhausting server resources by opening unbounded
+connections. Connections exceeding this limit are rejected immediately after
+catch-up with a `realtime_capacity_error` close; clients reconnect through normal
+backoff. The limit isolates users from each other and applies independently across
+replicas. The metrics endpoint exposes rejected steady-state connections through
+`chatto_realtime_steady_state_connection_cap_rejected_total`.
+
 Reaction facts produce a timeline-event upsert containing the current
 aggregate reaction state and a `reaction_change` describing the exact actor,
 emoji, and add/remove transition. Message edits, retractions, and reactions
@@ -465,6 +476,13 @@ channel-room viewer also needs broad `message.read`, or
 `message.read-interactions` with a relationship to the canonical thread root.
 DM membership authorizes DM delivery. The hub and public projection mapper
 both check this boundary.
+
+Archived rooms are removed from the fast-path realtime membership cache when a
+`RoomArchived` event commits, ensuring that non-message metadata events
+(call start/end, member changes, and administrative facts) cannot leak to
+remaining members after archival. Membership filtering applies before metadata
+delivery, so archived rooms cannot deliver updates through either the compacted
+replay or incremental live path.
 
 Message facts do not carry room summaries or room viewer state. Root messages
 carry a content-free `room_activity` operation for room order and first-message
