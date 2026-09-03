@@ -223,7 +223,7 @@ jobs:
           # so it checks the full list, not the break-truncated one from docs_only.
           # Desktop-relevant paths include the desktop app itself, frontend code,
           # shared packages, and infrastructure that affects desktop builds.
-          desktop_pattern='^(apps/desktop/|apps/frontend/|packages/api-types/|packages/lingua/|proto/|\.github/actions/setup/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.npmrc$|mise\.toml$|tools/prepare-embedded-frontend\.sh$|tools/test-desktop-macos-capture\.sh$|\.github/workflows/ci\.yml$)'
+          desktop_pattern='^(apps/desktop/|apps/frontend/|packages/api-types/|packages/lingua/|proto/|\.github/actions/setup/|\.github/actions/setup-mise/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.npmrc$|mise\.toml$|tools/prepare-embedded-frontend\.sh$|tools/test-desktop-macos-capture\.sh$|\.github/workflows/ci\.yml$)'
           if grep -qE "$desktop_pattern" <<< "$changed_files"; then
             desktop_touched="true"
           else
