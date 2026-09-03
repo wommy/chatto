@@ -72,3 +72,8 @@ Link to a dedicated guide instead of repeating detailed instructions.
 - Use muted service-box colors. Keep connection and dot styles consistent with
   existing diagrams.
 - Use smooth `animateMotion` easing for moving dots. Do not use linear motion.
+
+## Verification
+
+CI builds the site in the `docs-website-build` job of `ci.yml` for every pull
+request that changes this directory.
