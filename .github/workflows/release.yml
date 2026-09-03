@@ -556,6 +556,22 @@ jobs:
           # GitHub's autolink rendering for commit SHAs and #NNN PR refs.
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
+      # tools/smoke-check-binaries.mjs verifies that GoReleaser-built CLI
+      # binaries are executable and report a version. Only binaries matching
+      # the current platform (linux/amd64 on this ubuntu-latest runner) are
+      # checked; other platforms (windows, macOS, FreeBSD) are noted as
+      # unchecked because cross-platform verification would require different
+      # CI runner types. The binary check is conservative: a failure blocks the
+      # entire release before artifacts are published, just like the image
+      # smoke checks. See issues #38/#51/#52 for the smoke-check precedent.
+      - name: Smoke check the CLI binaries
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+
+          mise x -- node tools/smoke-check-binaries.mjs
+
       # tools/smoke-check-image.mjs pulls the image that GoReleaser pushed
       # above and proves that it starts. `cli/internal/config` refuses to
       # start without `webserver.port` and three hex secrets, none of which
