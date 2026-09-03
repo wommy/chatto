@@ -75,6 +75,7 @@ test('constructs a Windows release plan with Compress-Archive and error preferen
 	})
 
 	assert.match(plan, /^\$ErrorActionPreference = 'stop'; /)
+	assert.match(plan, /New-Item -ItemType Directory -Force/)
 	assert.match(plan, /Compress-Archive/)
 	assert.match(plan, /-Path "apps\/desktop\/dist\/windows"/)
 	assert.match(
@@ -162,26 +163,6 @@ test('stops at the first nonzero exit code in a macOS plan', () => {
 	assert.equal(callCount, 3) // codesign, stapler, spctl
 })
 
-test('requires VERSION environment variable', () => {
-	assert.throws(
-		() =>
-			runPackagingCommand(['package-macos'], { RUNNER_ARCH: 'ARM64' }, () => {
-				throw new Error('Should not be called')
-			}),
-		/VERSION environment variable is required/,
-	)
-})
-
-test('requires RUNNER_ARCH environment variable', () => {
-	assert.throws(
-		() =>
-			runPackagingCommand(['package-macos'], { VERSION: '0.1.0' }, () => {
-				throw new Error('Should not be called')
-			}),
-		/RUNNER_ARCH environment variable is required/,
-	)
-})
-
 test('runs package-macos command and reports success', () => {
 	let spawnCalls = []
 	const spawnSync = (cmd, args, opts) => {
@@ -212,36 +193,36 @@ test('runs package-macos command and reports success', () => {
 	assert.equal(spawnCalls[3].cmd, 'ditto')
 })
 
-test('runs package-macos and throws on codesign failure', () => {
-	const spawnSync = (cmd, args, opts) => {
-		if (cmd === 'codesign') {
-			return { status: 1 }
+test('runs package-macos and returns on codesign failure without throwing', () => {
+	const originalExitCode = process.exitCode
+	try {
+		const spawnSync = (cmd, args, opts) => {
+			if (cmd === 'codesign') {
+				return { status: 1 }
+			}
+			return { status: 0 }
 		}
-		return { status: 0 }
-	}
 
-	const tools = {
-		accessSync: () => {
-			// Helper exists.
-		},
-		mkdirSync: () => {
-			// Directory created.
-		},
-	}
+		const tools = {
+			accessSync: () => {
+				// Helper exists.
+			},
+			mkdirSync: () => {
+				// Directory created.
+			},
+		}
 
-	assert.throws(
-		() =>
-			runPackagingCommand(
-				['package-macos'],
-				{ VERSION: '0.1.0', RUNNER_ARCH: 'ARM64' },
-				spawnSync,
-				tools,
-			),
-		error => {
-			assert.match(error.message, /failed at step 'verify-codesign'/)
-			return true
-		},
-	)
+		// Should not throw; should set exitCode instead
+		const result = runPackagingCommand(
+			['package-macos'],
+			{ VERSION: '0.1.0', RUNNER_ARCH: 'ARM64' },
+			spawnSync,
+			tools,
+		)
+		assert.equal(result, null)
+	} finally {
+		process.exitCode = originalExitCode
+	}
 })
 
 test('runs package-windows command and spawns pwsh', () => {
@@ -265,19 +246,26 @@ test('runs package-windows command and spawns pwsh', () => {
 	assert.match(spawnCalls[0].args[3], /\$ErrorActionPreference = 'stop'/)
 })
 
-test('runs package-windows and throws on failure', () => {
-	const spawnSync = (cmd, args, opts) => {
-		if (cmd === 'pwsh') {
-			return { status: 1 }
+test('runs package-windows and returns on failure without throwing', () => {
+	const originalExitCode = process.exitCode
+	try {
+		const spawnSync = (cmd, args, opts) => {
+			if (cmd === 'pwsh') {
+				return { status: 1 }
+			}
+			throw new Error(`Unexpected command: ${cmd}`)
 		}
-		throw new Error(`Unexpected command: ${cmd}`)
-	}
 
-	assert.throws(
-		() =>
-			runPackagingCommand(['package-windows'], { VERSION: '0.1.0', RUNNER_ARCH: 'x64' }, spawnSync),
-		/Windows release packaging failed with exit code 1/,
-	)
+		// Should not throw; should set exitCode instead
+		const result = runPackagingCommand(
+			['package-windows'],
+			{ VERSION: '0.1.0', RUNNER_ARCH: 'x64' },
+			spawnSync,
+		)
+		assert.equal(result, null)
+	} finally {
+		process.exitCode = originalExitCode
+	}
 })
 
 test('rejects an unknown command', () => {

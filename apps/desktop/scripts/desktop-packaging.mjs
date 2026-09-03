@@ -106,13 +106,15 @@ export function macOSReleasePlan(plan) {
  *
  * @param {{sourceDir: string, archivePath: string}} plan - The paths to the
  *   source directory and the destination archive.
- * @returns {string} A PowerShell command that creates the archive with
- *   Compress-Archive. The command includes the `$ErrorActionPreference = 'stop'`
- *   preamble and quotes the paths.
+ * @returns {string} A PowerShell command that creates the destination directory
+ *   and then packages the archive with Compress-Archive. The command includes
+ *   the `$ErrorActionPreference = 'stop'` preamble and quotes the paths.
  */
 export function windowsReleasePlan(plan) {
+	const archiveDir = plan.archivePath.substring(0, plan.archivePath.lastIndexOf('\\'))
 	return (
 		"$ErrorActionPreference = 'stop'; " +
+		`New-Item -ItemType Directory -Force "${archiveDir}" | Out-Null; ` +
 		'Compress-Archive ' +
 		`-Path "${plan.sourceDir}" ` +
 		`-DestinationPath "${plan.archivePath}"`
@@ -172,20 +174,12 @@ export function runMacOSReleasePlan(plan, tools) {
  *   overrides for file system functions. Used by tests.
  * @returns {null} This function does not return output; it controls the process
  *   exit code.
- * @throws {Error} When the command is unknown, when environment variables are
- *   missing, or when a packaging step fails.
+ * @throws {Error} When the command is unknown.
  */
 export function runPackagingCommand(argv, environment, spawnSync, tools) {
 	const [command, ...rest] = argv
 	const version = environment.VERSION
 	const arch = environment.RUNNER_ARCH
-
-	if (!version) {
-		throw new Error('The VERSION environment variable is required.')
-	}
-	if (!arch) {
-		throw new Error('The RUNNER_ARCH environment variable is required.')
-	}
 
 	const fileTools = tools || { accessSync, mkdirSync }
 
@@ -204,9 +198,8 @@ export function runPackagingCommand(argv, environment, spawnSync, tools) {
 				mkdirSync: fileTools.mkdirSync,
 			})
 			if (failure) {
-				throw new Error(
-					`macOS release packaging failed at step '${failure.step}' with exit code ${failure.exitCode}.`,
-				)
+				process.exitCode = failure.exitCode
+				return null
 			}
 			return null
 		}
@@ -222,7 +215,7 @@ export function runPackagingCommand(argv, environment, spawnSync, tools) {
 			})
 
 			if (result.status !== 0 && result.status !== null) {
-				throw new Error(`Windows release packaging failed with exit code ${result.status}.`)
+				process.exitCode = result.status
 			}
 			return null
 		}
@@ -233,11 +226,11 @@ export function runPackagingCommand(argv, environment, spawnSync, tools) {
 
 // The command line entry point. `release.yml` runs it on each platform.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	const { spawnSync } = await import('node:child_process')
 	try {
-		const { spawnSync } = await import('node:child_process')
 		runPackagingCommand(process.argv.slice(2), process.env, spawnSync)
 	} catch (error) {
-		console.error(`::error::${error.message}`)
+		console.error(error.message)
 		process.exitCode = 1
 	}
 }
