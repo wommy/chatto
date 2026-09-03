@@ -77,6 +77,7 @@ jobs:
         uses: ./.github/actions/build-versioned-frontend
         with:
           version: ${{ steps.image-version.outputs.version }}
+          task-cache-read-only: "false"
 
       - name: Build production image contexts
         shell: bash
