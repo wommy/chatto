@@ -1,7 +1,7 @@
 # FDR-032: Message Formatting
 
 **Status:** Active
-**Last reviewed:** 2026-08-29
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -12,8 +12,12 @@ Message bodies are stored and exchanged as plain text while bundled clients rend
 - Messages support paragraphs, ATX headings, emphasis, links and autolinks, inline and fenced code, blockquotes, and ordered and unordered lists.
 - Messages support GFM pipe tables with a header delimiter row, optional outer pipes, left/centre/right column alignment, inline formatting, and escaped pipes inside cells.
 - Wide tables scroll horizontally inside the message instead of widening or clipping the conversation layout.
+- A table that goes past an internal size limit renders as literal text instead of a table. The limits are 64 columns, 256 rows, and 4,096 cells for one table, plus a combined limit of 8,192 cells across every table in one message.
 - Message source HTML, horizontal rules, reference-style links, and setext headings render as literal text rather than active formatting. Image syntax never loads or displays an image; its label and destination can fall back to an ordinary link.
 - Backslashes normally remain literal so common chat text such as Windows paths and kaomoji is not unexpectedly changed. An escaped pipe inside a GFM table cell is still interpreted as cell content rather than a column boundary.
+- A word-boundary rule also keeps `*` and `_` literal, instead of starting emphasis, when they sit inside a word (`foo*bar*baz`) or between punctuation on both sides (`_(ツ)_`). This is separate from the backslash-escape behavior above and applies even when the author did not use a backslash.
+- A plain line break inside a paragraph renders as a hard line break (a visible new line), not as a joined line. Authors do not need a trailing double space to force a visible line break.
+- Links carry a safety check. A link destination that does not start with `http://` or `https://` is replaced with an inert `#` destination. A link that does not point to a known same-origin chat route opens in a new tab and carries `rel="noopener noreferrer"`; a known same-origin chat route keeps normal same-tab navigation.
 - Inline timestamp tokens render in the viewer's locale and timezone when supported by the client.
 - Editing a message preserves the plain-text Markdown body contract; the bundled composer does not provide a spreadsheet-like table editor.
 - The bundled client offers a syntax-highlighted Markdown source editor by default and an optional visual editor. Both edit the same Markdown body and provide the same formatting and composer features.

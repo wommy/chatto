@@ -1,7 +1,7 @@
 # FDR-034: Chatto Desktop
 
 **Status:** Experimental
-**Last reviewed:** 2026-08-20
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -147,6 +147,11 @@ native provider is present, and gives the shared frontend temporary opaque
 window/display sources, static preview bytes, and metadata needed for explicit
 user choice. A focused frontend adapter feature-detects and validates this
 capability; the same control uses the browser implementation when it is absent.
+The native macOS provider requires macOS 15 or newer: its Swift package
+targets `.macOS(.v15)`, and the Electron main process checks the host's
+reported major version against that same minimum before it advertises the
+capability at all. On an older macOS release the capability is absent and the
+host falls back to the browser's own picker.
 Source enumeration requires user activation, is serialized and cancellable,
 and produces short-lived, single-use random offers rather than native source
 coordinates. Window offers are bound to the enumerated application, and the
@@ -182,7 +187,9 @@ companion connection avoids the prototype's native encode, browser decode,
 canvas capture, and WebRTC re-encode while keeping the product-level source and
 participant model shared across platform providers.
 **Tradeoff:** Chatto needs an auxiliary publisher-token RPC, companion-aware
-webhook and reconciliation filtering, and frontend participant merging. The
+webhook and reconciliation filtering, and frontend participant merging. This
+path is only reachable on macOS 15 or newer, the minimum the native helper
+supports; older hosts keep the browser's screen-share path instead. The
 native helper also becomes responsible for matching the primary call's E2EE
 and publication policy. Its aspect-ratio-preserving H.264 publication includes
 1920-, 1280-, and 640-pixel maximum-edge quality classes at 60, 60, and 30 fps,
