@@ -1613,4 +1613,3 @@ export class SetUserPermissionResponse extends Message<SetUserPermissionResponse
     return proto3.util.equals(SetUserPermissionResponse, a, b);
   }
 }
-

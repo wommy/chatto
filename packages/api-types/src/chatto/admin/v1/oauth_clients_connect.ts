@@ -49,4 +49,3 @@ export const AdminOAuthClientService = {
     },
   }
 } as const;
-

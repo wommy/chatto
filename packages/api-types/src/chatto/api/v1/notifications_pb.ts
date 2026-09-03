@@ -2174,4 +2174,3 @@ export class NotificationPolicyServiceUpdateNotificationPolicyResponse extends M
     return proto3.util.equals(NotificationPolicyServiceUpdateNotificationPolicyResponse, a, b);
   }
 }
-

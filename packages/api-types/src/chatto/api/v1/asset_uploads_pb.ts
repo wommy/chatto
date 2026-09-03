@@ -627,4 +627,3 @@ export class CancelUploadResponse extends Message<CancelUploadResponse> {
     return proto3.util.equals(CancelUploadResponse, a, b);
   }
 }
-

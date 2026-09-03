@@ -106,4 +106,3 @@ export class DeleteSubscriptionResponse extends Message<DeleteSubscriptionRespon
     return proto3.util.equals(DeleteSubscriptionResponse, a, b);
   }
 }
-

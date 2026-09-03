@@ -356,4 +356,3 @@ export class BatchGetRoomMembersResponse extends Message<BatchGetRoomMembersResp
     return proto3.util.equals(BatchGetRoomMembersResponse, a, b);
   }
 }
-

@@ -151,4 +151,3 @@ export class UpdatePresenceResponse extends Message<UpdatePresenceResponse> {
     return proto3.util.equals(UpdatePresenceResponse, a, b);
   }
 }
-

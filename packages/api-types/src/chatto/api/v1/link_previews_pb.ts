@@ -524,4 +524,3 @@ export class FetchLinkPreviewResponse extends Message<FetchLinkPreviewResponse> 
     return proto3.util.equals(FetchLinkPreviewResponse, a, b);
   }
 }
-

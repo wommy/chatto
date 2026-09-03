@@ -71,4 +71,3 @@ export const AssetUploadService = {
     },
   }
 } as const;
-

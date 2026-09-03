@@ -461,4 +461,3 @@ export class DeleteAvatarResponse extends Message<DeleteAvatarResponse> {
     return proto3.util.equals(DeleteAvatarResponse, a, b);
   }
 }
-

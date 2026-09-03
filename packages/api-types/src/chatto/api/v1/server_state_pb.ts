@@ -242,4 +242,3 @@ export class GetRuntimeConfigResponse extends Message<GetRuntimeConfigResponse> 
     return proto3.util.equals(GetRuntimeConfigResponse, a, b);
   }
 }
-

@@ -38,4 +38,3 @@ export const ServerService = {
     },
   }
 } as const;
-

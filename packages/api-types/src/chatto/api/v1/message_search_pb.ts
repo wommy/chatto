@@ -408,4 +408,3 @@ export class GetStatusResponse extends Message<GetStatusResponse> {
     return proto3.util.equals(GetStatusResponse, a, b);
   }
 }
-

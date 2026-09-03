@@ -115,4 +115,3 @@ export const AdminPermissionService = {
     },
   }
 } as const;
-

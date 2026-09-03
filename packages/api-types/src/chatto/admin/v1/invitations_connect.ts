@@ -60,4 +60,3 @@ export const AdminInviteLinkService = {
     },
   }
 } as const;
-

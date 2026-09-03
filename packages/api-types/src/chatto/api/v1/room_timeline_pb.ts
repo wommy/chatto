@@ -962,4 +962,3 @@ export class GetThreadEventsAroundResponse extends Message<GetThreadEventsAround
     return proto3.util.equals(GetThreadEventsAroundResponse, a, b);
   }
 }
-

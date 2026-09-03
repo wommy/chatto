@@ -163,4 +163,3 @@ export class ListNeighborsResponse extends Message<ListNeighborsResponse> {
     return proto3.util.equals(ListNeighborsResponse, a, b);
   }
 }
-

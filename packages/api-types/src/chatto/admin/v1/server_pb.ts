@@ -1193,4 +1193,3 @@ export class DeleteNeighborResponse extends Message<DeleteNeighborResponse> {
     return proto3.util.equals(DeleteNeighborResponse, a, b);
   }
 }
-

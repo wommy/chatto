@@ -122,4 +122,3 @@ export class User extends Message<User> {
     return proto3.util.equals(User, a, b);
   }
 }
-
