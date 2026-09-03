@@ -68,22 +68,56 @@ test('constructs a macOS release plan with the correct command sequence', () => 
 	])
 })
 
-test('constructs a Windows release plan with Compress-Archive and error preference', () => {
+test('constructs a Windows release plan with correct archiveDir, sourceDir, archivePath', () => {
 	const plan = windowsReleasePlan({
 		sourceDir: 'apps/desktop/dist/windows',
 		archivePath: `${ARCHIVE_DIR}/chatto-desktop_0.1.0_Windows_x64.zip`,
 	})
 
-	assert.match(plan, /^\$ErrorActionPreference = 'stop'; /)
-	assert.match(
-		plan,
-		/New-Item -ItemType Directory -Force "\.context\/desktop-release" \| Out-Null; Compress-Archive/,
-	)
-	assert.match(plan, /-Path "apps\/desktop\/dist\/windows"/)
-	assert.match(
-		plan,
-		/-DestinationPath "\.context\/desktop-release\/chatto-desktop_0\.1\.0_Windows_x64\.zip"/,
-	)
+	assert.equal(plan.archiveDir, ARCHIVE_DIR)
+	assert.equal(plan.sourceDir, 'apps/desktop/dist/windows')
+	assert.equal(plan.archivePath, `${ARCHIVE_DIR}/chatto-desktop_0.1.0_Windows_x64.zip`)
+})
+
+test('Windows packaging uses environment variables (prevents command injection)', () => {
+	const originalExitCode = process.exitCode
+	try {
+		let spawnCalls = []
+		const spawnSync = (cmd, args, opts) => {
+			spawnCalls.push({ cmd, args, env: opts.env })
+			return { status: 0 }
+		}
+
+		// Call package-windows, which will build a PowerShell command
+		runPackagingCommand(['package-windows'], { VERSION: '0.1.0', RUNNER_ARCH: 'x64' }, spawnSync)
+
+		// Verify the script uses ONLY $env: variables, NOT interpolated paths.
+		// This is the critical security property: the script source is fixed and safe,
+		// and paths (which may come from untrusted sources like version tags) are passed as data.
+		assert.equal(spawnCalls.length, 1)
+		assert.equal(spawnCalls[0].cmd, 'pwsh')
+		const scriptArg = spawnCalls[0].args[3] // The -Command argument
+
+		// Script must NEVER contain literal paths, only $env: references
+		assert.equal(
+			scriptArg,
+			`$ErrorActionPreference = 'stop'; New-Item -ItemType Directory -Force $env:CHATTO_ARCHIVE_DIR | Out-Null; Compress-Archive -Path $env:CHATTO_SOURCE_DIR -DestinationPath $env:CHATTO_ARCHIVE_PATH`,
+		)
+
+		// Verify paths are passed via environment variables
+		assert.equal(spawnCalls[0].env.CHATTO_ARCHIVE_DIR, '.context/desktop-release')
+		assert.equal(spawnCalls[0].env.CHATTO_SOURCE_DIR, 'apps/desktop/dist/windows')
+		assert.equal(
+			spawnCalls[0].env.CHATTO_ARCHIVE_PATH,
+			'.context/desktop-release/chatto-desktop_0.1.0_Windows_x64.zip',
+		)
+
+		// Security guarantee: even if CHATTO_ARCHIVE_PATH contains `"; Write-Output PWNED; #`,
+		// it cannot execute because the PowerShell script source never interpolates it.
+		// The value is only read as an environment variable at runtime.
+	} finally {
+		process.exitCode = originalExitCode
+	}
 })
 
 test('runs a macOS plan that succeeds when all commands pass', () => {
@@ -236,10 +270,10 @@ test('runs package-macos and returns on codesign failure without throwing', () =
 	}
 })
 
-test('runs package-windows command and spawns pwsh', () => {
+test('runs package-windows command and spawns pwsh with env vars', () => {
 	let spawnCalls = []
 	const spawnSync = (cmd, args, opts) => {
-		spawnCalls.push({ cmd, args })
+		spawnCalls.push({ cmd, args, env: opts.env })
 		if (cmd === 'pwsh') {
 			return { status: 0 }
 		}
@@ -253,8 +287,20 @@ test('runs package-windows command and spawns pwsh', () => {
 	assert.equal(spawnCalls[0].args[0], '-NoProfile')
 	assert.equal(spawnCalls[0].args[1], '-NonInteractive')
 	assert.equal(spawnCalls[0].args[2], '-Command')
-	assert.match(spawnCalls[0].args[3], /Compress-Archive/)
-	assert.match(spawnCalls[0].args[3], /\$ErrorActionPreference = 'stop'/)
+	// Script uses $env: variables, NOT interpolated paths
+	const scriptArg = spawnCalls[0].args[3]
+	assert.match(scriptArg, /\$ErrorActionPreference = 'stop'/)
+	assert.match(scriptArg, /\$env:CHATTO_ARCHIVE_DIR/)
+	assert.match(scriptArg, /\$env:CHATTO_SOURCE_DIR/)
+	assert.match(scriptArg, /\$env:CHATTO_ARCHIVE_PATH/)
+	assert.match(scriptArg, /Compress-Archive/)
+	// Verify paths are in env, not in the command source
+	assert.equal(spawnCalls[0].env.CHATTO_ARCHIVE_DIR, '.context/desktop-release')
+	assert.equal(spawnCalls[0].env.CHATTO_SOURCE_DIR, 'apps/desktop/dist/windows')
+	assert.match(
+		spawnCalls[0].env.CHATTO_ARCHIVE_PATH,
+		/\.context\/desktop-release\/chatto-desktop_0\.1\.0_Windows_x64\.zip/,
+	)
 })
 
 test('runs package-windows and returns on failure without throwing', () => {

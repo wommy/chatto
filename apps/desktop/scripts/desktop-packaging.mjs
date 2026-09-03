@@ -101,23 +101,22 @@ export function macOSReleasePlan(plan) {
 }
 
 /**
- * Construct the command to package a Windows release bundle.
+ * Construct the plan for Windows release packaging.
  *
  * @param {{sourceDir: string, archivePath: string}} plan - The paths to the
  *   source directory and the destination archive.
- * @returns {string} A PowerShell command that creates the destination directory
- *   and then packages the archive with Compress-Archive. The command includes
- *   the `$ErrorActionPreference = 'stop'` preamble and quotes the paths.
+ * @returns {{archiveDir: string, sourceDir: string, archivePath: string}}
+ *   The plan paths. The command is built in runPackagingCommand() using
+ *   environment variables to prevent command injection from external input
+ *   (version tags, etc.). Paths are passed via $env: variables, not
+ *   interpolated into PowerShell source code.
  */
 export function windowsReleasePlan(plan) {
-	const archiveDir = plan.archivePath.substring(0, plan.archivePath.lastIndexOf('/'))
-	return (
-		"$ErrorActionPreference = 'stop'; " +
-		`New-Item -ItemType Directory -Force "${archiveDir}" | Out-Null; ` +
-		'Compress-Archive ' +
-		`-Path "${plan.sourceDir}" ` +
-		`-DestinationPath "${plan.archivePath}"`
-	)
+	return {
+		archiveDir: plan.archivePath.substring(0, plan.archivePath.lastIndexOf('/')),
+		sourceDir: plan.sourceDir,
+		archivePath: plan.archivePath,
+	}
 }
 
 /**
@@ -183,11 +182,26 @@ export function runPackagingCommand(argv, environment, spawnSync) {
 			const sourceDir = 'apps/desktop/dist/windows'
 			const archivePath = `.context/desktop-release/${windowsReleaseArchiveName(version, arch)}`
 
-			const pwshCommand = windowsReleasePlan({ sourceDir, archivePath })
+			const plan = windowsReleasePlan({ sourceDir, archivePath })
 
-			// Spawn pwsh with the complete command.
-			const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', pwshCommand], {
+			// Build a fixed PowerShell script that reads paths from environment variables.
+			// This prevents command injection from archivePath/sourceDir (which can come from
+			// version tags or other external input). Paths are passed via $env: variables,
+			// which PowerShell evaluates at runtime, not as part of the source code.
+			const pwshScript =
+				`$ErrorActionPreference = 'stop'; ` +
+				`New-Item -ItemType Directory -Force $env:CHATTO_ARCHIVE_DIR | Out-Null; ` +
+				`Compress-Archive -Path $env:CHATTO_SOURCE_DIR -DestinationPath $env:CHATTO_ARCHIVE_PATH`
+
+			// Spawn pwsh with the command and pass paths via environment variables.
+			const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', pwshScript], {
 				stdio: 'inherit',
+				env: {
+					...environment,
+					CHATTO_ARCHIVE_DIR: plan.archiveDir,
+					CHATTO_SOURCE_DIR: plan.sourceDir,
+					CHATTO_ARCHIVE_PATH: plan.archivePath,
+				},
 			})
 
 			if (result.error || result.status !== 0) {
