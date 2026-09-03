@@ -37,14 +37,8 @@ spec:
           args:
             - "--jetstream"
             - "--store_dir=/data"
-            - "--auth=$(NATS_TOKEN)"
+            - "-c=/etc/nats-server/nats.conf"
             - "--http_port=8222"
-          env:
-            - name: NATS_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: chatto-config
-                  key: NATS_TOKEN
           ports:
             - containerPort: 4222
               name: client
@@ -59,6 +53,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            # Mount NATS config from Secret to avoid token exposure via /proc/<pid>/cmdline
+            - name: nats-config
+              mountPath: /etc/nats-server
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /healthz
@@ -71,6 +69,13 @@ spec:
               port: 8222
             initialDelaySeconds: 5
             periodSeconds: 5
+      volumes:
+        - name: nats-config
+          secret:
+            secretName: chatto-config
+            items:
+              - key: NATS_CONFIG
+                path: nats.conf
   volumeClaimTemplates:
     - metadata:
         name: data

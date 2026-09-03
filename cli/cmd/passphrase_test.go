@@ -12,25 +12,25 @@ import (
 func TestGetPassphraseExplicitSources(t *testing.T) {
 	t.Run("file trims trailing newline", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "passphrase")
-		if err := os.WriteFile(path, []byte("file-secret\r\n"), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte("file-secret-pass\r\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		got, err := getPassphrase(passphraseInput{file: path}, "unused", true)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "file-secret" {
+		if got != "file-secret-pass" {
 			t.Fatalf("passphrase from file = %q", got)
 		}
 	})
 
 	t.Run("stdin trims trailing newline", func(t *testing.T) {
-		withTestStdin(t, "stdin-secret\n", func() {
+		withTestStdin(t, "stdin-secret-pass\n", func() {
 			got, err := getPassphrase(passphraseInput{stdin: true}, "unused", true)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got != "stdin-secret" {
+			if got != "stdin-secret-pass" {
 				t.Fatalf("passphrase from stdin = %q", got)
 			}
 		})
