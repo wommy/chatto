@@ -125,8 +125,74 @@ jobs:
       - name: Check workflows and shell scripts
         run: mise lint-actions
 
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.check-docs-only.outputs.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check if PR is docs-only
+        id: check-docs-only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # On push events (main or release-*), always run full CI
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "result=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Fetch base ref for PR comparison
+          base_ref="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
+          git fetch --no-tags --depth=1 origin "${base_ref}:refs/remotes/origin/${base_ref}"
+
+          # Get list of changed files
+          changed_files=$(git diff --name-only --no-renames "origin/${base_ref}" HEAD)
+
+          # Allowlist patterns (fail open: any unrecognized file = not docs-only)
+          # Patterns matched:
+          # - docs/** (documentation files)
+          # - **/*.md (markdown files anywhere)
+          # - LICENSES/** (license texts)
+          # - NOTICE (license notice)
+          # - REUSE.toml (REUSE configuration)
+          # Empty diff defaults to false (fail open for safety).
+
+          if [[ -z "$changed_files" ]]; then
+            # Empty diff is unrecognized, default to not docs-only
+            docs_only="false"
+          else
+            docs_only="true"
+            while IFS= read -r file; do
+              # Skip empty lines
+              [[ -z "$file" ]] && continue
+
+              # Check if file matches allowlist
+              if [[ "$file" =~ ^docs/ ]] || \
+                 [[ "$file" =~ \.md$ ]] || \
+                 [[ "$file" =~ ^LICENSES/ ]] || \
+                 [[ "$file" == "NOTICE" ]] || \
+                 [[ "$file" == "REUSE.toml" ]]; then
+                continue
+              else
+                # File doesn't match allowlist - not docs-only
+                docs_only="false"
+                echo "::notice::Not docs-only: ${file}"
+                break
+              fi
+            done <<< "$changed_files"
+          fi
+
+          echo "result=$docs_only" >> "$GITHUB_OUTPUT"
+
   desktop:
     name: desktop (${{ matrix.platform }})
+    if: needs.changes.outputs.docs_only != 'true'
+    needs: [changes]
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -185,6 +251,8 @@ jobs:
           retention-days: 7
 
   desktop-macos-capture:
+    if: needs.changes.outputs.docs_only != 'true'
+    needs: [changes]
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -451,6 +519,8 @@ jobs:
           retention-days: 14
 
   test-e2e-performance:
+    if: needs.changes.outputs.docs_only != 'true'
+    needs: [changes]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
