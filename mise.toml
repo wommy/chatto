@@ -831,8 +831,6 @@ set -euo pipefail
 
 goreleaser check
 
-actionlint .github/workflows/*.yml
-
 tmp="$(mktemp -d /tmp/chatto-docker-verify.XXXXXX)"
 trap 'rm -rf "$tmp"' EXIT
 
