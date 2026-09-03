@@ -53,7 +53,25 @@ func (s *HTTPServer) setupRealtimeAPI() {
 		s.metrics = newProcessMetrics()
 	}
 	if s.realtimeCatchUps == nil {
-		s.realtimeCatchUps = newRealtimeCatchUpAdmission()
+		cap := s.config.Webserver.RealtimeSteadyStateConnectionCapOrDefault()
+		if cap > 0 {
+			s.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(
+				realtimeCatchUpMaxConcurrent,
+				realtimeCatchUpRateBurst,
+				realtimeCatchUpRateRefillInterval,
+				time.Now,
+				cap,
+			)
+		} else {
+			// cap of 0 means unbounded; create a very high limit
+			s.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(
+				realtimeCatchUpMaxConcurrent,
+				realtimeCatchUpRateBurst,
+				realtimeCatchUpRateRefillInterval,
+				time.Now,
+				1000000,
+			)
+		}
 	}
 
 	writeBufferPool := &sync.Pool{}
@@ -512,6 +530,20 @@ func (s *HTTPServer) serveRealtimeWebSocket(parent context.Context, conn *websoc
 	}
 	cancelCatchUp()
 	finishCatchUp()
+
+	// Acquire a steady-state connection slot for this user before entering the
+	// long-lived event-delivery loop. This prevents any single user from opening
+	// an unbounded number of concurrent sockets once catch-up completes.
+	releaseSteadyStateConnection, steadyStateErr := s.realtimeCatchUps.acquireSteadyStateConnection(user.Id)
+	if steadyStateErr != nil {
+		s.metrics.realtimeSteadyStateConnectionRejected()
+		_ = writeFrame(&realtimev1.RealtimeServerFrame{Frame: &realtimev1.RealtimeServerFrame_Close{
+			Close: &realtimev1.RealtimeClose{Code: steadyStateErr.code, Message: "concurrent connection limit exceeded", Reconnect: true, RetryAfterMs: uint32(steadyStateErr.retryAfter.Milliseconds())},
+		}})
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, steadyStateErr.code), time.Now().Add(time.Second))
+		return
+	}
+	defer releaseSteadyStateConnection()
 
 	for {
 		select {
