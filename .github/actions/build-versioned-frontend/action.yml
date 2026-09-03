@@ -21,7 +21,11 @@ runs:
         if [[ "${{ inputs.task-cache-read-only }}" == "true" ]]; then
           cache_flags="--task-cache read-only $cache_flags"
         fi
-        mise build-frontend $cache_flags
+        # mise's flags must precede the task name (`mise run [FLAGS] [TASK]`);
+        # placing them after, as `mise build-frontend $cache_flags` did, passes
+        # them through as positional args to the task's last shell command
+        # instead of consuming them, breaking tools/prepare-embedded-frontend.sh.
+        mise run $cache_flags build-frontend
 
     - name: Verify frontend build version
       shell: bash

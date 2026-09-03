@@ -747,7 +747,7 @@ jobs:
           git -C "${tap_dir}" config user.name "github-actions[bot]"
           git -C "${tap_dir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git -C "${tap_dir}" diff --quiet -- Formula/chatto.rb; then
+          if [[ -z "$(git -C "${tap_dir}" status --porcelain -- Formula/chatto.rb)" ]]; then
             echo "Homebrew tap already contains Chatto ${VERSION}."
             exit 0
           fi
