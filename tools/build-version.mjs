@@ -12,11 +12,11 @@
  * ## Why this is a module
  *
  * Deleting this module reveals the derivation at three call sites in two
- * places: the shell expressions in release.yml and a future call in ci.yml.
+ * places: the shell expressions in release.yml and the existing call in ci.yml.
  * This is a structural move: the three expressions reappear as
  * `"${development_version}+${sha:0:12}"` and similar (issue #56 "Deletion
  * test"). This module makes the duplication visible and gives the pattern a
- * tested home.
+ * tested home. Future work: migrate ci.yml to call the module.
  *
  * ## Why this module is self-contained
  *
@@ -81,10 +81,11 @@ export function buildVersion(base, sha) {
  *   absent.
  */
 export function parseArgs(argv) {
-	// `strict` rejects an unknown option and, with it, a positional argument.
+	// `strict: true` rejects an unknown option and, with it, a positional argument.
 	// Both give a TypeError, which the command line reports as a usage error.
 	const { values } = nodeParseArgs({
 		args: argv,
+		strict: true,
 		options: {
 			base: { type: 'string' },
 			sha: { type: 'string' },

@@ -163,15 +163,6 @@ test('the command writes the derived version to stdout', () => {
 	assert.equal(stdout, '0.5.0-alpha.5+abcdef123456\n')
 })
 
-test('the command outputs one line to stdout on success', () => {
-	const result = execFileSync(
-		process.execPath,
-		[modulePath, '--base', '0.5.0', '--sha', 'abc123'],
-		{ encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
-	)
-	assert.equal(result, '0.5.0+abc123\n')
-})
-
 test('the command exits with code 1 on missing --base', () => {
 	assert.throws(
 		() => execFileSync(process.execPath, [modulePath, '--sha', 'abc123'], { stdio: 'pipe' }),
@@ -202,8 +193,19 @@ test('SHORT_SHA_LENGTH is 12', () => {
 
 test('the module imports only node: built-ins', () => {
 	const source = readFileSync(modulePath, 'utf8')
-	const importMatches = [...source.matchAll(/import\s+.*\s+from\s+["']([^"']+)["']/g)]
-	const specifiers = importMatches.map(match => match[1])
+	// Match: import X from "...", import { X } from "...", and dynamic import(...)
+	const importMatches = [
+		...source.matchAll(
+			/import\s*(?:\{[^}]*\}|\w+)*\s+from\s+["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)/gs,
+		),
+	]
+	const specifiers = importMatches.map(match => match[1] || match[2]).filter(Boolean)
+
+	// Ensure the check actually engaged by finding at least the two expected node: imports
+	assert(
+		specifiers.length >= 2,
+		`Expected to find at least 2 imports, found ${specifiers.length}. Regex may be broken.`,
+	)
 
 	for (const specifier of specifiers) {
 		assert.match(
