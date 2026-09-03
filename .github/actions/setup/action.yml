@@ -22,7 +22,7 @@ runs:
   steps:
     - name: Cache Go modules
       if: inputs.install-cli-deps == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/go/pkg/mod
         key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}
@@ -31,7 +31,7 @@ runs:
 
     - name: Restore Go build artifacts
       if: inputs.install-cli-deps == 'true' && inputs.save-go-build-cache != 'true'
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.cache/go-build
         key: go-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-${{ github.sha }}
@@ -41,7 +41,7 @@ runs:
 
     - name: Restore and save Go build artifacts
       if: inputs.install-cli-deps == 'true' && inputs.save-go-build-cache == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.cache/go-build
         # Go's build cache is content-addressed. Restore the newest compatible
@@ -59,7 +59,7 @@ runs:
     # pnpm is not available as a mise plugin, so install via npm (comes with Node)
     - name: Install pnpm
       if: inputs.install-frontend-deps == 'true'
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
 
     - name: Resolve pnpm store path
       if: inputs.install-frontend-deps == 'true'
@@ -69,7 +69,7 @@ runs:
 
     - name: Cache pnpm store
       if: inputs.install-frontend-deps == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
         key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'authling/pnpm-lock.yaml') }}
