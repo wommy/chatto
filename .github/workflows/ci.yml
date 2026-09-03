@@ -88,20 +88,7 @@ jobs:
 
           for arch in amd64 arm64; do
             context=".context/ci/docker/linux-${arch}"
-            mkdir -p "$context/docker" "$context/LICENSES"
-            cp docker/Dockerfile.goreleaser "$context/Dockerfile"
-            cp docker/docker-entrypoint.sh "$context/docker/docker-entrypoint.sh"
-            cp docker/nats-wrapper.sh "$context/docker/nats-wrapper.sh"
-            cp LICENSES/AGPL-3.0-or-later.txt "$context/LICENSES/AGPL-3.0-or-later.txt"
-            cp NOTICE "$context/NOTICE"
-            (
-              cd cli
-              # Chatto does not expose Gin's MessagePack binding; omit its large codec.
-              CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
-                -tags=nomsgpack \
-                -ldflags="-s -w -X main.Version=${VERSION}" \
-                -o "../$context/chatto" .
-            )
+            GOOS=linux GOARCH="$arch" VERSION="$VERSION" CONTEXT_DIR="$context" mise run image-context-build
           done
 
       - name: Upload production image contexts
