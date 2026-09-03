@@ -19,26 +19,26 @@ runs:
       run: |
         set -euo pipefail
 
+        err="${RUNNER_TEMP:-.}/guard-inspect.err"
+
         # Fetch the current manifest from the registry.
         # Use --raw to get unprocessed JSON directly from the registry.
-        # Exit code 1 for both "tag doesn't exist" and other errors.
-        MANIFEST_JSON=$(docker buildx imagetools inspect --raw "$IMAGE" 2>&1) || {
-          EXIT_CODE=$?
-          STDERR="$MANIFEST_JSON"
+        # Capture stderr separately to avoid corrupting JSON if buildx emits warnings.
+        if ! MANIFEST_JSON=$(docker buildx imagetools inspect --raw "$IMAGE" 2>"$err"); then
           # Check if this is a "tag not found" error (safe to push).
-          if echo "$STDERR" | grep -qE 'not found|manifest unknown|MANIFEST_UNKNOWN'; then
+          if grep -qiE 'not found|manifest unknown' "$err"; then
             echo "Tag does not exist in registry (safe to push)"
             exit 0
           fi
           # Any other error (auth, network, etc.) is a failure.
           echo "::error::Failed to inspect manifest for $IMAGE"
-          echo "Error: $STDERR"
+          cat "$err"
           exit 1
-        }
+        fi
 
-        # Extract existing real platforms from the manifest (filter out attestations).
+        # Extract existing real platforms from the manifest (filter out attestations and entries without platform).
         # Bare manifests have no .manifests array, so jq returns empty.
-        EXISTING_PLATFORMS=$(echo "$MANIFEST_JSON" | jq -r 'if .manifests then (.manifests[] | select(.platform.os != "unknown") | "\(.platform.os)/\(.platform.architecture)") else empty end' | sort)
+        EXISTING_PLATFORMS=$(jq -r 'if .manifests then (.manifests[] | select(.platform != null and .platform.os != "unknown") | "\(.platform.os)/\(.platform.architecture)") else empty end' <<<"$MANIFEST_JSON" | sort)
 
         # If no existing platforms found, manifest is bare or doesn't have index structure.
         # This is safe to push over (no multi-platform to degrade).
@@ -51,10 +51,15 @@ runs:
         IFS=',' read -ra PUSH_ARRAY <<< "$PLATFORMS_TO_PUSH"
         PUSH_PLATFORMS=$(printf '%s\n' "${PUSH_ARRAY[@]}" | sort)
 
+        # Format platforms for display.
+        existing_line=$(echo "$EXISTING_PLATFORMS" | tr '\n' ' ')
+        push_line=$(echo "$PUSH_PLATFORMS" | tr '\n' ' ')
+
         # Check for any existing platform not in the new push (set difference).
         DROPPED=$(comm -23 <(echo "$EXISTING_PLATFORMS") <(echo "$PUSH_PLATFORMS")) || true
 
         if [[ -n "$DROPPED" ]]; then
+          dropped_line=$(echo "$DROPPED" | tr '\n' ' ')
           echo "::error::Cannot push $PLATFORMS_TO_PUSH: would downgrade multi-platform manifest"
           echo "Existing platforms in $IMAGE:"
           echo "$EXISTING_PLATFORMS" | sed 's/^/  /'
@@ -69,9 +74,9 @@ runs:
             echo "### Build Image Guard Failed"
             echo ""
             echo "The manifest at **\`$IMAGE\`** already exists as multi-platform:"
-            echo "- Existing: $EXISTING_PLATFORMS | tr '\n' ' '"
-            echo "- Push includes: $PUSH_PLATFORMS | tr '\n' ' '"
-            echo "- Would drop: $DROPPED | tr '\n' ' '"
+            echo "- Existing: $existing_line"
+            echo "- Push includes: $push_line"
+            echo "- Would drop: $dropped_line"
             echo ""
             echo "This prevents silent downgrade to $PLATFORMS_TO_PUSH."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -83,6 +88,6 @@ runs:
           echo "### Build Image Guard Passed"
           echo ""
           echo "Tag **\`$IMAGE\`** is safe to push:"
-          echo "- Existing platforms: $EXISTING_PLATFORMS | tr '\n' ' '"
-          echo "- Push includes: $PUSH_PLATFORMS | tr '\n' ' '"
+          echo "- Existing platforms: $existing_line"
+          echo "- Push includes: $push_line"
         } >> "$GITHUB_STEP_SUMMARY"
