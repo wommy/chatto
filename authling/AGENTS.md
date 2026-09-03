@@ -210,6 +210,15 @@ mise build
 mise authling run
 ```
 
+If `mise` reports that `authling/mise.toml` is not trusted, run `mise trust`
+from the `authling/` directory. Running `mise trust` at the repository root does
+not trust `authling/mise.toml`.
+
+```sh
+cd authling
+mise trust
+```
+
 These tasks run with `GOWORK=off` as well as in the repository workspace so
 undeclared or unreleased cross-module dependencies cannot be hidden by
 `go.work`. Do not add Authling tasks to the repository-root `mise.toml`;
