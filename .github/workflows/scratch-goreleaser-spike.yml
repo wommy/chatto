@@ -1,0 +1,51 @@
+name: scratch-goreleaser-spike
+
+on:
+  pull_request:
+    branches: [spike164-target]
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          install-frontend-deps: "false"
+
+      - name: goreleaser check
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+
+      - name: goreleaser release --snapshot
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean --skip=docker,sign,notarize,announce,sbom
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show homebrew output
+        shell: bash
+        run: |
+          echo "=== dist/homebrew tree ==="
+          find dist/homebrew -type f 2>&1 || echo "NO dist/homebrew DIRECTORY"
+          echo "=== dist top level ==="
+          ls dist/ 2>&1 || true
+          for f in dist/homebrew/Casks/*.rb dist/homebrew/Formula/*.rb; do
+            if [[ -f "$f" ]]; then
+              echo "=== $f ==="
+              cat "$f"
+            fi
+          done
