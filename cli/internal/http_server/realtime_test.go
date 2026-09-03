@@ -1181,7 +1181,7 @@ func TestRealtimeWebSocketBoundsWholeCatchUpDuration(t *testing.T) {
 
 func TestRealtimeWebSocketRateLimitsStaleCursorReuse(t *testing.T) {
 	env := setupWebSocketTestServer(t)
-	env.httpServer.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(2, 1, time.Hour, time.Now)
+	env.httpServer.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(2, 1, time.Hour, time.Now, 30)
 	user, err := env.core.CreateUser(env.ctx, core.SystemActorID, "rt-catch-up-rate", "RT Catch Up Rate", "password123")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
@@ -1241,7 +1241,7 @@ func TestRealtimeWebSocketRateLimitsStaleCursorReuse(t *testing.T) {
 
 func TestRealtimeWebSocketAllowsCurrentBoundaryReconnectAfterRateLimitBurst(t *testing.T) {
 	env := setupWebSocketTestServer(t)
-	env.httpServer.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(2, 1, time.Hour, time.Now)
+	env.httpServer.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(2, 1, time.Hour, time.Now, 30)
 	user, err := env.core.CreateUser(env.ctx, core.SystemActorID, "rt-current-reconnect", "RT Current Reconnect", "password123")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
@@ -4015,7 +4015,7 @@ func TestRealtimeWebSocketConcurrentSmallFramesStayUncompressed(t *testing.T) {
 	const connectionCount = 16
 
 	env := setupWebSocketTestServer(t)
-	env.httpServer.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(connectionCount, connectionCount, time.Minute, time.Now)
+	env.httpServer.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(connectionCount, connectionCount, time.Minute, time.Now, 30)
 	user, err := env.core.CreateUser(env.ctx, core.SystemActorID, "rt-concurrent-compression", "RT Concurrent Compression", "password123")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
