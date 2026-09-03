@@ -2,6 +2,23 @@
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
-    "code-simplifier@claude-plugins-official": true
+    "code-simplifier@claude-plugins-official": true,
+    "mattpocock-skills@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/mattpocock-skills.sh"
+          }
+        ]
+      }
+    ]
   }
 }
