@@ -193,18 +193,20 @@ test('SHORT_SHA_LENGTH is 12', () => {
 
 test('the module imports only node: built-ins', () => {
 	const source = readFileSync(modulePath, 'utf8')
-	// Match: import X from "...", import { X } from "...", and dynamic import(...)
+	// Match all import forms: named/default/namespace/mixed with from, bare side-effect, and dynamic
 	const importMatches = [
 		...source.matchAll(
-			/import\s*(?:\{[^}]*\}|\w+)*\s+from\s+["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)/gs,
+			/import\s+(?:[\w$]+|\*\s+as\s+[\w$]+|\{[^}]*\}|[\w$]+\s*,\s*\{[^}]*\})\s+from\s+["']([^"']+)["']/gs,
 		),
+		...source.matchAll(/import\s+["']([^"']+)["']/gs),
+		...source.matchAll(/import\s*\(\s*["']([^"']+)["']\s*\)/gs),
 	]
-	const specifiers = importMatches.map(match => match[1] || match[2]).filter(Boolean)
+	const specifiers = importMatches.map(match => match[1]).filter(Boolean)
 
 	// Ensure the check actually engaged by finding at least the two expected node: imports
 	assert(
-		specifiers.length >= 2,
-		`Expected to find at least 2 imports, found ${specifiers.length}. Regex may be broken.`,
+		importMatches.length >= 2,
+		`Expected to find at least 2 imports, found ${importMatches.length}. Regex may be broken.`,
 	)
 
 	for (const specifier of specifiers) {
