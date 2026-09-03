@@ -293,14 +293,19 @@ the expiry cooldown. Expiry failure does not stop publication checks.
 ### Each projection owns its replay frontier
 
 Each projection has its own contract ID, pointer, current/previous
-generations, cutoff, and fallback behavior. Most initial codecs use semantic
-token `v1`; Assets, Room Timeline, and the privacy-separated user profile codec
-use `v2`. The stored contract ID appends the current schema fingerprint.
+generations, cutoff, and fallback behavior. Each codec's semantic token
+increments independently as its own schema or restore semantics change; as of
+this writing, several codecs remain on `v1`, Config, Mentionables, and the
+Notification family use `v2`, Assets uses `v3`, the privacy-separated user
+profile codec uses `v4`, and Room Timeline uses `v7`. The codec's own
+`snapshotContractID` call in `cli/internal/core/` is the current source of
+truth; this record does not track every later bump. The stored contract ID
+appends the current schema fingerprint.
 
-The initial 0.5 Threads implementation uses semantic token `v1`. It does not
-import pre-EVT `thread_follow.*` records from `RUNTIME_STATE`; follow state is
-rebuilt only from durable `ThreadFollowedEvent` and `ThreadUnfollowedEvent`
-facts.
+The initial 0.5 Threads implementation used semantic token `v1` and has since
+moved to `v2`. It does not import pre-EVT `thread_follow.*` records from
+`RUNTIME_STATE`; follow state is rebuilt only from durable `ThreadFollowedEvent`
+and `ThreadUnfollowedEvent` facts.
 
 Each eligible projection loads its snapshot independently. A successful restore
 starts that projection's ordered source-log consumer at one greater than its own
@@ -369,8 +374,13 @@ configure S3 lifecycle expiry disable Chatto's redundant pass with
 - Reusing the asset backend requires a strict namespace and backup boundary so
   derived internal objects are not mistaken for user assets. Backups may carry
   them, but never depend on them.
-- The existing no-op `Projection.Snapshot` and `Restore` methods gain a concrete
-  orchestration contract without requiring every projection to implement them.
+- Portable snapshot persistence is opt-in: a projection implements it by
+  satisfying the separate `SnapshotProjection` interface. The base projection
+  contract only declares consumed subjects and event application; it does not
+  require snapshot or restore methods from every projection. See
+  [ADR-054](ADR-054-optional-projection-persistence.md), which replaced an
+  earlier base contract that required every projection to expose snapshot
+  methods.
 - Snapshot codecs become maintained projection interfaces. Changes to
   projection semantics require an explicit compatibility decision.
 - `UserAuthProjection` still cold-replays its focused subject families. Startup

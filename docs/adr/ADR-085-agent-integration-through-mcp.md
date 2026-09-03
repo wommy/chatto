@@ -148,3 +148,21 @@ This change adds an integration endpoint but does not change the public
 ConnectRPC discovery schema. An MCP client uses the server's public origin with
 the `/mcp` path. The missing feature does not affect ConnectRPC, realtime,
 browser, desktop, or bot API behavior.
+
+## Related
+
+- [ADR-024](ADR-024-opaque-bearer-tokens-for-cross-origin-auth.md) — Opaque
+  bearer tokens for cross-origin auth. Bot API keys and MCP OAuth access
+  tokens are the same opaque bearer credential model.
+- [ADR-045](ADR-045-public-api-stability-tiers.md) — Public API stability
+  tiers. Defines what "experimental" means for the new MCP endpoint and its
+  tool contracts.
+- [ADR-046](ADR-046-typed-runtime-credentials.md) — Typed runtime
+  credentials. MCP access tokens are stored and validated as typed runtime
+  credentials like other bearer sessions.
+- [ADR-071](ADR-071-cimd-identified-open-oauth-clients.md) — CIMD-identified
+  open OAuth clients. Human MCP clients authenticate through the same OAuth
+  Authorization Code flow with PKCE and CIMD client identity.
+- [ADR-079](ADR-079-renewable-bearer-sessions.md) — Renewable bearer
+  sessions. MCP OAuth access tokens use the same renewable-session mechanism
+  as other delegated bearer credentials.

@@ -152,6 +152,8 @@ Chatto's RBAC model. Read top-to-bottom — terms build on each other.
 
 **Scope** — Tier at which a permission is configured: `server`, `group`, or `room`. Each direct user or named role contributes only its nearest explicit decision (room, then group, then server). Denies win across those subject decisions; an allow must be at least as specific as an `everyone` deny to override the baseline. See [`cli/AGENTS.md`](../cli/AGENTS.md).
 
+**`message.read`** — Permission that gates broad message content in channel rooms: timelines, threads, pinned messages, search, attachment metadata and bytes, message-derived notifications, thread-follow state, unread state, typing indicators, and realtime message delivery. Channel-room membership is necessary but no longer sufficient for this content; DM content stays governed by membership alone. Humans and bots use the same permission, but a bot's grant is effective only while its owner also holds `message.read` at the same scope. See [ADR-080](adr/ADR-080-explicit-message-read-permissions.md).
+
 **Interaction relationship** — Derived account-to-thread authorization relationship created when the account authors a channel-room root or another account directly mentions it. With room membership and `message.read-interactions`, it permits the complete thread. See [FDR-039](fdr/FDR-039-message-access-and-interactions.md) and [ADR-082](adr/ADR-082-derive-thread-interactions-from-message-facts.md).
 
 **User-level decision** — Permission grant or deny attached directly to a user, not via a role. It participates alongside named-role decisions, so a user deny blocks named-role grants while a named-role deny blocks a user grant. Used for suspensions and ad-hoc grants.

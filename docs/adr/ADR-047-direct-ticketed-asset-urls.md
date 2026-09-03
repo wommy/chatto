@@ -2,6 +2,8 @@
 
 **Date:** 2026-07-05
 
+**Status:** Accepted
+
 ## Context
 
 Chatto browser clients need to render room attachments from the origin server
@@ -49,3 +51,16 @@ ADR-039 is superseded.
   stable asset request first, then may return a short-lived presigned object URL
   for video, audio, or large passive files. Active document types still stream
   through Chatto so sandbox headers are applied.
+
+## Related
+
+- [ADR-021](ADR-021-dual-asset-storage.md) — Dual asset storage (storage
+  backend selection for the served asset bytes)
+- [ADR-023](ADR-023-hmac-signed-image-transform-urls.md) — HMAC-signed image
+  transform URLs (same signing primitive, layered for transforms)
+- [ADR-032](ADR-032-signed-attachment-locator-urls.md) — Self-describing
+  signed attachment URLs (predecessor design)
+- [ADR-039](ADR-039-service-worker-virtual-asset-urls.md) — Service Worker
+  virtual asset URLs (superseded by this record)
+- [FDR-008](../fdr/FDR-008-file-attachments-and-video.md) — File attachments
+  & video processing

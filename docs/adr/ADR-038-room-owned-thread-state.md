@@ -117,3 +117,10 @@ lifecycle semantics that no longer fit a room-owned consistency boundary.
 - A future split into thread aggregates remains possible, but it would be a
   deliberate migration of the room-owned thread event model rather than an
   accidental mixed ownership model.
+
+## Related
+
+- [ADR-082](ADR-082-derive-thread-interactions-from-message-facts.md) —
+  Derive thread interactions from message facts. It derives interaction
+  relationships inside the Threads projection this record defines and extends
+  its snapshot with a message-to-thread index.
