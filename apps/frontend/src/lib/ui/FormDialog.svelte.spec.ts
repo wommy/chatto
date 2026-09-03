@@ -40,7 +40,9 @@ describe('FormDialog', () => {
       }
     });
 
-    q(container, 'form')?.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    q(container, 'form')?.dispatchEvent(
+      new SubmitEvent('submit', { bubbles: true, cancelable: true })
+    );
 
     expect(onsubmit).toHaveBeenCalledOnce();
   });

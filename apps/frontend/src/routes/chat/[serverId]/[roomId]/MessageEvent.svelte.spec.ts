@@ -169,7 +169,9 @@ describe('MessageEvent action model integration', () => {
       event: messageEvent({ id: 'thread-reply', threadRootEventId: 'thread-root' }),
       permalinkThreadRootEventId: 'thread-root'
     });
-    await expect.element(q(rendered.container, '.echoed-to-channel-marker')).not.toBeInTheDocument();
+    await expect
+      .element(q(rendered.container, '.echoed-to-channel-marker'))
+      .not.toBeInTheDocument();
 
     const echo = messageEvent({
       id: 'echo-wrapper',
@@ -177,7 +179,9 @@ describe('MessageEvent action model integration', () => {
       echoFromThreadRootEventId: 'thread-root'
     });
     await rendered.rerender({ event: echo, permalinkThreadRootEventId: null });
-    await expect.element(q(rendered.container, '.echoed-to-channel-marker')).not.toBeInTheDocument();
+    await expect
+      .element(q(rendered.container, '.echoed-to-channel-marker'))
+      .not.toBeInTheDocument();
   });
 
   it('orders and constrains reply actions for each threading mode', async () => {

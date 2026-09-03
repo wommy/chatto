@@ -77,10 +77,7 @@ export type MessageComposerProps = {
   createThreadDefault?: boolean;
   threadsEncouraged?: boolean;
   getRecentThreadRootCandidate?: () => RecentThreadRootCandidate | null;
-  onThreadMessageSent?: (
-    threadRootEventId: string,
-    event: TimelineEventView | null
-  ) => void;
+  onThreadMessageSent?: (threadRootEventId: string, event: TimelineEventView | null) => void;
 };
 
 type MessageComposerDependencies = {

@@ -147,5 +147,5 @@ scroll container; children render inside the scroll container.
   overlay={fades}
   {...rest}
 >
-    {@render children()}
+  {@render children()}
 </ScrollArea>

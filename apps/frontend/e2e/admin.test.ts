@@ -243,7 +243,6 @@ test.describe('Admin Users Page', () => {
     // Should see the total count
     await adminPage.expectUserCountVisible();
   });
-
 });
 
 test.describe('Admin System Page', () => {

@@ -1153,8 +1153,9 @@ describe('VoiceCallState', () => {
 
     await state.join('wss://livekit.example.test', 'R1');
 
-    expect(state.participants.find((participant) => participant.identity === 'automation-bot'))
-      .toMatchObject({ login: 'automation_bot', isBot: true });
+    expect(
+      state.participants.find((participant) => participant.identity === 'automation-bot')
+    ).toMatchObject({ login: 'automation_bot', isBot: true });
   });
 
   it('merges a companion screen-share publisher into its owning participant', async () => {

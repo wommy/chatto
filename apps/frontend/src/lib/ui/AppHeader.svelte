@@ -29,7 +29,8 @@
     serverRegistry.servers.reduce(
       (sum, instance) =>
         sum +
-        (serverRegistry.tryGetStore(instance.id)?.notifications.importantUnreadNotificationCount ?? 0),
+        (serverRegistry.tryGetStore(instance.id)?.notifications.importantUnreadNotificationCount ??
+          0),
       0
     )
   );

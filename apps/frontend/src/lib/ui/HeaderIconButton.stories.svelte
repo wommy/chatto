@@ -50,7 +50,11 @@
     <HeaderIconButton icon="icon-[mdi--arrow-expand-left]" label="Maximize call" />
     <HeaderIconButton icon="icon-[mdi--arrow-collapse-right]" label="Minimize call" tone="active" />
     <HeaderIconButton icon="icon-[mdi--monitor-share]" label="Fullscreen call" />
-    <HeaderIconButton icon="icon-[mdi--fullscreen-exit]" label="Exit fullscreen call" tone="active" />
+    <HeaderIconButton
+      icon="icon-[mdi--fullscreen-exit]"
+      label="Exit fullscreen call"
+      tone="active"
+    />
     <HeaderIconButton icon="icon-[uil--times]" label="Close" iconSize="lg" />
   </div>
 </Story>

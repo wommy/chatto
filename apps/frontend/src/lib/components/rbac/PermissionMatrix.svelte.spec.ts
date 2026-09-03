@@ -134,9 +134,9 @@ describe('PermissionMatrix', () => {
         (permission) => permission.textContent
       )
     ).toEqual(['room.manage', 'server.manage', 'user.delete-any', 'user.delete-self']);
-    expect(
-      container.querySelector('[data-testid="permission-name"]')?.getAttribute('title')
-    ).toBe("Edit a room's settings and permissions, and delete rooms");
+    expect(container.querySelector('[data-testid="permission-name"]')?.getAttribute('title')).toBe(
+      "Edit a room's settings and permissions, and delete rooms"
+    );
     expect(container.querySelector('button[aria-label^="About "]')).toBeNull();
   });
 

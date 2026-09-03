@@ -208,7 +208,9 @@ describe('Dialog', () => {
       const defaultAction = vi.fn();
       q(container, '[data-dialog-default]')?.addEventListener('click', defaultAction);
 
-      q(container, 'dialog')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      q(container, 'dialog')?.dispatchEvent(
+        new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' })
+      );
 
       expect(defaultAction).toHaveBeenCalledOnce();
     });
@@ -244,7 +246,9 @@ describe('Dialog', () => {
       const defaultAction = vi.fn();
       q(container, '[data-dialog-default]')?.addEventListener('click', defaultAction);
 
-      q(container, 'dialog')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+      q(container, 'dialog')?.dispatchEvent(
+        new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' })
+      );
 
       expect(defaultAction).not.toHaveBeenCalled();
     });

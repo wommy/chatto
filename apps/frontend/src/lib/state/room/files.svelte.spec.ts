@@ -1,10 +1,7 @@
 import { Timestamp } from '@bufbuild/protobuf';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Message, MessageAttachment } from '@chatto/api-types/api/v1/message_types_pb';
-import {
-  RoomMessagePosted,
-  RoomTimelineEvent
-} from '@chatto/api-types/api/v1/room_timeline_pb';
+import { RoomMessagePosted, RoomTimelineEvent } from '@chatto/api-types/api/v1/room_timeline_pb';
 import type { ServerConnection } from '$lib/state/server/serverConnection.svelte';
 import type { RefreshedAttachmentUrls } from '$lib/attachments/attachmentUrls';
 import { RoomFilesStore, type RoomFileItem } from './files.svelte';
@@ -283,11 +280,15 @@ describe('RoomFilesStore', () => {
       });
     const store = new RoomFilesStore(serverConnection(), 'room-1');
     const release = store.retain();
-    await vi.waitFor(() => expect(store.items.map((item) => item.attachment.id)).toEqual(['att-1']));
+    await vi.waitFor(() =>
+      expect(store.items.map((item) => item.attachment.id)).toEqual(['att-1'])
+    );
 
     store.reset({ rehydrateRetained: true });
 
-    await vi.waitFor(() => expect(store.items.map((item) => item.attachment.id)).toEqual(['att-2']));
+    await vi.waitFor(() =>
+      expect(store.items.map((item) => item.attachment.id)).toEqual(['att-2'])
+    );
     expect(attachmentMocks.listRoomAttachments).toHaveBeenCalledTimes(2);
     release();
   });
@@ -311,7 +312,9 @@ describe('RoomFilesStore', () => {
 
     store.restoreAfterAccessGrant();
 
-    await vi.waitFor(() => expect(store.items.map((item) => item.attachment.id)).toEqual(['att-2']));
+    await vi.waitFor(() =>
+      expect(store.items.map((item) => item.attachment.id)).toEqual(['att-2'])
+    );
     expect(attachmentMocks.listRoomAttachments).toHaveBeenCalledTimes(2);
     release();
   });

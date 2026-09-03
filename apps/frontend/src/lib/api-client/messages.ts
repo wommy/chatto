@@ -74,11 +74,12 @@ export function createMessageAPI(config: MessageAPIConfig) {
           { headers: headers() }
         );
 
-        const users = await timelineUsersForMessages(config, response.message ? [response.message] : []);
+        const users = await timelineUsersForMessages(
+          config,
+          response.message ? [response.message] : []
+        );
         return {
-          event: response.message
-            ? messageToTimelineEvent(response.message, users)
-            : null
+          event: response.message ? messageToTimelineEvent(response.message, users) : null
         };
       } catch (err) {
         return handleAuthError(config, err);
@@ -105,12 +106,13 @@ export function createMessageAPI(config: MessageAPIConfig) {
         const response = await client.updateMessage(request, {
           headers: headers()
         });
-        const users = await timelineUsersForMessages(config, response.message ? [response.message] : []);
+        const users = await timelineUsersForMessages(
+          config,
+          response.message ? [response.message] : []
+        );
         return {
           updated: true,
-          event: response.message
-            ? messageToTimelineEvent(response.message, users)
-            : null
+          event: response.message ? messageToTimelineEvent(response.message, users) : null
         };
       } catch (err) {
         return handleAuthError(config, err);

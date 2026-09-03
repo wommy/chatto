@@ -33,8 +33,7 @@ export type RoomMovePlan = {
 };
 
 export type StoreResult<T extends object = object> =
-  | ({ ok: true } & T)
-  | { ok: false; error: string };
+  ({ ok: true } & T) | { ok: false; error: string };
 
 export type RoomMoveFlushResult =
   | {

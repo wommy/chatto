@@ -222,9 +222,7 @@
     </p>
 
     {#snippet footer()}
-      <Button variant="secondary" onclick={() => (dialogWithFooterVisible = false)}>
-        Cancel
-      </Button>
+      <Button variant="secondary" onclick={() => (dialogWithFooterVisible = false)}>Cancel</Button>
       <Button variant="secondary" onclick={() => (dialogWithFooterVisible = false)}>
         Post as new message
       </Button>

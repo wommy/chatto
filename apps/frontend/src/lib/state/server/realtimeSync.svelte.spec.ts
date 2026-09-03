@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MAX_RETAINED_ROOM_TIMELINES,
-  RealtimeProjectionSyncState
-} from './realtimeSync.svelte';
+import { MAX_RETAINED_ROOM_TIMELINES, RealtimeProjectionSyncState } from './realtimeSync.svelte';
 
 describe('RealtimeProjectionSyncState', () => {
   it('keeps an opaque cursor attached to the retained projection across socket lifetimes', () => {

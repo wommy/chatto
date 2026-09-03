@@ -442,8 +442,7 @@ focusing a cell highlights its permission row and role column.
         <span
           data-testid="permission-name"
           title={getPermissionDescription(permission)}
-          class={['text-sm whitespace-nowrap', highlighted ? 'text-action' : '']}
-          >{permission}</span
+          class={['text-sm whitespace-nowrap', highlighted ? 'text-action' : '']}>{permission}</span
         >
       {/snippet}
       {#snippet cell(permission, role)}

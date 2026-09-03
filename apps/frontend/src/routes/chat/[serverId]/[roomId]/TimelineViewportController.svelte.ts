@@ -136,8 +136,7 @@ export class TimelineViewportController {
         const wasScrolledUp = !this.shouldScrollToBottom;
         this.followBottom();
         reachedBottom =
-          wasScrolledUp &&
-          observation.now - this.#userScrollIntentAt < USER_SCROLL_INTENT_MS;
+          wasScrolledUp && observation.now - this.#userScrollIntentAt < USER_SCROLL_INTENT_MS;
       } else if (
         observation.now - this.#userScrollIntentAt < USER_SCROLL_INTENT_MS &&
         this.#previousOffset !== null &&
@@ -158,10 +157,7 @@ export class TimelineViewportController {
     return { distanceFromBottom, reachedBottom };
   }
 
-  reconcileAfterTabResume(
-    distanceFromBottom: number,
-    alwaysScrollToBottom: boolean
-  ): void {
+  reconcileAfterTabResume(distanceFromBottom: number, alwaysScrollToBottom: boolean): void {
     if (alwaysScrollToBottom || !this.shouldScrollToBottom || !this.initialScrollDone) return;
     if (distanceFromBottom > 50) this.stopFollowingBottom();
   }

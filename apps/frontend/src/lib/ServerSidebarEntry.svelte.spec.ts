@@ -335,9 +335,7 @@ describe('ServerSidebarEntry', () => {
       '[data-testid="copy-server-hostname"]'
     ) as HTMLButtonElement;
     await expect.element(copyHostname).toHaveTextContent('Copy Server Hostname');
-    const menuItems = copyHostname
-      .closest('[role="menu"]')
-      ?.querySelectorAll('[role="menuitem"]');
+    const menuItems = copyHostname.closest('[role="menu"]')?.querySelectorAll('[role="menuitem"]');
     expect(menuItems?.item((menuItems?.length ?? 0) - 1)).toBe(copyHostname);
 
     const remove = Array.from(document.querySelectorAll('button')).find(
@@ -552,9 +550,7 @@ describe('ServerSidebarEntry', () => {
     await expect.element(icon).toHaveAttribute('aria-label', 'Loaded Remote needs sign-in');
     const reauthMarker = q(container, '[data-testid="server-sign-in-required"]');
     await expect.element(reauthMarker).toBeInTheDocument();
-    expect(
-      reauthMarker?.querySelector('[class~="icon-[uil--exclamation-circle]"]')
-    ).not.toBeNull();
+    expect(reauthMarker?.querySelector('[class~="icon-[uil--exclamation-circle]"]')).not.toBeNull();
     await expect
       .element(q(container, '[data-testid="server-compatibility-warning"]'))
       .not.toBeInTheDocument();

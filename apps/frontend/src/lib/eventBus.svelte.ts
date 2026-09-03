@@ -31,10 +31,7 @@ function selectedBus(serverId: string): EventBus | undefined {
 }
 
 /** Register a handler for canonical projection operations on the selected server. */
-export function onProjectionEvent(
-  serverId: string,
-  handler: ProjectionHandler
-): () => void {
+export function onProjectionEvent(serverId: string, handler: ProjectionHandler): () => void {
   const bus = selectedBus(serverId);
   if (!bus) return () => {};
   bus.projectionHandlers.add(handler);
@@ -98,10 +95,7 @@ export function onSessionTerminated(
 
 type PresenceHandler = (userId: string, status: PresenceStatus) => void;
 
-export function onPresenceChange(
-  serverId: string,
-  handler: PresenceHandler
-): () => void {
+export function onPresenceChange(serverId: string, handler: PresenceHandler): () => void {
   return onTypedEvent(
     serverId,
     TransientEventKind.PresenceChanged,
@@ -123,10 +117,7 @@ export interface TypingEventData {
 
 type TypingHandler = (data: TypingEventData) => void;
 
-export function onTypingEvent(
-  serverId: string,
-  handler: TypingHandler
-): () => void {
+export function onTypingEvent(serverId: string, handler: TypingHandler): () => void {
   const bus = selectedBus(serverId);
   if (!bus) return () => {};
   const wrapper: EventHandler = (event) => {

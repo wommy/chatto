@@ -137,10 +137,7 @@ describe('EmojiPicker', () => {
     });
 
     it('hydrates from localStorage on mount', () => {
-      localStorage.setItem(
-        `chatto:i:${TEST_SERVER_ID}:recentEmojis`,
-        JSON.stringify(['🚀', '🔥'])
-      );
+      localStorage.setItem(`chatto:i:${TEST_SERVER_ID}:recentEmojis`, JSON.stringify(['🚀', '🔥']));
       const { container } = renderPicker();
       expect(container.textContent).toContain('Recently Used');
       const firstGrid = container.querySelector('.grid') as HTMLElement;

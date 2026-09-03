@@ -752,9 +752,7 @@
               <HeaderIconButton
                 icon="icon-[uil--info-circle]"
                 label={m('chat.profile.title')}
-                tone={activeRoomSidebarProfileUserId
-                  ? 'active'
-                  : 'default'}
+                tone={activeRoomSidebarProfileUserId ? 'active' : 'default'}
                 onclick={() => openDirectMessageProfile(directMessageProfileUserId)}
               />
             {/if}

@@ -115,7 +115,7 @@ in the active server store so browser Back can restore the current search.
       {#if store.statusLoading && !store.statusLoaded}
         <Panel>
           <div class="flex min-h-64 items-center justify-center text-muted" aria-live="polite">
-            <span class="me-2 iconify icon-[uil--spinner-alt] animate-spin" aria-hidden="true"
+            <span class="iconify me-2 icon-[uil--spinner-alt] animate-spin" aria-hidden="true"
             ></span>
             {m('search.checking')}
           </div>
@@ -226,11 +226,11 @@ in the active server store so browser Back can restore the current search.
                                 roomId: result.roomId
                               })}
                             >
-            {#if result.roomKind === RoomKind.DM}
-              {m('room.title.direct_message')}
-            {:else}
-              <bdi>#{result.roomName ?? m('search.scope.room')}</bdi>
-            {/if}
+                              {#if result.roomKind === RoomKind.DM}
+                                {m('room.title.direct_message')}
+                              {:else}
+                                <bdi>#{result.roomName ?? m('search.scope.room')}</bdi>
+                              {/if}
                             </a>
                             {#if result.createdAt}
                               <span class="text-xs text-muted" aria-hidden="true">·</span>
@@ -273,7 +273,7 @@ in the active server store so browser Back can restore the current search.
                   >
                     {#if store.loadingMore}
                       <span
-                        class="me-2 iconify icon-[uil--spinner-alt] animate-spin"
+                        class="iconify me-2 icon-[uil--spinner-alt] animate-spin"
                         aria-hidden="true"
                       ></span>
                       {m('search.loading_more')}

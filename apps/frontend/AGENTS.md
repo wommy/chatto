@@ -353,10 +353,11 @@ mise compare-e2e-performance -- \
   /tmp/chatto-performance-candidate.json
 ```
 
-  Do not compare results from different machines, fixture sizes, measurement
-  versions, or sample counts. Use `CHATTO_E2E_PERF_SAMPLES` only when both runs
-  use the same value. Inspect the raw samples and min/max statistics when a
-  median moves unexpectedly; do not optimize against a single observation.
+Do not compare results from different machines, fixture sizes, measurement
+versions, or sample counts. Use `CHATTO_E2E_PERF_SAMPLES` only when both runs
+use the same value. Inspect the raw samples and min/max statistics when a
+median moves unexpectedly; do not optimize against a single observation.
+
 - Prefer targeted e2e runs before the full suite:
 
 ```sh

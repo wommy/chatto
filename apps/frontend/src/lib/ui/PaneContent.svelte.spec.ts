@@ -22,7 +22,8 @@ describe('PaneContent', () => {
     const { container } = render(PaneContent, {
       props: { fillHeight: true, children: testSnippet('<div>Content</div>') }
     });
-    const content = container.firstElementChild?.firstElementChild?.firstElementChild as HTMLElement;
+    const content = container.firstElementChild?.firstElementChild
+      ?.firstElementChild as HTMLElement;
 
     expect(content.className).toContain('h-full');
     expect(content.className).toContain('flex');

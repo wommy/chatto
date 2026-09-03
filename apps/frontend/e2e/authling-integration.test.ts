@@ -1,12 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { startStack, stopStack, type TestStack } from '../../../authling/e2e/fixtures/stack';
 import { waitForVerificationCode } from '../../../authling/e2e/fixtures/mailpit';
-import {
-  serverBaseURLForTest,
-  startServer,
-  stopServer,
-  type ServerInfo
-} from './fixtures/server';
+import { serverBaseURLForTest, startServer, stopServer, type ServerInfo } from './fixtures/server';
 import * as routes from './routes';
 
 const test = base.extend<{ authling: TestStack; server: ServerInfo }>({

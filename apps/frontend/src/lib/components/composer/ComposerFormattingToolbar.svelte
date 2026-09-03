@@ -65,9 +65,9 @@ input row.
 </script>
 
 <div
-	{id}
-	class="composer-surface flex min-h-8 w-fit max-w-full items-center self-start overflow-hidden px-1 py-1"
-	data-testid="composer-formatting-shelf"
+  {id}
+  class="flex min-h-8 w-fit max-w-full items-center self-start overflow-hidden composer-surface px-1 py-1"
+  data-testid="composer-formatting-shelf"
 >
   <div
     class="flex min-w-0 [scrollbar-width:none] flex-nowrap items-center gap-0.5 overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden"

@@ -217,9 +217,7 @@ the same API as the visual editor while keeping the stored Markdown visible.
             {
               key: '`',
               run: (view) =>
-                view.state.selection.main.empty
-                  ? false
-                  : toggleSourceFormatting(view, 'inlineCode')
+                view.state.selection.main.empty ? false : toggleSourceFormatting(view, 'inlineCode')
             },
             { key: 'Escape', run: escapeWithTabFocus },
             indentWithTab,

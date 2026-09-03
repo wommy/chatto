@@ -160,12 +160,7 @@
       </div>
 
       <div class="mt-8 w-full">
-        <Button
-          variant="action"
-          size="lg"
-          fullWidth
-          href={resolve('/chat/servers')}
-        >
+        <Button variant="action" size="lg" fullWidth href={resolve('/chat/servers')}>
           <span class="iconify icon-[mdi--plus] text-lg"></span>
           {m('auth.login.add_server')}
         </Button>

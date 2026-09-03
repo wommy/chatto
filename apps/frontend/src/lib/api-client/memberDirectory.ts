@@ -18,10 +18,11 @@ export { presenceStatusOrOffline as apiPresenceStatus } from './enumDefaults.js'
 
 export type MemberDirectoryAPIConfig = ConnectAPIConfig;
 
-export type DirectoryMember = UserSummary & UserPresenceView & {
-  roles: string[];
-  createdAt: string | null;
-};
+export type DirectoryMember = UserSummary &
+  UserPresenceView & {
+    roles: string[];
+    createdAt: string | null;
+  };
 
 export type MemberDirectoryPage = {
   members: DirectoryMember[];

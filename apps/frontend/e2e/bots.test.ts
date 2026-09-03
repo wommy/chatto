@@ -260,7 +260,9 @@ test.describe('Bot account lifecycle', () => {
     await expect(getRoomAsBot(serverURL, backupKey, roomId)).resolves.toEqual({ status: 200 });
 
     const apiKeyList = page.getByTestId('bot-api-keys');
-    const defaultKey = apiKeyList.locator('.selectable-list-item').filter({ hasText: 'Default key' });
+    const defaultKey = apiKeyList
+      .locator('.selectable-list-item')
+      .filter({ hasText: 'Default key' });
     await defaultKey.getByRole('button', { name: 'Revoke key', exact: true }).click();
     const revokeKeyDialog = page.getByRole('dialog', { name: 'Revoke key' });
     await revokeKeyDialog.getByRole('button', { name: 'Revoke key', exact: true }).click();

@@ -93,8 +93,8 @@
     </header>
 
     <Hint tone="info">
-      Activate an override cell to cycle between inherit, allow, and deny.
-      The inherited value still shows the space-level role.
+      Activate an override cell to cycle between inherit, allow, and deny. The inherited value still
+      shows the space-level role.
     </Hint>
 
     <div class="mt-6">

@@ -15,9 +15,7 @@ describe('normalizeRoomThreadingMode', () => {
   });
 
   it('maps omitted historical channel values to Enabled and unknown values to Disabled', () => {
-    expect(normalizeRoomThreadingMode(RoomKind.CHANNEL, undefined)).toBe(
-      RoomThreadingMode.ENABLED
-    );
+    expect(normalizeRoomThreadingMode(RoomKind.CHANNEL, undefined)).toBe(RoomThreadingMode.ENABLED);
     expect(normalizeRoomThreadingMode(RoomKind.CHANNEL, RoomThreadingMode.UNSPECIFIED)).toBe(
       RoomThreadingMode.ENABLED
     );

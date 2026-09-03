@@ -347,10 +347,7 @@ function selectFirstAttachment(input: HTMLInputElement, file = imageFile()) {
 }
 
 async function openFormattingShelf(container: HTMLElement) {
-  const toggle = q(
-    container,
-    'button[aria-label="Formatting options"]'
-  ) as HTMLButtonElement;
+  const toggle = q(container, 'button[aria-label="Formatting options"]') as HTMLButtonElement;
   if (toggle.getAttribute('aria-expanded') !== 'true') await userEvent.click(toggle);
   await vi.waitFor(() =>
     expect(q(container, '[data-testid="composer-formatting-shelf"]')).toBeTruthy()

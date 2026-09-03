@@ -76,7 +76,8 @@
   parameters={{
     docs: {
       description: {
-        story: 'Pass a named `subtitle` snippet when the panel subtitle needs an inline link or other simple inline markup.'
+        story:
+          'Pass a named `subtitle` snippet when the panel subtitle needs an inline link or other simple inline markup.'
       }
     }
   }}
@@ -87,11 +88,13 @@
         Configure server defaults here.
         <a
           href={resolve('/chat/[serverId]/manage/rooms', { serverId: 'example-server' })}
-          class="link"
-        >Manage room overrides</a>.
+          class="link">Manage room overrides</a
+        >.
       {/snippet}
 
-      <p class="text-sm text-muted">These defaults apply before room-specific permission overrides.</p>
+      <p class="text-sm text-muted">
+        These defaults apply before room-specific permission overrides.
+      </p>
     </Panel>
   </div>
 </Story>
@@ -140,7 +143,10 @@
     <Panel title="Rooms" noPadding>
       <ul class="selectable-list">
         <li>
-          <button type="button" class="flex w-full items-center gap-3 selectable-list-item px-3 py-2 text-start">
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 selectable-list-item px-3 py-2 text-start"
+          >
             <span class="text-muted" aria-hidden="true">#</span>
             <span class="min-w-0 flex-1">
               <span class="block font-medium">announcements</span>
@@ -149,7 +155,10 @@
           </button>
         </li>
         <li>
-          <button type="button" class="flex w-full items-center gap-3 selectable-list-item px-3 py-2 text-start">
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 selectable-list-item px-3 py-2 text-start"
+          >
             <span class="text-muted" aria-hidden="true">#</span>
             <span class="min-w-0 flex-1">
               <span class="block font-medium">general</span>

@@ -110,9 +110,7 @@
   {#if items.length > 0}
     <div class="selectable-list" data-testid={testId}>
       {#each items as item (item.id)}
-        <div
-          class="flex flex-col gap-4 selectable-list-item px-5 py-4 sm:flex-row sm:items-center"
-        >
+        <div class="flex flex-col gap-4 selectable-list-item px-5 py-4 sm:flex-row sm:items-center">
           <div class="min-w-0 flex-1">
             <div class="font-medium text-text-top"><bdi>{item.name}</bdi></div>
             <dl class="mt-2 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">

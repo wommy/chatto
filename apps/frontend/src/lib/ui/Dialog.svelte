@@ -107,12 +107,7 @@ owns their single-line, end-aligned layout and truncates labels when needed.
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (
-      event.key !== 'Enter' ||
-      event.defaultPrevented ||
-      event.isComposing ||
-      event.repeat
-    ) {
+    if (event.key !== 'Enter' || event.defaultPrevented || event.isComposing || event.repeat) {
       return;
     }
 

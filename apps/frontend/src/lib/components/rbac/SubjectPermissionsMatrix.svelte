@@ -258,8 +258,7 @@ scrolling; the table only scrolls horizontally when its columns overflow.
         <span
           data-testid="permission-name"
           title={getPermissionDescription(permission)}
-          class={['text-sm whitespace-nowrap', highlighted ? 'text-action' : '']}
-          >{permission}</span
+          class={['text-sm whitespace-nowrap', highlighted ? 'text-action' : '']}>{permission}</span
         >
       {/snippet}
       {#snippet cell(permission, scope)}
@@ -338,9 +337,7 @@ scrolling; the table only scrolls horizontally when its columns overflow.
                   ov !== 'neutral'
                     ? `${ov === 'allow' ? 'Allow' : 'Deny'} (${subjectKind} override at ${scope.label})`
                     : null,
-                  includedBy
-                    ? `Effective Allow (included by ${includedBy})`
-                    : null,
+                  includedBy ? `Effective Allow (included by ${includedBy})` : null,
                   ov === 'neutral' && eff !== 'neutral'
                     ? `Effective ${eff === 'allow' ? 'Allow' : 'Deny'} (inherited)`
                     : null,

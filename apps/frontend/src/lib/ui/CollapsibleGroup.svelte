@@ -85,7 +85,7 @@ offline member groups).
       <span class="sidebar-icon">
         <span
           class={[
-            'iconify transition-transform icon-[uil--angle-right-b]',
+            'iconify icon-[uil--angle-right-b] transition-transform',
             collapsed ? 'rtl:-scale-x-100' : 'rotate-90'
           ]}
         ></span>

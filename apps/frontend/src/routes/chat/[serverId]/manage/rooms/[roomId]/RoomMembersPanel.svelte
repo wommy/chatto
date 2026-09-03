@@ -376,7 +376,7 @@
           onclear={clearSelectedUser}
         >
           {#snippet item({ item: user })}
-            <UserAvatar user={user} size="sm" useLiveProfile={false} />
+            <UserAvatar {user} size="sm" useLiveProfile={false} />
             <span class="min-w-0 truncate">{user.displayName}</span>
             <span class="min-w-0 truncate text-muted">@{user.login}</span>
           {/snippet}

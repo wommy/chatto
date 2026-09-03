@@ -153,9 +153,7 @@ describe('MarkdownEditor', () => {
     selectCurrentLine(textbox);
     pasteText(textbox, 'https://chatto.dev/docs');
 
-    await vi.waitFor(() =>
-      expect(api.getText()).toBe('[Chatto docs](https://chatto.dev/docs)')
-    );
+    await vi.waitFor(() => expect(api.getText()).toBe('[Chatto docs](https://chatto.dev/docs)'));
     expect(onPaste).toHaveBeenCalledOnce();
   });
 

@@ -95,9 +95,7 @@ describe('VideoPlayer', () => {
   it('plays a newly processed HLS-only video', async () => {
     const canPlayType = vi
       .spyOn(HTMLMediaElement.prototype, 'canPlayType')
-      .mockImplementation((type) =>
-        type === 'application/vnd.apple.mpegurl' ? 'probably' : ''
-      );
+      .mockImplementation((type) => (type === 'application/vnd.apple.mpegurl' ? 'probably' : ''));
     const hlsUrl = 'https://chat.example.test/assets/hls/a/master.m3u8?access=ticket';
     try {
       const { container } = renderPostedVideo({

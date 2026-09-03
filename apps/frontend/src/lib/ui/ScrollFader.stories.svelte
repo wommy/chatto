@@ -120,7 +120,8 @@ fades use \`transition-opacity\` so the show/hide is animated.
   parameters={{
     docs: {
       description: {
-        story: 'A horizontally scrollable table can use the same edge fades, with the top fade starting below its sticky header.'
+        story:
+          'A horizontally scrollable table can use the same edge fades, with the top fade starting below its sticky header.'
       }
     }
   }}
@@ -133,7 +134,9 @@ fades use \`transition-opacity\` so the show/hide is animated.
         </thead>
         <tbody>
           {#each Array(24) as _, i (i)}
-            <tr class="border-t border-border"><td class="px-3 py-2">message.permission-{i + 1}</td><td>✓</td><td>✓</td></tr>
+            <tr class="border-t border-border"
+              ><td class="px-3 py-2">message.permission-{i + 1}</td><td>✓</td><td>✓</td></tr
+            >
           {/each}
         </tbody>
       </table>
@@ -147,8 +150,7 @@ fades use \`transition-opacity\` so the show/hide is animated.
   parameters={{
     docs: {
       description: {
-        story:
-          'Mirror of the previous variant: a chrome element above, free space below.'
+        story: 'Mirror of the previous variant: a chrome element above, free space below.'
       }
     }
   }}
@@ -171,7 +173,7 @@ fades use \`transition-opacity\` so the show/hide is animated.
     docs: {
       description: {
         story:
-          "An intrinsic-height viewport grows up to its maximum height. When its content fits, both fades stay hidden. This is the linked-message preview layout."
+          'An intrinsic-height viewport grows up to its maximum height. When its content fits, both fades stay hidden. This is the linked-message preview layout.'
       }
     }
   }}

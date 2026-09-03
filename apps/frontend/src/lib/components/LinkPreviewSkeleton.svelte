@@ -8,9 +8,7 @@ Displays an animated shimmer layout matching the LinkPreviewCard dimensions.
   // No props needed
 </script>
 
-<div
-  class="flex w-full max-w-md animate-pulse gap-3 p-3 embed-frame"
->
+<div class="embed-frame flex w-full max-w-md animate-pulse gap-3 p-3">
   <!-- Image skeleton -->
   <div class="bg-outline/20 h-20 w-20 shrink-0 rounded"></div>
   <div class="flex min-w-0 flex-1 flex-col gap-2">

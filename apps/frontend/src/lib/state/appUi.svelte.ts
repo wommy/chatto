@@ -203,11 +203,7 @@ export class AppUiState {
    * A profile request can accompany direct-message navigation. It is consumed
    * only after the direct-message route reports the same active room scope.
    */
-  requestRoomSidebarProfile(
-    serverId: string,
-    roomId: string,
-    userId: string
-  ): void {
+  requestRoomSidebarProfile(serverId: string, roomId: string, userId: string): void {
     this.#roomSidebarProfileRequest = { serverId, roomId, userId };
     this.#applyRoomSidebarProfileRequest();
   }

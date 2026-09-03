@@ -50,10 +50,7 @@ Room-scoped file list for the room sidebar.
   const fileSections = $derived(
     fileGroups.map((group) => ({
       ...group,
-      persistKey: serverStorageKey(
-        serverId,
-        `collapsible:room-files:${roomId}:${group.id}`
-      ),
+      persistKey: serverStorageKey(serverId, `collapsible:room-files:${roomId}:${group.id}`),
       testid: 'room-file-group-heading'
     }))
   );

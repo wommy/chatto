@@ -50,7 +50,7 @@ help content, use `HelpTooltip` instead.
   role="tooltip"
   {id}
   {ariaLabel}
-  class={['floating-tooltip pointer-events-none', className]}
+  class={['pointer-events-none floating-tooltip', className]}
 >
   {@render children()}
 </FloatingPopover>

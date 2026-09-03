@@ -243,14 +243,17 @@ describe('remote server OAuth popup', () => {
       'fetch',
       vi.fn(
         async () =>
-          new Response(JSON.stringify({
-            access_token: 'cht_ATtoken',
-            refresh_token: 'cht_RT_token',
-            expires_in: 900,
-            refresh_token_expires_in: 7_776_000
-          }), {
-            headers: { 'Content-Type': 'application/json' }
-          })
+          new Response(
+            JSON.stringify({
+              access_token: 'cht_ATtoken',
+              refresh_token: 'cht_RT_token',
+              expires_in: 900,
+              refresh_token_expires_in: 7_776_000
+            }),
+            {
+              headers: { 'Content-Type': 'application/json' }
+            }
+          )
       )
     );
 

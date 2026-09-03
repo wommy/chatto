@@ -60,7 +60,10 @@ describe('AttachmentsState', () => {
     await state.stageFiles([second]);
 
     expect(state.filesWithUrls.map(({ file }) => file.name)).toEqual(['first.png', 'second.png']);
-    expect(state.filesWithUrls.map(({ url }) => url)).toEqual(['blob:first.png', 'blob:second.png']);
+    expect(state.filesWithUrls.map(({ url }) => url)).toEqual([
+      'blob:first.png',
+      'blob:second.png'
+    ]);
   });
 
   it('rejects video files when video processing is disabled', async () => {
@@ -87,7 +90,11 @@ describe('AttachmentsState', () => {
 
     await state.stageFiles([imageFile('too-large.png', 2)]);
 
-    expect(getToasts().map((t) => t.message).join('\n')).toContain('too-large.png is too large');
+    expect(
+      getToasts()
+        .map((t) => t.message)
+        .join('\n')
+    ).toContain('too-large.png is too large');
     expect(state.filesWithUrls).toEqual([]);
     expect(prepareFilesMock).not.toHaveBeenCalled();
   });
@@ -99,7 +106,11 @@ describe('AttachmentsState', () => {
 
     await state.stageFiles([videoFile('too-large.mp4', 2)]);
 
-    expect(getToasts().map((t) => t.message).join('\n')).toContain('too-large.mp4 is too large');
+    expect(
+      getToasts()
+        .map((t) => t.message)
+        .join('\n')
+    ).toContain('too-large.mp4 is too large');
     expect(state.filesWithUrls).toEqual([]);
     expect(prepareFilesMock).not.toHaveBeenCalled();
   });

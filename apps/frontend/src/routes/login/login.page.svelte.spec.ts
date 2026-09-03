@@ -101,7 +101,9 @@ describe('standalone server selection', () => {
 
     await expect.element(getByRole('link', { name: 'Continue with Company SSO' })).toBeVisible();
     await expect
-      .element(getByText('The sign-in provider could not complete authentication. Please try again.'))
+      .element(
+        getByText('The sign-in provider could not complete authentication. Please try again.')
+      )
       .toBeVisible();
     await expect.element(getByLabelText('Username or Email')).not.toBeInTheDocument();
     await expect.element(getByLabelText('Password')).not.toBeInTheDocument();

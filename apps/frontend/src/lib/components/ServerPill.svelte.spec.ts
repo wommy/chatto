@@ -29,8 +29,7 @@ vi.mock('$lib/state/server/registry.svelte', () => ({
     get servers() {
       return mockServers.current;
     },
-    getServer: (id: string) =>
-      mockServers.current.find((s) => s.id === id),
+    getServer: (id: string) => mockServers.current.find((s) => s.id === id),
     tryGetStore: (id: string) => mockStores.current.get(id)
   }
 }));
@@ -92,9 +91,7 @@ describe('ServerPill', () => {
 
       const { container } = render(ServerPill, { props: { serverId: 'a' } });
 
-      await expect
-        .element(q(container, 'button[aria-haspopup="dialog"]'))
-        .toBeInTheDocument();
+      await expect.element(q(container, 'button[aria-haspopup="dialog"]')).toBeInTheDocument();
       expect(container.textContent).toContain('Alpha');
     });
   });
@@ -114,9 +111,7 @@ describe('ServerPill', () => {
       const { container } = render(ServerPill, { props: { serverId: 'a' } });
 
       await expect.element(q(container, '[class~="icon-[uil--globe]"]')).toBeInTheDocument();
-      await expect
-        .element(q(container, '.truncate'))
-        .toHaveTextContent('Alpha');
+      await expect.element(q(container, '.truncate')).toHaveTextContent('Alpha');
     });
 
     it('reflects the requested instance, not the first registered one', async () => {

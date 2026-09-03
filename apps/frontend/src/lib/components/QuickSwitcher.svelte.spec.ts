@@ -123,8 +123,8 @@ vi.mock('$lib/state/presenceCache.svelte', () => ({
 }));
 
 vi.mock('$lib/state/userProfiles.svelte', () => ({
-    getLiveBio: () => null,
-    getLiveTimezone: () => null,
+  getLiveBio: () => null,
+  getLiveTimezone: () => null,
   getLiveAvatarUrl: (_userId: string, fallback: string | null) => fallback,
   getLiveCustomStatus: (_userId: string, fallback: unknown) => fallback
 }));
@@ -183,12 +183,7 @@ type User = {
   isBot?: boolean;
 };
 
-function user(
-  id: string,
-  login: string,
-  displayName: string,
-  isBot = false
-): User {
+function user(id: string, login: string, displayName: string, isBot = false): User {
   return {
     id,
     login,

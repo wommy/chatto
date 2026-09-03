@@ -11,6 +11,8 @@
 
 <Story name="Markdown message" asChild>
   <div class="flex max-w-3xl rounded-lg bg-background p-4">
-    <MotdContent motd="**Maintenance window:** Saturday, 10:00–11:00 UTC. [Read details](https://example.com)." />
+    <MotdContent
+      motd="**Maintenance window:** Saturday, 10:00–11:00 UTC. [Read details](https://example.com)."
+    />
   </div>
 </Story>

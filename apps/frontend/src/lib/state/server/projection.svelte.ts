@@ -223,7 +223,7 @@ export class ServerProjectionStore {
                 this.threadViewerStates
                   .get(`${roomId}\u0000${thread.threadRootEventId}`)
                   ?.clone() ??
-                  new ThreadViewerState({ isFollowing: false, hasUnreadReplies: false });
+                new ThreadViewerState({ isFollowing: false, hasUnreadReplies: false });
               changed = true;
               return next;
             });

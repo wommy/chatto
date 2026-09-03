@@ -8,10 +8,7 @@ import {
 } from './connect.js';
 import { Timestamp } from '@bufbuild/protobuf';
 import { RoomService } from '@chatto/api-types/api/v1/rooms_connect';
-import type {
-  Room,
-  RoomBan as APIRoomBan
-} from '@chatto/api-types/api/v1/rooms_pb';
+import type { Room, RoomBan as APIRoomBan } from '@chatto/api-types/api/v1/rooms_pb';
 import { mapDirectoryMember, type DirectoryMember } from './memberDirectory.js';
 import {
   normalizeRoomName,

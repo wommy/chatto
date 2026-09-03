@@ -338,12 +338,8 @@ it('localizes binary cell labels, state details, and owner ceilings', async () =
       decisionMode: 'binary'
     }
   });
-  const button = container.querySelector(
-    'button[aria-label^="message.post"]'
-  ) as HTMLButtonElement;
-  const permissionName = container.querySelector(
-    '[data-testid="permission-name"]'
-  ) as HTMLElement;
+  const button = container.querySelector('button[aria-label^="message.post"]') as HTMLButtonElement;
+  const permissionName = container.querySelector('[data-testid="permission-name"]') as HTMLElement;
 
   expect(permissionName.title).toBe('Root-Nachrichten in Räumen posten und DMs starten');
   expect(button.ariaLabel).toBe('message.post ist für Bot in Server aktiviert');

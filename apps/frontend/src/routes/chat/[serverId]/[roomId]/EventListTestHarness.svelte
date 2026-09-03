@@ -1,9 +1,6 @@
 <script lang="ts">
   import { PresenceStatus } from '@chatto/api-types/api/v1/presence_pb';
-  import {
-    TimelineEventKind,
-    type TimelineEventView
-  } from '$lib/render/timelineEvents';
+  import { TimelineEventKind, type TimelineEventView } from '$lib/render/timelineEvents';
   import {
     createComposerContext,
     createRoomPermissions,

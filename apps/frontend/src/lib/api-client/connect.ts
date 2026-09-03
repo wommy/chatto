@@ -4,11 +4,11 @@ import {
   createClient,
   type Client,
   type Interceptor,
-  type Transport,
-} from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-web";
-import type { ServiceType } from "@bufbuild/protobuf";
-import { notifyAuthenticationRequired } from "./hooks.js";
+  type Transport
+} from '@connectrpc/connect';
+import { createConnectTransport } from '@connectrpc/connect-web';
+import type { ServiceType } from '@bufbuild/protobuf';
+import { notifyAuthenticationRequired } from './hooks.js';
 
 export type ConnectAPIConfig = {
   serverId?: string;
@@ -24,34 +24,32 @@ export type PublicConnectAPIConfig = {
 };
 
 export function connectEndpoint(baseUrl: string): string {
-  return new URL("/api/connect", baseUrl).toString();
+  return new URL('/api/connect', baseUrl).toString();
 }
 
 export function createChattoTransport(
   config: { baseUrl: string } & Partial<ConnectAPIConfig>,
-  options: { useBinaryFormat?: boolean } = {},
+  options: { useBinaryFormat?: boolean } = {}
 ): Transport {
   return createConnectTransport({
     baseUrl: config.baseUrl,
     useBinaryFormat: options.useBinaryFormat ?? true,
-    interceptors: config.renewBearerToken ? [bearerRenewalInterceptor(config)] : undefined,
+    interceptors: config.renewBearerToken ? [bearerRenewalInterceptor(config)] : undefined
   });
 }
 
 export function createChattoClient<T extends ServiceType>(
   service: T,
-  config: { baseUrl: string } & Partial<ConnectAPIConfig>,
+  config: { baseUrl: string } & Partial<ConnectAPIConfig>
 ): Client<T> {
   return createClient(service, createChattoTransport(config));
 }
 
-export function bearerRenewalInterceptor(
-  config: {
-    serverId?: string;
-    bearerToken?: string | null;
-    renewBearerToken?: (force: boolean) => Promise<string | null>;
-  }
-): Interceptor {
+export function bearerRenewalInterceptor(config: {
+  serverId?: string;
+  bearerToken?: string | null;
+  renewBearerToken?: (force: boolean) => Promise<string | null>;
+}): Interceptor {
   return (next) => async (request) => {
     const setAccessToken = (token: string | null) => {
       if (token) request.header.set('Authorization', `Bearer ${token}`);
@@ -60,7 +58,7 @@ export function bearerRenewalInterceptor(
 
     const currentToken = config.renewBearerToken
       ? await config.renewBearerToken(false)
-      : config.bearerToken ?? null;
+      : (config.bearerToken ?? null);
     setAccessToken(currentToken);
     try {
       return await next(request);
@@ -95,7 +93,7 @@ export function bearerRenewalInterceptor(
 
 export function createPublicChattoClient<T extends ServiceType>(
   service: T,
-  baseUrl: string,
+  baseUrl: string
 ): Client<T> {
   return createClient(
     service,
@@ -105,42 +103,33 @@ export function createPublicChattoClient<T extends ServiceType>(
       fetch: (input, init) =>
         fetch(input, {
           ...init,
-          credentials: "omit",
-          redirect: "error",
-          referrerPolicy: "no-referrer",
-        }),
-    }),
+          credentials: 'omit',
+          redirect: 'error',
+          referrerPolicy: 'no-referrer'
+        })
+    })
   );
 }
 
 export function authHeaders(
-  config: Pick<ConnectAPIConfig, "bearerToken">,
+  config: Pick<ConnectAPIConfig, 'bearerToken'>
 ): HeadersInit | undefined {
-  return config.bearerToken
-    ? { Authorization: `Bearer ${config.bearerToken}` }
-    : undefined;
+  return config.bearerToken ? { Authorization: `Bearer ${config.bearerToken}` } : undefined;
 }
 
 export function handleAuthError(
-  config: Pick<ConnectAPIConfig, "serverId" | "onAuthenticationRequired">,
-  err: unknown,
+  config: Pick<ConnectAPIConfig, 'serverId' | 'onAuthenticationRequired'>,
+  err: unknown
 ): never {
-  if (
-    err instanceof ConnectError &&
-    err.code === Code.Unauthenticated &&
-    config.serverId
-  ) {
-    notifyAuthenticationRequired(
-      config.serverId,
-      config.onAuthenticationRequired,
-    );
+  if (err instanceof ConnectError && err.code === Code.Unauthenticated && config.serverId) {
+    notifyAuthenticationRequired(config.serverId, config.onAuthenticationRequired);
   }
   throw err;
 }
 
 export async function withAuth<T>(
-  config: Pick<ConnectAPIConfig, "serverId" | "onAuthenticationRequired">,
-  operation: () => Promise<T>,
+  config: Pick<ConnectAPIConfig, 'serverId' | 'onAuthenticationRequired'>,
+  operation: () => Promise<T>
 ): Promise<T> {
   try {
     return await operation();
