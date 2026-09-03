@@ -39,6 +39,13 @@ concurrency, and bound to the exact client and redirect URI. The first slice
 does not support refresh tokens, implicit or hybrid flow, request objects,
 dynamic registration, or additional identity claims.
 
+> **Amendment:** Later work added the `preferred_username` and `name` claims
+> alongside `sub` (see `SupportedClaims` in
+> `authling/internal/oidcprovider/provider.go` and the profile lookups in
+> `authling/internal/oidcprovider/storage.go`).
+> [FDR-011](../fdr/FDR-011-account-profile.md) documents the current claim
+> set.
+
 Authling supports two client sources behind the same protocol boundary:
 
 1. Operators may declare conventional public or `client_secret_basic` clients
