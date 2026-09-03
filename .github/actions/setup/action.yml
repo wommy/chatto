@@ -83,12 +83,12 @@ runs:
         sudo apt-get update -qq
         sudo apt-get install -y -qq ffmpeg
 
-    - name: Set up CLI
+    - name: Set up Go CLI and shared framework modules
       if: inputs.install-cli-deps == 'true'
       shell: bash
-      run: mise setup-cli
+      run: mise setup-go
 
-    - name: Set up Frontend
+    - name: Set up frontend and generated packages
       if: inputs.install-frontend-deps == 'true'
       shell: bash
-      run: mise setup-frontend
+      run: mise setup-web
