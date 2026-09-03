@@ -438,16 +438,7 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          helper="apps/desktop/dist/Chatto Desktop.app/Contents/Helpers/Chatto Capture Helper.app/Contents/MacOS/chatto-macos-capture-probe"
-          test -x "$helper"
-          codesign --verify --deep --strict --verbose=2 "apps/desktop/dist/Chatto Desktop.app"
-          xcrun stapler validate "apps/desktop/dist/Chatto Desktop.app"
-          spctl --assess --type execute --verbose=4 "apps/desktop/dist/Chatto Desktop.app"
-          mkdir -p .context/desktop-release
-          ditto -c -k --sequesterRsrc --keepParent \
-            "apps/desktop/dist/Chatto Desktop.app" \
-            ".context/desktop-release/chatto-desktop_${VERSION}_macOS_${RUNNER_ARCH}.zip"
+        run: mise x -- node apps/desktop/scripts/desktop-packaging.mjs package-macos
 
       - name: Upload macOS notarisation log
         if: runner.os == 'macOS' && always()
@@ -485,11 +476,7 @@ jobs:
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          New-Item -ItemType Directory -Force .context/desktop-release | Out-Null
-          Compress-Archive `
-            -Path "apps/desktop/dist/windows" `
-            -DestinationPath ".context/desktop-release/chatto-desktop_$env:VERSION`_Windows_$env:RUNNER_ARCH.zip"
+        run: mise x -- node apps/desktop/scripts/desktop-packaging.mjs package-windows
 
       - name: Upload desktop release artifact
         uses: actions/upload-artifact@v7
