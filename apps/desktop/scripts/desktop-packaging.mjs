@@ -19,17 +19,16 @@
  *   checks must all pass before the directory is created.
  * - macOS verification commands inherit stderr via `stdio: "inherit"` so that
  *   `--verbose=2` and `--verbose=4` diagnostic output reaches the workflow log.
- * - Exit codes come from the underlying tools (codesign, stapler, spctl). The
- *   runner prepends `set -eo pipefail` for bash, so the first nonzero exit
- *   stops the sequence.
+ * - Exit codes come from the underlying tools (codesign, stapler, spctl). This
+ *   module stops at the first nonzero exit, preserving the tool-specific exit
+ *   code (e.g., spctl may return 3).
  * - Windows packaging uses Compress-Archive from PowerShell, which runs with
- *   `$ErrorActionPreference = 'stop'` (prepended by the runner). The archive
- *   layout is `windows/...` at the root (Compress-Archive -Path without `\*`).
- *   Do not change the command to use a Node.js zip library, as that changes
- *   the layout and becomes a behavior change.
+ *   `$ErrorActionPreference = 'stop'`. The module prepends this directive so
+ *   the first error stops the sequence. The archive layout is `windows/...` at
+ *   the root (Compress-Archive -Path without `\*`). Do not change to a Node.js
+ *   zip library, as that changes the layout and becomes a behavior change.
  */
 
-import { accessSync, mkdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
 /**
@@ -111,7 +110,7 @@ export function macOSReleasePlan(plan) {
  *   the `$ErrorActionPreference = 'stop'` preamble and quotes the paths.
  */
 export function windowsReleasePlan(plan) {
-	const archiveDir = plan.archivePath.substring(0, plan.archivePath.lastIndexOf('\\'))
+	const archiveDir = plan.archivePath.substring(0, plan.archivePath.lastIndexOf('/'))
 	return (
 		"$ErrorActionPreference = 'stop'; " +
 		`New-Item -ItemType Directory -Force "${archiveDir}" | Out-Null; ` +
@@ -126,8 +125,8 @@ export function windowsReleasePlan(plan) {
  * first nonzero exit.
  *
  * @param {ReturnType<macOSReleasePlan>} plan - The command sequence.
- * @param {{spawnSync: Function, accessSync: Function}} tools - The functions
- *   to run. Supplied by the caller so a test needs no real processes.
+ * @param {{spawnSync: Function}} tools - The spawner function. Supplied by the
+ *   caller so a test can provide a mock.
  * @returns {{step: string, exitCode: number} | null} Null when all commands
  *   pass. Otherwise, the failing step and its exit code.
  * @throws {Error} When a command is not recognized.
@@ -155,13 +154,12 @@ export function runMacOSReleasePlan(plan, tools) {
  * @param {Function} spawnSync - The function to spawn child processes. For
  *   production, pass `require("child_process").spawnSync`. Tests can pass a
  *   mock that intercepts commands or returns fixed exit codes.
- * @param {object} [tools] - Unused; kept for backward compatibility.
  * @returns {null} This function does not return output; it controls the process
  *   exit code.
  * @throws {Error} When the command is unknown.
  */
-export function runPackagingCommand(argv, environment, spawnSync, tools) {
-	const [command, ...rest] = argv
+export function runPackagingCommand(argv, environment, spawnSync) {
+	const [command] = argv
 	const version = environment.VERSION
 	const arch = environment.RUNNER_ARCH
 
