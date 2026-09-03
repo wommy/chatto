@@ -154,6 +154,7 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
             echo "result=false" >> "$GITHUB_OUTPUT"
             echo "docs_website_touched=false" >> "$GITHUB_OUTPUT"
+            # build-docs-image.yml owns the docs build on push; nothing to gate here.
             exit 0
           fi
 
@@ -201,8 +202,9 @@ jobs:
           echo "result=$docs_only" >> "$GITHUB_OUTPUT"
 
           # Check if any changed files are in apps/docs-website/. Computed
-          # separately from docs_only so that lockfile/package.json changes
-          # (which affect docs building but not docs_only) still trigger this.
+          # separately from docs_only because the docs_only loop breaks on first
+          # non-allowlisted file; this grep checks the full list so a PR touching
+          # cli/x.go then apps/docs-website/y.mdx correctly identifies docs changes.
           if grep -qE '^apps/docs-website/' <<< "$changed_files"; then
             docs_website_touched="true"
           else
