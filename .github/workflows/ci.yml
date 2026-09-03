@@ -338,15 +338,32 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Fetch protobuf breaking base
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
         run: |
-          base_ref="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
-          git fetch --no-tags --depth=1 origin "${base_ref}:refs/remotes/origin/${base_ref}"
+          set -euo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            # PR events: use the base branch
+            base_ref="$GITHUB_BASE_REF"
+            git fetch --no-tags --depth=1 origin "${base_ref}:refs/remotes/origin/${base_ref}"
+          elif [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
+            # Push to new branch (zero SHA): use main as baseline
+            base_ref="main"
+            echo "::notice::Push event with no prior commit (zero SHA); comparing against main branch."
+            git fetch --no-tags --depth=1 origin "main:refs/remotes/origin/main"
+          else
+            # Push with real prior commit: fetch it as a named ref
+            base_ref="proto-breaking-base"
+            git fetch --no-tags --depth=1 origin "${EVENT_BEFORE}:refs/remotes/origin/${base_ref}"
+          fi
+
+          echo "PROTO_BREAKING_BASE_REF=${base_ref}" >> "$GITHUB_ENV"
 
       - name: Check storage, internal, and Operator protobuf breaking changes
         run: |
-          base_ref="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
           mise x -- node tools/check-storage-proto-breaking.mjs \
-            "../.git#branch=origin/${base_ref},subdir=proto"
+            "../.git#branch=origin/${PROTO_BREAKING_BASE_REF},subdir=proto"
 
       - name: Check projection snapshot schema contracts
         working-directory: cli
@@ -355,9 +372,8 @@ jobs:
       - name: Check public API protobuf breaking changes
         if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'api-breaking-change') }}
         run: |
-          base_ref="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
           cd proto
-          mise x -- buf breaking . --against "../.git#branch=origin/${base_ref},subdir=proto" \
+          mise x -- buf breaking . --against "../.git#branch=origin/${PROTO_BREAKING_BASE_REF},subdir=proto" \
             --path chatto/auth/v1 \
             --path chatto/discovery/v1 \
             --path chatto/api/v1 \
@@ -367,11 +383,10 @@ jobs:
 
       - name: Check Authling persisted protobuf breaking changes
         run: |
-          base_ref="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
-          if git cat-file -e "origin/${base_ref}:authling/buf.yaml" 2>/dev/null; then
+          if git cat-file -e "origin/${PROTO_BREAKING_BASE_REF}:authling/buf.yaml" 2>/dev/null; then
             cd authling
             mise x -- buf breaking . \
-              --against "../.git#branch=origin/${base_ref},subdir=authling" \
+              --against "../.git#branch=origin/${PROTO_BREAKING_BASE_REF},subdir=authling" \
               --exclude-imports
           else
             echo "::notice::Authling protobufs are new; no base schema exists yet."
