@@ -1,0 +1,122 @@
+name: scratch-cache-test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  warm-aligned-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
+      - name: Measure Go cache before build
+        run: du -sh ~/.cache/go-build 2>/dev/null || echo "Cache does not exist yet"
+
+      - name: Build E2E server to populate aligned cache
+        run: mise build-e2e-server
+
+      - name: Measure Go cache after build
+        run: du -sh ~/.cache/go-build 2>/dev/null || echo "Cache not measurable"
+
+      - name: Save aligned Go build cache
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.cache/go-build
+          key: go-build-aligned-${{ github.run_id }}
+
+  measure-shared:
+    needs: [warm-aligned-cache]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: measure-shared (control)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
+      - name: Check restored cache (setup action restore)
+        shell: bash
+        run: |
+          echo "=== Go cache info after setup action restore ==="
+          du -sh ~/.cache/go-build 2>/dev/null || echo "Cache does not exist"
+          echo "=== Last cache restore line from logs would appear in Actions UI ==="
+
+      - name: Build E2E server with shared cache
+        run: mise build-e2e-server
+
+      - name: Measure Go cache after build
+        run: |
+          echo "=== Final cache size (shared) ==="
+          du -sh ~/.cache/go-build
+
+  measure-aligned:
+    needs: [warm-aligned-cache]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: measure-aligned
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
+      - name: Clear Go build cache
+        run: rm -rf ~/.cache/go-build && echo "Cache cleared"
+
+      - name: Restore aligned Go build cache only
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.cache/go-build
+          key: go-build-aligned-${{ github.run_id }}
+          fail-on-cache-miss: true
+
+      - name: Measure Go cache after restore
+        run: |
+          echo "=== Cache size after aligned restore ==="
+          du -sh ~/.cache/go-build
+
+      - name: Build E2E server with aligned cache
+        run: mise build-e2e-server
+
+      - name: Measure Go cache after build
+        run: |
+          echo "=== Final cache size (aligned) ==="
+          du -sh ~/.cache/go-build
+
+  measure-cold:
+    needs: [warm-aligned-cache]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: measure-cold (no cache)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup environment (post-fetch only)
+        uses: ./.github/actions/setup-mise
+
+      - name: Setup Go only
+        shell: bash
+        run: mise setup-go
+
+      - name: Manually prevent shared cache restore
+        run: rm -rf ~/.cache/go-build && echo "Cold cache start"
+
+      - name: Build E2E server with cold cache
+        run: mise build-e2e-server
+
+      - name: Measure Go cache after build
+        run: |
+          echo "=== Final cache size (cold) ==="
+          du -sh ~/.cache/go-build
