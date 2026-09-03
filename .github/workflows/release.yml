@@ -763,6 +763,54 @@ jobs:
 
           git -C "${tap_dir}" push origin HEAD:main
 
+      # Publish the generated Homebrew cask to the tap.
+      # This step is gated on a repository variable to avoid conflict with the
+      # existing hand-written formula. The migration (#40) requires both to be
+      # present during a transition period: the old step publishes Formula/chatto.rb,
+      # this publishes Casks/chatto.rb. Setting HOMEBREW_TAP_CASK=true enables
+      # this step; the old formula step remains until a follow-up removes it and
+      # documents the migration to users. See .github/AGENTS.md for rollback procedure.
+      - name: Publish Homebrew cask to tap
+        if: ${{ steps.release_meta.outputs.is_stable == 'true' && vars.HOMEBREW_TAP_CASK == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${HOMEBREW_TAP_GITHUB_TOKEN:-}" ]]; then
+            echo "::error::HOMEBREW_TAP_GITHUB_TOKEN is required to update chattocorp/homebrew-tap."
+            exit 1
+          fi
+
+          tap_dir="$(mktemp -d)"
+
+          git clone "https://x-access-token:${HOMEBREW_TAP_GITHUB_TOKEN}@github.com/chattocorp/homebrew-tap.git" "${tap_dir}"
+
+          mkdir -p "${tap_dir}/Casks"
+          cp dist/homebrew/Casks/chatto.rb "${tap_dir}/Casks/"
+
+          git -C "${tap_dir}" config user.name "github-actions[bot]"
+          git -C "${tap_dir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git -C "${tap_dir}" diff --quiet -- Casks/chatto.rb; then
+            echo "Homebrew tap already contains the cask for Chatto ${VERSION}."
+            exit 0
+          fi
+
+          git -C "${tap_dir}" add Casks/chatto.rb
+          git -C "${tap_dir}" commit -m "chore: update chatto cask to v${VERSION}"
+
+          # Capture the previous commit SHA before pushing, so the tap can be
+          # rolled back if needed.
+          previous_sha="$(git -C "${tap_dir}" rev-parse HEAD~1)"
+          echo "If the Homebrew cask update needs to be rolled back, use:"
+          echo "  git -C chattocorp/homebrew-tap reset --hard ${previous_sha}"
+
+          git -C "${tap_dir}" push origin HEAD:main
+
       # The last step of the release moves the client image floating tags.
       # Any earlier failure means this step never runs, the job is red, and
       # `chatto-client:latest` keeps the previous release serving.
