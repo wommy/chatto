@@ -255,10 +255,12 @@ take the sections above as a report of the current runtime.
   another. That is field-level authentication, not purpose-level erasure:
   destroying the one data key destroys profile data and credentials together.
 - **No erasure workflow exists.** Nothing in Authling today commits an
-  erasure-requested event, projects a denial tombstone, destroys a user or
-  data key, or commits an erasure-completed event. `TODO.md` already lists
-  "Implement durable account erasure" and its supporting orphan-key and
-  two-phase-replay work as outstanding.
+  erasure-requested event, projects a denial tombstone, destroys a
+  committed account's user or data key as an erasure step, or commits an
+  erasure-completed event. (Failed provisioning and signing-key retirement
+  already purge their own key material, but neither is account erasure.)
+  `TODO.md` already lists "Implement durable account erasure" and its
+  supporting orphan-key and two-phase-replay work as outstanding.
 
 This is a documentation and design gap, not a live data-protection failure:
 because no code path erases account data yet, nothing today depends on or
@@ -267,11 +269,14 @@ not reached its first release (`version.go` is `0.0.0`, `CHANGELOG.md` has no
 entries, there is no `authling/v*` tag), so closing this gap needs no
 migration of previously wrapped records.
 
-Closing the gap needs, in this order: the durable erasure workflow this ADR
-already specifies; a product decision on the exact profile-versus-credential
-field boundary, including where `preferred_username` belongs, since it is
-both an `AccountCreatedEvent` credential field and a `ProfileUpdatedEvent`
-profile field today; additive `profile_key_ref` fields on the affected
-events; and provisioning changes so account creation can create both data
-keys atomically with the same crash-safety guarantees `ProvisionCredentialKeys`
-already gives the credentials key. Issue #129 has the full breakdown.
+Closing the gap needs the durable erasure workflow this ADR already
+specifies; a product decision on the exact profile-versus-credential field
+boundary, including where `preferred_username` belongs, since it is both an
+`AccountCreatedEvent` credential field and a `ProfileUpdatedEvent` profile
+field today; additive `profile_key_ref` fields on the affected events; and
+provisioning changes so account creation can create both data keys
+atomically with the same crash-safety guarantees `ProvisionCredentialKeys`
+already gives the credentials key. A second purpose that no erasure workflow
+ever exercises is speculative, so the second purpose should land no later
+than the erasure workflow, though the team may choose to build it earlier
+for defense-in-depth. Issue #129 has the full breakdown.

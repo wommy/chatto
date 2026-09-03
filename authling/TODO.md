@@ -22,6 +22,8 @@ current runtime in `docs/architecture/`.
 - [ ] Implement an event-backed orphan-key cleanup worker and crash/race tests
 - [ ] Implement durable account erasure
 - [ ] Implement erasure-aware two-phase replay before destroying account keys
+- [ ] Implement ADR-002's second key purpose (profile) once the field
+      boundary is decided (#129)
 - [ ] Add key-loss, erasure, backup, substitution, and KMS-failure tests
 - [ ] Implement upstream SSO and account linking
 
