@@ -41,7 +41,7 @@ test.describe('OAuth Authorization Code + PKCE Flow', () => {
 		const browserErrors = collectBrowserErrors(page);
 
 		// Set up error collection for popup pages
-		let popupErrors: string[] = [];
+		const popupErrors: string[] = [];
 		context.on('page', (popup) => {
 			const errors = collectBrowserErrors(popup);
 			errors.forEach((e) => popupErrors.push(`[popup] ${e}`));
