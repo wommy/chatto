@@ -88,7 +88,7 @@ jobs:
 
           for arch in amd64 arm64; do
             context=".context/ci/docker/linux-${arch}"
-            GOOS=linux GOARCH="$arch" VERSION="$VERSION" CONTEXT_DIR="$context" mise run build-image-context
+            GOOS=linux GOARCH="$arch" VERSION="$VERSION" CONTEXT_DIR="$context" mise run image-context-build
           done
 
       - name: Upload production image contexts
