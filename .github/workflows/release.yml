@@ -590,6 +590,7 @@ jobs:
       # packages it into the server binary and client image. The bundled version must
       # match the release tag, not the npm_package_version fallback.
       - name: Verify bundled frontend version
+        shell: bash
         env:
           EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
