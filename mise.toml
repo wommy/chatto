@@ -131,7 +131,7 @@ run = "uvx --with charset-normalizer 'reuse==6.2.0' lint"
 
 [tasks.lint-actions]
 description = "Check GitHub Actions workflows and repository shell scripts"
-run = ["actionlint", "shellcheck --severity=warning tools/*.sh"]
+run = ["actionlint", "shellcheck --severity=warning tools/*.sh tools/lib/*.sh"]
 
 [tasks.build-version]
 description = "Give the version that a build of the working tree carries"
@@ -607,7 +607,7 @@ run = [
     "../tools/dev-supervisor_test.sh",
     "go test -trimpath -p ${CHATTO_GO_TEST_P:-4} -tags test_endpoints ./...",
 ]
-sources = ["**/*.go", "cmd/embedded/LICENSE", "cmd/embedded/NOTICE", "../tools/dev-supervisor*.sh"]
+sources = ["**/*.go", "cmd/embedded/LICENSE", "cmd/embedded/NOTICE", "../tools/dev-supervisor*.sh", "../tools/lib/*.sh"]
 
 [tasks.test-appconfig]
 description = "Run application configuration tests standalone and in the repository workspace"
