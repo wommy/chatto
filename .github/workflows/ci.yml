@@ -121,6 +121,9 @@ jobs:
       - name: Check license metadata
         run: mise license-check
 
+      - name: Scope reverify probe step
+        run: echo "structural probe step, will be reverted"
+
   workflow-lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
