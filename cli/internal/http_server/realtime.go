@@ -96,14 +96,30 @@ func (s *HTTPServer) setupRealtimeAPI() {
 }
 
 func (s *HTTPServer) checkRealtimeWebSocketOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
 	if origin == "" {
 		return true
 	}
-	if _, ok := parseBrowserOrigin(origin); ok {
+
+	// Check if origin is syntactically valid
+	if _, ok := parseBrowserOrigin(origin); !ok {
+		s.logger.Warn("Realtime WebSocket connection rejected: invalid origin syntax")
+		return false
+	}
+
+	// If AllowedOrigins contains "*", accept any syntactically valid origin
+	for _, allowed := range s.config.Webserver.AllowedOrigins {
+		if allowed == "*" {
+			return true
+		}
+	}
+
+	// Otherwise, validate against same-origin logic
+	if s.requestIsSameOrigin(r) {
 		return true
 	}
-	s.logger.Warn("Realtime WebSocket connection rejected: invalid origin")
+
+	s.logger.Warn("Realtime WebSocket connection rejected: origin not allowed", "origin", origin)
 	return false
 }
 
