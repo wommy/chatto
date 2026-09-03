@@ -133,9 +133,9 @@ run = "uvx --with charset-normalizer 'reuse==6.2.0' lint"
 [tasks.lint-actions]
 description = "Check GitHub Actions workflows, composite actions, and repository shell scripts"
 run = [
-    "mise x -- actionlint",
-    "mise x -- shellcheck --severity=warning tools/*.sh tools/lib/*.sh",
-    '''mise x -- find .github/actions -mindepth 2 -maxdepth 2 \( -name action.yml -o -name action.yaml \) -exec sh -c 'for f; do action-validator "$f" || exit 1; done' _ {} +''',
+    "actionlint",
+    "shellcheck --severity=warning tools/*.sh tools/lib/*.sh",
+    '''find .github/actions -mindepth 2 -maxdepth 2 \( -name action.yml -o -name action.yaml \) -exec sh -c 'for f; do action-validator "$f" || exit 1; done' _ {} +''',
 ]
 
 [tasks.build-version]
