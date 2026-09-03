@@ -302,6 +302,7 @@ test.describe('Message editing', () => {
     const originalMessage = `Real-time edit test ${Date.now()}`;
     const message1 = await roomPage.sendMessage(originalMessage);
     const eventId = await message1.getEventId();
+    if (!eventId) throw new Error('expected eventId from sent message');
 
     // User 2: Create user and open the server
     await withServerUser(
@@ -326,19 +327,15 @@ test.describe('Message editing', () => {
         await roomPage.expectMessageNotVisible(originalMessage);
 
         // User 2 should also see the edited message via LiveEvent
-        if (eventId) {
-          const message2 = roomPage2.getMessageByEventId(eventId);
-          await expect(message2.locator.getByText(editedMessage)).toBeVisible({
-            timeout: TIMEOUTS.UI_STANDARD
-          });
-          await message2.expectEdited();
-        }
+        const message2 = roomPage2.getMessageByEventId(eventId);
+        await expect(message2.locator.getByText(editedMessage)).toBeVisible({
+          timeout: TIMEOUTS.UI_STANDARD
+        });
+        await message2.expectEdited();
 
         // User 1's message should also show edited indicator
-        if (eventId) {
-          const message1BySeq = roomPage.getMessageByEventId(eventId);
-          await message1BySeq.expectEdited();
-        }
+        const message1BySeq = roomPage.getMessageByEventId(eventId);
+        await message1BySeq.expectEdited();
       },
       { viewport: { width: 1280, height: 720 } }
     );
