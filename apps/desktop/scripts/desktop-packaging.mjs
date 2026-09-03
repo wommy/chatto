@@ -134,29 +134,13 @@ export function windowsReleasePlan(plan) {
  */
 export function runMacOSReleasePlan(plan, tools) {
 	for (const item of plan) {
-		if (item.step === 'verify-helper') {
-			// test -x requires accessSync, not spawnSync.
-			try {
-				tools.accessSync(item.args[1], 1) // X_OK = 1
-			} catch {
-				// test -x exits with 1 on failure, silently.
-				return { step: item.step, exitCode: 1 }
-			}
-		} else if (item.step === 'mkdir') {
-			// mkdir -p requires mkdirSync for test purposes.
-			try {
-				tools.mkdirSync(item.args[1], { recursive: true })
-			} catch (error) {
-				return { step: item.step, exitCode: 1 }
-			}
-		} else {
-			// Spawn the command with stdio: inherit so verbose output reaches the log.
-			const result = tools.spawnSync(item.command, item.args, {
-				stdio: 'inherit',
-			})
-			if (result.status !== 0 && result.status !== null) {
-				return { step: item.step, exitCode: result.status }
-			}
+		// Spawn all commands (including test and mkdir) via spawnSync so they can be
+		// intercepted by test harnesses using mocked spawners or fake binaries.
+		const result = tools.spawnSync(item.command, item.args, {
+			stdio: 'inherit',
+		})
+		if (result.status !== 0 && result.status !== null) {
+			return { step: item.step, exitCode: result.status }
 		}
 	}
 	return null
@@ -169,9 +153,9 @@ export function runMacOSReleasePlan(plan, tools) {
  * @param {Record<string, string | undefined>} environment - The environment to
  *   read VERSION and RUNNER_ARCH from.
  * @param {Function} spawnSync - The function to spawn child processes. For
- *   production, pass `require("child_process").spawnSync`.
- * @param {{accessSync?: Function, mkdirSync?: Function}} [tools] - Optional
- *   overrides for file system functions. Used by tests.
+ *   production, pass `require("child_process").spawnSync`. Tests can pass a
+ *   mock that intercepts commands or returns fixed exit codes.
+ * @param {object} [tools] - Unused; kept for backward compatibility.
  * @returns {null} This function does not return output; it controls the process
  *   exit code.
  * @throws {Error} When the command is unknown.
@@ -180,8 +164,6 @@ export function runPackagingCommand(argv, environment, spawnSync, tools) {
 	const [command, ...rest] = argv
 	const version = environment.VERSION
 	const arch = environment.RUNNER_ARCH
-
-	const fileTools = tools || { accessSync, mkdirSync }
 
 	switch (command) {
 		case 'package-macos': {
@@ -192,11 +174,7 @@ export function runPackagingCommand(argv, environment, spawnSync, tools) {
 			const archivePath = `.context/desktop-release/${macOSReleaseArchiveName(version, arch)}`
 
 			const plan = macOSReleasePlan({ appPath, helperPath, archivePath })
-			const failure = runMacOSReleasePlan(plan, {
-				spawnSync,
-				accessSync: fileTools.accessSync,
-				mkdirSync: fileTools.mkdirSync,
-			})
+			const failure = runMacOSReleasePlan(plan, { spawnSync })
 			if (failure) {
 				process.exitCode = failure.exitCode
 				return null

@@ -92,12 +92,6 @@ test('runs a macOS plan that succeeds when all commands pass', () => {
 	})
 
 	const tools = {
-		accessSync: () => {
-			// Helper exists.
-		},
-		mkdirSync: () => {
-			// Directory created.
-		},
 		spawnSync: (cmd, args) => {
 			// All commands succeed.
 			return { status: 0 }
@@ -116,14 +110,12 @@ test('stops at the first failing step in a macOS plan', () => {
 	})
 
 	const tools = {
-		accessSync: () => {
-			throw new Error('Helper not found')
-		},
-		mkdirSync: () => {
-			throw new Error('Should not reach mkdir')
-		},
 		spawnSync: (cmd, args) => {
-			throw new Error('Should not reach spawnSync')
+			if (cmd === 'test') {
+				// Helper check fails.
+				return { status: 1 }
+			}
+			throw new Error(`Should not reach spawnSync for: ${cmd}`)
 		},
 	}
 
@@ -141,16 +133,10 @@ test('stops at the first nonzero exit code in a macOS plan', () => {
 
 	let callCount = 0
 	const tools = {
-		accessSync: () => {
-			// Helper exists.
-		},
-		mkdirSync: () => {
-			// Directory created.
-		},
 		spawnSync: (cmd, args) => {
 			callCount++
-			if (callCount === 3) {
-				// Fail at spctl (the third spawnSync call after codesign and stapler).
+			if (cmd === 'spctl') {
+				// Fail at spctl with exit code 3 (as it would in the real runner).
 				return { status: 3 }
 			}
 			return { status: 0 }
@@ -160,7 +146,7 @@ test('stops at the first nonzero exit code in a macOS plan', () => {
 	const result = runMacOSReleasePlan(plan, tools)
 	assert.equal(result.step, 'verify-spctl')
 	assert.equal(result.exitCode, 3)
-	assert.equal(callCount, 3) // codesign, stapler, spctl
+	assert.equal(callCount, 4) // test, codesign, xcrun, spctl
 })
 
 test('runs package-macos command and reports success', () => {
@@ -170,27 +156,15 @@ test('runs package-macos command and reports success', () => {
 		return { status: 0 }
 	}
 
-	const tools = {
-		accessSync: () => {
-			// Helper exists.
-		},
-		mkdirSync: () => {
-			// Directory created.
-		},
-	}
+	runPackagingCommand(['package-macos'], { VERSION: '0.1.0', RUNNER_ARCH: 'ARM64' }, spawnSync)
 
-	runPackagingCommand(
-		['package-macos'],
-		{ VERSION: '0.1.0', RUNNER_ARCH: 'ARM64' },
-		spawnSync,
-		tools,
-	)
-
-	assert.equal(spawnCalls.length, 4)
-	assert.equal(spawnCalls[0].cmd, 'codesign')
-	assert.equal(spawnCalls[1].cmd, 'xcrun')
-	assert.equal(spawnCalls[2].cmd, 'spctl')
-	assert.equal(spawnCalls[3].cmd, 'ditto')
+	assert.equal(spawnCalls.length, 6)
+	assert.equal(spawnCalls[0].cmd, 'test')
+	assert.equal(spawnCalls[1].cmd, 'codesign')
+	assert.equal(spawnCalls[2].cmd, 'xcrun')
+	assert.equal(spawnCalls[3].cmd, 'spctl')
+	assert.equal(spawnCalls[4].cmd, 'mkdir')
+	assert.equal(spawnCalls[5].cmd, 'ditto')
 })
 
 test('runs package-macos and returns on codesign failure without throwing', () => {
@@ -203,21 +177,11 @@ test('runs package-macos and returns on codesign failure without throwing', () =
 			return { status: 0 }
 		}
 
-		const tools = {
-			accessSync: () => {
-				// Helper exists.
-			},
-			mkdirSync: () => {
-				// Directory created.
-			},
-		}
-
 		// Should not throw; should set exitCode instead
 		const result = runPackagingCommand(
 			['package-macos'],
 			{ VERSION: '0.1.0', RUNNER_ARCH: 'ARM64' },
 			spawnSync,
-			tools,
 		)
 		assert.equal(result, null)
 	} finally {
