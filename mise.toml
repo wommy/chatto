@@ -192,6 +192,7 @@ depends = ["setup-frontend"]
 dir = "packages/api-types"
 run = "pnpm build"
 sources = ["package.json", "tsconfig.json", "src/**/*"]
+outputs = ["dist/**/*"]
 
 [tasks.build-lingua]
 description = "Build the JSON internationalisation runtime package"
@@ -199,39 +200,40 @@ depends = ["setup-frontend"]
 dir = "packages/lingua"
 run = "pnpm build"
 sources = ["package.json", "tsconfig.json", "src/**/*"]
+outputs = ["dist/**/*"]
 
 [tasks.build-frontend]
 description = "Build the frontend application"
 depends = ["setup-frontend", "build-api-types", "build-lingua"]
-dir = "apps/frontend"
+dir = "."
 run = [
-    "pnpm svelte-kit sync",
-    "pnpm build",
-    "touch build/.mise-build-stamp",
-    "bash ../../tools/prepare-embedded-frontend.sh build ../../cli/internal/http_server/.client",
+    "pnpm --dir apps/frontend exec svelte-kit sync",
+    "pnpm --dir apps/frontend build",
+    "bash tools/prepare-embedded-frontend.sh apps/frontend/build cli/internal/http_server/.client",
 ]
 sources = [
-    "../../.npmrc",
-    "../../package.json",
-    "../../pnpm-lock.yaml",
-    "../../pnpm-workspace.yaml",
-    "../../packages/api-types/dist/**/*",
-    "../../packages/lingua/dist/**/*",
+    ".npmrc",
     "package.json",
-    "messages/**/*",
-    "scripts/check-bundle-size.mjs",
-    "../../tools/prepare-embedded-frontend.sh",
-    "src/**/*",
-    "!src/**/*.spec.*",
-    "!src/**/*.test.*",
-    "!src/**/*.stories.*",
-    "!src/**/*TestHarness.svelte",
-    "static/**/*",
-    "svelte.config.js",
-    "tsconfig.json",
-    "vite.config.ts",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "packages/api-types/dist/**/*",
+    "packages/lingua/dist/**/*",
+    "apps/frontend/package.json",
+    "apps/frontend/messages/**/*",
+    "apps/frontend/scripts/check-bundle-size.mjs",
+    "apps/frontend/scripts/check-csp.mjs",
+    "tools/prepare-embedded-frontend.sh",
+    "apps/frontend/src/**/*",
+    "!apps/frontend/src/**/*.spec.*",
+    "!apps/frontend/src/**/*.test.*",
+    "!apps/frontend/src/**/*.stories.*",
+    "!apps/frontend/src/**/*TestHarness.svelte",
+    "apps/frontend/static/**/*",
+    "apps/frontend/svelte.config.js",
+    "apps/frontend/tsconfig.json",
+    "apps/frontend/vite.config.ts",
 ]
-outputs = ["build/.mise-build-stamp", "../../cli/internal/http_server/.client/.gitkeep"]
+outputs = ["apps/frontend/build/**/*", "cli/internal/http_server/.client/**/*"]
 
 [tasks.build-dev-cli]
 description = "Build the development CLI application for the current architecture"
