@@ -33,10 +33,13 @@
  * ## The interface serves both Chatto images
  *
  * The caller gives the image reference, the command arguments, the probe
- * path, and the container port. The client image needs no command, answers
- * on port 80, and serves `/` from nginx. The server image needs a command
- * and a configuration file, answers on port 4000, and serves `/readyz`.
- * Issue #52 uses this module for the server image.
+ * path, the container port, and any environment variables the container
+ * needs. The client image needs no command and no environment, answers on
+ * port 80, and serves `/` from nginx. The server image needs a command and
+ * its required configuration: `cli/internal/config` refuses to start
+ * without `webserver.port` and three hex secrets, none of which have a
+ * default. Issue #52 sets those with `--env`, not a mounted file, because
+ * the check must not depend on a config file existing on the runner.
  *
  * ## Lifecycle
  *
@@ -51,10 +54,11 @@
  *       --probe-path / \
  *       --expect-version 1.2.3
  *
- * Use `--arg` one time for each word of the container command. Use
- * `--attempts` and `--delay-ms` to bound the wait. Give the workflow step a
- * `timeout-minutes` value as well, because the `release` job sets no timeout
- * of its own.
+ * Use `--arg` one time for each word of the container command, and `--env`
+ * one time for each `KEY=VALUE` environment variable the container needs.
+ * Use `--attempts` and `--delay-ms` to bound the wait. Give the workflow
+ * step a `timeout-minutes` value as well, because the `release` job sets no
+ * timeout of its own.
  */
 
 import { spawnSync } from "node:child_process";
@@ -86,6 +90,10 @@ const REQUEST_TIMEOUT_MS = 5000;
  * @property {string[]} [command] Command arguments for the container. The
  *   client image needs none. The server image needs its subcommand and the
  *   path of its configuration file.
+ * @property {string[]} [env] Environment variables for the container, each as
+ *   `KEY=VALUE`. The client image needs none. The server image needs its
+ *   required secrets, because no config file exists on the runner for the
+ *   check to mount.
  * @property {string} [probePath] Path that must answer 200. Default `/`.
  * @property {string} [expectVersion] Version that the version document must
  *   hold. The check reads no version document when this is absent.
@@ -120,7 +128,7 @@ export function pullArgs(image) {
  * chooses, so two checks in one job cannot collide. The command arguments
  * come after the image, which is where Docker expects them.
  */
-export function runArgs({ image, containerName, port, command = [] }) {
+export function runArgs({ image, containerName, port, command = [], env = [] }) {
   return [
     "run",
     "--detach",
@@ -128,6 +136,7 @@ export function runArgs({ image, containerName, port, command = [] }) {
     containerName,
     "--publish",
     `127.0.0.1::${port}/tcp`,
+    ...env.flatMap((variable) => ["--env", variable]),
     image,
     ...command,
   ];
@@ -186,6 +195,16 @@ export function normalizeOptions(options) {
     throw new TypeError("command must be an array of arguments");
   }
 
+  const env = options.env ?? [];
+  if (!Array.isArray(env)) {
+    throw new TypeError("env must be an array of KEY=VALUE strings");
+  }
+  for (const variable of env) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*=/.test(String(variable))) {
+      throw new TypeError(`env entries must look like KEY=VALUE, got: ${variable}`);
+    }
+  }
+
   const probePath = options.probePath ?? "/";
   if (!probePath.startsWith("/")) {
     throw new TypeError(`probePath must start with a slash: ${probePath}`);
@@ -200,6 +219,7 @@ export function normalizeOptions(options) {
     image,
     port,
     command: command.map(String),
+    env: env.map(String),
     probePath,
     versionPath,
     expectVersion: options.expectVersion ?? "",
@@ -430,7 +450,7 @@ export function parseArgs(argv) {
   // `parseArgs` of `node:util` refuses a value that looks like an option,
   // so it cannot read this command line. The other two release tools take
   // no such option and use `node:util`.
-  const options = { command: [] };
+  const options = { command: [], env: [] };
   const single = {
     "--image": "image",
     "--port": "port",
@@ -450,6 +470,10 @@ export function parseArgs(argv) {
       if (value === undefined) throw new TypeError("--arg needs a value");
       options.command.push(value);
       index += 1;
+    } else if (option === "--env") {
+      if (value === undefined) throw new TypeError("--env needs a value");
+      options.env.push(value);
+      index += 1;
     } else if (single[option]) {
       if (value === undefined) throw new TypeError(`${option} needs a value`);
       options[single[option]] = value;
@@ -468,7 +492,7 @@ const USAGE =
   "usage: node tools/smoke-check-image.mjs --image <ref> --port <port>" +
   " [--probe-path <path>] [--expect-version <version>]" +
   " [--version-path <path>] [--attempts <n>] [--pull-attempts <n>]" +
-  " [--delay-ms <ms>] [--arg <value>]\n";
+  " [--delay-ms <ms>] [--arg <value>] [--env <KEY=VALUE>]\n";
 
 async function main(argv) {
   try {
