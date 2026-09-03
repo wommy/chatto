@@ -399,8 +399,9 @@ exec tools/dev-supervisor.sh mise run --jobs 5 --output prefix \
 hide = true
 tools = { node = "24" }
 env = {
-  CHATTO_DEV_MAILPIT_SMTP_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 8}}",
-  CHATTO_DEV_MAILPIT_UI_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 9}}",
+  CHATTO_DEV_PORT_BASE = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
+  CHATTO_DEV_MAILPIT_SMTP_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 8}}",
+  CHATTO_DEV_MAILPIT_UI_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 9}}",
 }
 run = '''
 set -eu
@@ -417,10 +418,11 @@ exec portless \
 hide = true
 tools = { node = "24" }
 env = {
-  CHATTO_DEV_BACKEND_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 1}}",
-  CHATTO_DEV_LIVEKIT_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 5}}",
-  CHATTO_DEV_LIVEKIT_RTC_TCP_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 6}}",
-  CHATTO_DEV_LIVEKIT_UDP_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 7}}",
+  CHATTO_DEV_PORT_BASE = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
+  CHATTO_DEV_BACKEND_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 1}}",
+  CHATTO_DEV_LIVEKIT_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 5}}",
+  CHATTO_DEV_LIVEKIT_RTC_TCP_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 6}}",
+  CHATTO_DEV_LIVEKIT_UDP_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 7}}",
 }
 run = '''
 set -eu
@@ -435,14 +437,15 @@ exec portless \
 hide = true
 tools = { node = "24" }
 env = {
-  AUTHLING_HTTP_BIND_ADDRESS = "127.0.0.1:{{env.CONDUCTOR_PORT | default(value='4000') | int + 2}}",
+  CHATTO_DEV_PORT_BASE = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
+  AUTHLING_HTTP_BIND_ADDRESS = "127.0.0.1:{{env.CHATTO_DEV_PORT_BASE | int + 2}}",
   AUTHLING_HTTP_TRUST_PROXY_HEADERS = "true",
   AUTHLING_AUTHENTICATION_PASSWORD_MINIMUM_LENGTH = "10",
   AUTHLING_NATS_REPLICAS = "1",
   AUTHLING_NATS_EMBEDDED_ENABLED = "true",
   AUTHLING_SMTP_ENABLED = "true",
   AUTHLING_SMTP_HOST = "127.0.0.1",
-  AUTHLING_SMTP_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 8}}",
+  AUTHLING_SMTP_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 8}}",
   AUTHLING_SMTP_TLS = "opportunistic",
   AUTHLING_SMTP_FROM = "authling@authling.local",
 }
@@ -472,9 +475,10 @@ exec portless \
 hide = true
 tools = { node = "24" }
 env = {
-  CHATTO_WEBSERVER_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 1}}",
-  CHATTO_NATS_EMBEDDED_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 4}}",
-  CHATTO_SMTP_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 8}}",
+  CHATTO_DEV_PORT_BASE = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
+  CHATTO_WEBSERVER_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 1}}",
+  CHATTO_NATS_EMBEDDED_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 4}}",
+  CHATTO_SMTP_PORT = "{{env.CHATTO_DEV_PORT_BASE | int + 8}}",
   CHATTO_LOG_LEVEL = "debug",
   CHATTO_LOG_FORMAT = "text",
   CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET = "871a846584490a6153305533cce100b8e6f39d4184c2fb499d2ed198a9ed37a3",
@@ -545,8 +549,9 @@ exec bin/chatto-dev start
 hide = true
 tools = { node = "24" }
 env = {
-  VITE_PORT = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
-  CHATTO_BACKEND_URL = "http://127.0.0.1:{{env.CONDUCTOR_PORT | default(value='4000') | int + 1}}",
+  CHATTO_DEV_PORT_BASE = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
+  VITE_PORT = "{{env.CHATTO_DEV_PORT_BASE}}",
+  CHATTO_BACKEND_URL = "http://127.0.0.1:{{env.CHATTO_DEV_PORT_BASE | int + 1}}",
 }
 run = '''
 set -eu
