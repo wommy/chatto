@@ -141,6 +141,47 @@ test("the server image can give command arguments, a port and a probe path", asy
   assert.deepEqual(request.urls, ["http://127.0.0.1:49154/readyz"]);
 });
 
+test("the server image gives its required secrets as environment variables", async () => {
+  // `cli/internal/config` refuses to start without `webserver.port` and three
+  // hex secrets, and none of them have a default. No config file exists on
+  // the runner for this check to mount, so the caller sets them with `--env`,
+  // and `runArgs` must place them before the image reference, where Docker
+  // expects `--env`.
+  const docker = dockerStub();
+  const request = requestStub({ "/readyz": { status: 200, body: "ok" } });
+
+  await smokeCheckImage(
+    baseOptions({
+      image: "ghcr.io/chattocorp/chatto:1.2.3",
+      port: 4000,
+      probePath: "/readyz",
+      command: ["start", "-c", "/config/chatto.toml"],
+      env: [
+        "CHATTO_WEBSERVER_PORT=4000",
+        "CHATTO_NATS_EMBEDDED_ENABLED=true",
+      ],
+    }),
+    { docker, request, sleep: noSleep },
+  );
+
+  assert.deepEqual(docker.calls[1], [
+    "run",
+    "--detach",
+    "--name",
+    CONTAINER,
+    "--publish",
+    "127.0.0.1::4000/tcp",
+    "--env",
+    "CHATTO_WEBSERVER_PORT=4000",
+    "--env",
+    "CHATTO_NATS_EMBEDDED_ENABLED=true",
+    "ghcr.io/chattocorp/chatto:1.2.3",
+    "start",
+    "-c",
+    "/config/chatto.toml",
+  ]);
+});
+
 test("an image that cannot be pulled fails after the bounded attempts", async () => {
   const docker = dockerStub({
     pull: { status: 1, stdout: "", stderr: "denied: manifest unknown" },
@@ -391,6 +432,19 @@ test("the options are checked before the check starts a container", () => {
     () => normalizeOptions({ image: IMAGE, port: 80, command: "start" }),
     /command must be an array/,
   );
+  assert.throws(
+    () =>
+      normalizeOptions({
+        image: IMAGE,
+        port: 80,
+        env: "CHATTO_WEBSERVER_PORT=4000",
+      }),
+    /env must be an array/,
+  );
+  assert.throws(
+    () => normalizeOptions({ image: IMAGE, port: 80, env: ["no-equals-sign"] }),
+    /env entries must look like KEY=VALUE/,
+  );
 });
 
 test("the options keep the defaults that the release workflow relies on", () => {
@@ -422,9 +476,12 @@ test("the command line reads each option, and refuses an unknown one", () => {
       "-c",
       "--arg",
       "/config/chatto.toml",
+      "--env",
+      "CHATTO_WEBSERVER_PORT=4000",
     ]),
     {
       command: ["start", "-c", "/config/chatto.toml"],
+      env: ["CHATTO_WEBSERVER_PORT=4000"],
       image: IMAGE,
       port: "80",
       probePath: "/",
@@ -435,6 +492,7 @@ test("the command line reads each option, and refuses an unknown one", () => {
   assert.throws(() => parseArgs([]), /--image is required/);
   assert.throws(() => parseArgs(["--image", IMAGE]), /--port is required/);
   assert.throws(() => parseArgs(["--image"]), /--image needs a value/);
+  assert.throws(() => parseArgs(["--image", IMAGE, "--port", "80", "--env"]), /--env needs a value/);
   assert.throws(
     () => parseArgs(["--image", IMAGE, "--port", "80", "--wait"]),
     /Unknown option: --wait/,

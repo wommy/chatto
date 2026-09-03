@@ -538,6 +538,12 @@ jobs:
             --tag "$GITHUB_REF_NAME" \
             --push-latest "$PUSH_LATEST" | tee -a "$GITHUB_OUTPUT"
 
+      # Every floating server manifest carries skip_push: "true" as a literal
+      # in .goreleaser.yml, so GoReleaser publishes only the immutable
+      # {version} manifest here. The floating tags move in the last step of
+      # this job, after the smoke check below proved that this image works
+      # and after the GitHub Release published. Issues #38 and #52 hold the
+      # decision.
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
@@ -549,11 +555,43 @@ jobs:
           # than github-actions[bot]. Bot-authored releases don't get
           # GitHub's autolink rendering for commit SHAs and #NNN PR refs.
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          # .goreleaser.yml reads these three and decides nothing itself. All
-          # three must be set: GoReleaser templates use missingkey=error.
-          CHATTO_SKIP_PUSH_MAJOR_MINOR: ${{ steps.image_tags.outputs.chatto_skip_push_major_minor }}
-          CHATTO_SKIP_PUSH_LATEST: ${{ steps.image_tags.outputs.chatto_skip_push_latest }}
-          CHATTO_SKIP_PUSH_NEXT: ${{ steps.image_tags.outputs.chatto_skip_push_next }}
+
+      # tools/smoke-check-image.mjs pulls the image that GoReleaser pushed
+      # above and proves that it starts. `cli/internal/config` refuses to
+      # start without `webserver.port` and three hex secrets, none of which
+      # have a default, and no config file exists on this runner to mount, so
+      # the check generates throwaway secrets and gives them with `--env`.
+      # They are masked so a log never carries them, and they are discarded
+      # with the container. The `release` job sets no timeout, so this step
+      # sets its own, and the module bounds its own attempts as well.
+      - name: Smoke check the server image
+        shell: bash
+        timeout-minutes: 10
+        env:
+          SERVER_VERSION_TAG: ${{ steps.image_tags.outputs.server_version_tag }}
+        run: |
+          set -euo pipefail
+
+          cookie_secret="$(openssl rand -hex 32)"
+          core_secret="$(openssl rand -hex 32)"
+          assets_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::${cookie_secret}"
+          echo "::add-mask::${core_secret}"
+          echo "::add-mask::${assets_secret}"
+
+          mise x -- node tools/smoke-check-image.mjs \
+            --image "$SERVER_VERSION_TAG" \
+            --port 4000 \
+            --probe-path /readyz \
+            --arg start --arg -c --arg /config/chatto.toml \
+            --env "CHATTO_WEBSERVER_PORT=4000" \
+            --env "CHATTO_WEBSERVER_URL=http://127.0.0.1:4000" \
+            --env "CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET=${cookie_secret}" \
+            --env "CHATTO_CORE_SECRET_KEY=${core_secret}" \
+            --env "CHATTO_CORE_ASSETS_SIGNING_SECRET=${assets_secret}" \
+            --env "CHATTO_NATS_EMBEDDED_ENABLED=true" \
+            --env "CHATTO_NATS_EMBEDDED_DATA_DIR=/data/nats" \
+            --env "CHATTO_LOG_LEVEL=error"
 
       # Only the immutable {version} tag is pushed here. The floating tags
       # move in the last step of this job, after the smoke check proved that
@@ -758,6 +796,69 @@ jobs:
           done
 
           docker buildx imagetools create "${create[@]}" "$CLIENT_VERSION_TAG"
+
+          # The assignment makes a failed read of the moved tag red. To put
+          # the command in the `echo` arguments would hide that failure.
+          for tag in "${floating[@]}"; do
+            moved="$(docker buildx imagetools inspect "$tag")"
+            echo "${tag} now holds $(digest_of "$moved")"
+          done
+
+      # The true last step of the release moves the server image floating
+      # tags. `chatto:latest` is the least withdrawable reference this
+      # release publishes, so it moves only after every earlier step,
+      # including the client tag move above, has succeeded. Any earlier
+      # failure means this step never runs, the job is red, and
+      # `chatto:latest` keeps the previous release serving.
+      #
+      # `imagetools create` copies the manifest that the smoke check tested,
+      # so the tag points at the digest that was checked. GoReleaser pushing
+      # a floating manifest directly would tie no check to that image. The
+      # same command moves a tag back, so the rollback is the mechanism that
+      # each release exercises. `docs/RELEASING.md` holds the recovery.
+      - name: Move the server image floating tags
+        shell: bash
+        timeout-minutes: 10
+        env:
+          SERVER_VERSION_TAG: ${{ steps.image_tags.outputs.server_version_tag }}
+          SERVER_FLOATING_TAGS: ${{ steps.image_tags.outputs.server_floating_tags }}
+        run: |
+          set -euo pipefail
+
+          floating=()
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] && floating+=("$tag")
+          done <<< "$SERVER_FLOATING_TAGS"
+
+          if (( ${#floating[@]} == 0 )); then
+            echo "This release publishes no floating server tag."
+            exit 0
+          fi
+
+          # Write the rollback command for each tag before it moves. An
+          # operator then finds the previous digest in this job log.
+          digest_of() {
+            printf '%s\n' "$1" |
+              awk '/^Digest:/ { if (!found) { print $2; found = 1 } }'
+          }
+
+          repository="${SERVER_VERSION_TAG%:*}"
+          for tag in "${floating[@]}"; do
+            if inspected="$(docker buildx imagetools inspect "$tag" 2>/dev/null)"; then
+              previous="$(digest_of "$inspected")"
+              echo "Roll ${tag} back with:"
+              echo "  docker buildx imagetools create --tag ${tag} ${repository}@${previous}"
+            else
+              echo "${tag} does not exist yet, so it has no previous digest."
+            fi
+          done
+
+          create=()
+          for tag in "${floating[@]}"; do
+            create+=(--tag "$tag")
+          done
+
+          docker buildx imagetools create "${create[@]}" "$SERVER_VERSION_TAG"
 
           # The assignment makes a failed read of the moved tag red. To put
           # the command in the `echo` arguments would hide that failure.

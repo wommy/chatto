@@ -48,8 +48,10 @@ The client image gets no `1.2` tag. This is not intended. Issue #43 keeps the
 tag set unchanged until a separate change adds that tag.
 
 `tools/release-image-tags.mjs` holds this policy for both images.
-`.goreleaser.yml` and the release workflow read the result and decide nothing.
-To see the tags for a release tag before you push it, run:
+`.goreleaser.yml` publishes only the immutable version manifest and decides
+nothing else. The release workflow reads the rest of the plan from this
+module and decides nothing itself. To see the tags for a release tag before
+you push it, run:
 
 ```sh
 node tools/release-image-tags.mjs --tag v1.2.3 --push-latest true
@@ -60,22 +62,27 @@ release workflow computes that value from the Git tags.
 Run `mise test-tools` to test the policy. The workspace test job
 runs the same test on every pull request.
 
-## The client image floating tags move last
+## Both images move their floating tags last
 
-The release publishes `chatto-client:1.2.3` first. It then checks that image.
-The floating tags `latest` and `next` move in the last step of the `release`
-job, after the GitHub Release publishes.
+The release publishes the immutable version tag for each image first, and
+checks that image with a smoke check. The floating tags move only after the
+check passes, in the last two steps of the `release` job, after the GitHub
+Release publishes.
 
 The order is not a preference. GoReleaser pushes images before it creates the
-GitHub Release, so `draft: true` cannot hold an image back. The gate must be
-outside GoReleaser. The server image keeps the old order until issue #52
-changes it.
+GitHub Release, so `draft: true` cannot hold an image back. `.goreleaser.yml`
+sets `skip_push: "true"` as a literal on every floating server manifest, so
+GoReleaser never publishes one itself. The gate must live outside GoReleaser
+for both images.
 
-The check pulls the version image, starts a container, requests `/` until the
-answer is 200, and compares `/_app/version.json` with the release version. An
-image that does not start, or that holds a different bundle, makes the job red
-and no floating tag moves. `tools/smoke-check-image.mjs` holds the check, and
-you can run it against any image:
+`chatto-client:1.2.3` moves first, then `chatto:1.2.3`. `chatto:latest` is the
+least withdrawable reference either image publishes, so its move is the true
+last step of the job.
+
+`tools/smoke-check-image.mjs` holds both checks, and you can run either
+against any image. The client check pulls the version image, starts a
+container with no command, requests `/` until the answer is 200, and compares
+`/_app/version.json` with the release version:
 
 ```sh
 node tools/smoke-check-image.mjs \
@@ -85,10 +92,32 @@ node tools/smoke-check-image.mjs \
   --expect-version 1.2.3
 ```
 
-Run `mise test-tools` to test the check. The workspace test job
-runs the same test on every pull request.
+The server has no version document, and it refuses to start without
+`webserver.port` and three hex secrets, none of which have a default. No
+config file exists on the runner for the check to mount, so the release
+workflow generates throwaway secrets and gives them with `--env`. The check
+requests `/readyz` until the answer is 200:
 
-The tag move uses `docker buildx imagetools create`. That command copies the
+```sh
+node tools/smoke-check-image.mjs \
+  --image ghcr.io/chattocorp/chatto:1.2.3 \
+  --port 4000 \
+  --probe-path /readyz \
+  --arg start --arg -c --arg /config/chatto.toml \
+  --env CHATTO_WEBSERVER_PORT=4000 \
+  --env CHATTO_WEBSERVER_URL=http://127.0.0.1:4000 \
+  --env CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET=<64 hex characters> \
+  --env CHATTO_CORE_SECRET_KEY=<64 hex characters> \
+  --env CHATTO_CORE_ASSETS_SIGNING_SECRET=<64 hex characters> \
+  --env CHATTO_NATS_EMBEDDED_ENABLED=true \
+  --env CHATTO_NATS_EMBEDDED_DATA_DIR=/data/nats
+```
+
+An image that does not start, or that fails its check, makes the job red and
+no floating tag moves. Run `mise test-tools` to test the check. The workspace
+test job runs the same test on every pull request.
+
+Each tag move uses `docker buildx imagetools create`. That command copies the
 manifest of the version image, so a floating tag points at the digest that the
 check tested. A second image build would make a different manifest.
 
@@ -101,23 +130,27 @@ carry, and it gives the same command as the rollback for a tag that moved.
 The floating tags stay where they are, and the previous release continues to
 serve. The job is red.
 
-**Do not cut a new release.** The version image is correct and immutable, and a
-new version number does not repair the tags. Do these steps:
+**Do not cut a new release.** The version images are correct and immutable,
+and a new version number does not repair the tags. Do these steps:
 
 1. Find the cause in the job log, and correct it.
-2. Do the tag move again. Move each tag by hand with the same command that
-   the step uses. First log in to `ghcr.io` with a token that can write
+2. Do each stalled tag move again. Move each tag by hand with the same command
+   that the step uses. First log in to `ghcr.io` with a token that can write
    packages:
 
    ```sh
    docker buildx imagetools create \
      --tag ghcr.io/chattocorp/chatto-client:latest \
      ghcr.io/chattocorp/chatto-client:1.2.3
+
+   docker buildx imagetools create \
+     --tag ghcr.io/chattocorp/chatto:latest \
+     ghcr.io/chattocorp/chatto:1.2.3
    ```
 
-   A re-run of the full `release` job also moves the tag, but it runs
+   A re-run of the full `release` job also moves the tags, but it runs
    GoReleaser again against a release that is already published. Prefer the
-   command above.
+   commands above.
 
 3. To move a tag back to the release before it, use the digest that the
    tag-move step wrote to the job log before it moved that tag:
@@ -126,7 +159,15 @@ new version number does not repair the tags. Do these steps:
    docker buildx imagetools create \
      --tag ghcr.io/chattocorp/chatto-client:latest \
      ghcr.io/chattocorp/chatto-client@sha256:<previous digest>
+
+   docker buildx imagetools create \
+     --tag ghcr.io/chattocorp/chatto:latest \
+     ghcr.io/chattocorp/chatto@sha256:<previous digest>
    ```
+
+   This one command completes a stalled release and reverts a bad one: point
+   it at the new digest to finish the move, or at the previous digest to
+   revert it.
 
 A tag name does not do this. `imagetools` reads the tag at the time of the
 command, so a tag that already moved gives the new digest and not the old one.
