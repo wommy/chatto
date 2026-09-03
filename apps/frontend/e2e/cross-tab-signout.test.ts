@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import * as routes from './routes';
 import { TIMEOUTS } from './constants';
 import { browserAuthenticationHeaders } from './fixtures/csrf';
+import { collectBrowserErrors } from './fixtures/browserErrors';
 
 /**
  * Navigate to a route and wait for the client-side app to be fully hydrated.
@@ -67,6 +68,8 @@ test.describe('Cross-Tab Sign-Out', () => {
     const page2 = await context2.newPage();
 
     try {
+      const browserErrors = collectBrowserErrors(page2);
+
       // Navigate page2 to the home server and wait for full hydration.
       await gotoAndWaitForHydration(page2, routes.chat);
 
@@ -87,6 +90,8 @@ test.describe('Cross-Tab Sign-Out', () => {
 
       // Tab 2 should leave the authenticated chat surface.
       await expectLoggedOutRedirect(page2);
+
+      expect(browserErrors).toEqual([]);
     } finally {
       await context2.close();
     }
@@ -109,6 +114,9 @@ test.describe('Cross-Tab Sign-Out', () => {
     const page2 = await page.context().newPage();
 
     try {
+      const browserErrors = collectBrowserErrors(page2);
+      const browserErrorsPage1 = collectBrowserErrors(page);
+
       // Navigate page2 to chat and wait for full hydration
       await gotoAndWaitForHydration(page2, routes.chat);
       await expect(page2).toHaveURL(routes.patterns.chatRedirect);
@@ -125,6 +133,9 @@ test.describe('Cross-Tab Sign-Out', () => {
       // Tab 2 should receive the BroadcastChannel message and leave the
       // authenticated chat surface.
       await expectLoggedOutRedirect(page2);
+
+      expect(browserErrors).toEqual([]);
+      expect(browserErrorsPage1).toEqual([]);
     } finally {
       await page2.close();
     }

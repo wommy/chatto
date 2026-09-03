@@ -126,21 +126,16 @@ test.describe('Virtualizer stability', () => {
       timeout: TIMEOUTS.UI_STANDARD
     });
 
-    // Filter for the specific crash signature
-    const criticalErrors = [
-      ...pageErrors.filter(
-        (e) =>
-          e.includes('Cannot read properties of undefined') ||
-          e.includes('lifecycle_outside_component')
-      ),
-      ...consoleErrors.filter(
-        (e) =>
-          e.includes('Cannot read properties of undefined') ||
-          e.includes('lifecycle_outside_component')
-      )
+    // Fail on any unexpected errors, except for known benign messages.
+    // Empty allowlist because no benign noise was observed in clean test runs.
+    const BENIGN_BROWSER_ERRORS: string[] = [];
+
+    const unexpectedErrors = [
+      ...pageErrors.filter((e) => !BENIGN_BROWSER_ERRORS.some((p) => e.includes(p))),
+      ...consoleErrors.filter((e) => !BENIGN_BROWSER_ERRORS.some((p) => e.includes(p)))
     ];
 
-    expect(criticalErrors).toEqual([]);
+    expect(unexpectedErrors).toEqual([]);
   });
 
   test('real-time messages from another user during room switching do not cause JS errors', async ({
