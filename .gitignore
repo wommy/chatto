@@ -17,6 +17,9 @@ examples/dockercompose/livekit.generated.yaml
 # Build output
 /dist/
 
+# mise dependency installation stamps
+.stamp-deps-*
+
 # Test results
 test-results/
 
