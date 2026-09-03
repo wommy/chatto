@@ -15,13 +15,14 @@ import (
 )
 
 type processMetrics struct {
-	realtimeWebSocketConnections atomic.Int64
-	realtimeCatchUps             atomic.Int64
-	realtimeCatchUpsStarted      atomic.Uint64
-	realtimeCatchUpsTimedOut     atomic.Uint64
-	realtimeCatchUpsRateLimited  atomic.Uint64
-	realtimeCatchUpsUserBusy     atomic.Uint64
-	realtimeCatchUpsServerBusy   atomic.Uint64
+	realtimeWebSocketConnections           atomic.Int64
+	realtimeCatchUps                       atomic.Int64
+	realtimeCatchUpsStarted                atomic.Uint64
+	realtimeCatchUpsTimedOut               atomic.Uint64
+	realtimeCatchUpsRateLimited            atomic.Uint64
+	realtimeCatchUpsUserBusy               atomic.Uint64
+	realtimeCatchUpsServerBusy             atomic.Uint64
+	realtimeSteadyStateConnectionsRejected atomic.Uint64
 }
 
 func (m *processMetrics) realtimeCatchUpStarted() {
@@ -62,6 +63,10 @@ func (m *processMetrics) realtimeWebSocketClosed() {
 
 func (m *processMetrics) realtimeWebSocketConnectionCount() int64 {
 	return m.realtimeWebSocketConnections.Load()
+}
+
+func (m *processMetrics) realtimeSteadyStateConnectionRejected() {
+	m.realtimeSteadyStateConnectionsRejected.Add(1)
 }
 
 func (s *HTTPServer) newMetricsServer() (*http.Server, error) {
