@@ -83,12 +83,6 @@ runs:
         sudo apt-get update -qq
         sudo apt-get install -y -qq ffmpeg
 
-    - name: Set up CLI
-      if: inputs.install-cli-deps == 'true'
+    - name: Run full setup
       shell: bash
-      run: mise setup-cli
-
-    - name: Set up Frontend
-      if: inputs.install-frontend-deps == 'true'
-      shell: bash
-      run: mise setup-frontend
+      run: mise setup
