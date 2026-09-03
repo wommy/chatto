@@ -82,3 +82,4 @@ access token expires.
 
 - [ADR-004: Provide OpenID Connect with CIMD-Native Client Discovery](ADR-004-cimd-native-openid-provider.md)
 - [ADR-005: Synchronize Account Data with a Durable TinyBase Peer](ADR-005-tinybase-account-data-sync.md)
+- [ADR-007: Limit Authling to Identity-Provider State](ADR-007-limit-authling-to-identity-provider.md)
