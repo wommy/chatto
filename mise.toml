@@ -25,17 +25,29 @@ CHATTO_DEVELOPMENT_VERSION = "0.5.0-dev"
 # Setup
 # =============================================================================
 
-[tasks.setup]
-description = "Set up the development environment"
+[tasks.setup-go]
+description = "Set up Go CLI and shared framework modules"
 run = [
     { task = "setup-appconfig" },
     { task = "setup-cli" },
     { task = "setup-datacrypto" },
     { task = "setup-events" },
     { task = "setup-natsruntime" },
+]
+
+[tasks.setup-web]
+description = "Set up frontend, API types, and i18n packages"
+run = [
     { task = "setup-frontend" },
     { task = "build-api-types" },
     { task = "build-lingua" },
+]
+
+[tasks.setup]
+description = "Set up the development environment"
+run = [
+    { task = "setup-go" },
+    { task = "setup-web" },
 ]
 
 # =============================================================================
