@@ -37,6 +37,13 @@ runs:
         restore-keys: |
           playwright-${{ runner.os }}-${{ runner.arch }}-
 
-    - name: Install Playwright dependencies
+    - name: Install Playwright browser
+      # No --with-deps: it re-runs `apt-get update && apt-get install` on
+      # every job, and every package it wants is already on the ubuntu-latest
+      # hosted runner image (measured: ~13s per job, entirely "already the
+      # newest version" with nothing actually installed). If GitHub ever
+      # drops one of Chromium's shared-library deps from that image, this
+      # fails loudly at browser launch, not silently -- re-add --with-deps
+      # then, or if this ever runs on a non-ubuntu-latest runner.
       shell: bash
-      run: pnpm --dir "${{ inputs.working-directory }}" exec playwright install chromium --with-deps
+      run: pnpm --dir "${{ inputs.working-directory }}" exec playwright install chromium
