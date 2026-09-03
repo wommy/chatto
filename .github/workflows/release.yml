@@ -443,7 +443,7 @@ jobs:
           fi
           rm -f \
             "${CHATTO_MACOS_SIGNING_CERTIFICATE:-$RUNNER_TEMP/chatto-developer-id.p12}" \
-            "${CHATTO_MACOS_NOTARY_API_KEY:-$RUNNER_TEMP/chatto-notary-api-key.p8}"
+            "${CHATTO_MACOS_NOTARY_API_KEY:-$RUNNER_TEMP/AuthKey_${CHATTO_MACOS_NOTARY_API_KEY_ID}.p8}"
 
       - name: Package Linux release
         if: runner.os == 'Linux'
