@@ -75,8 +75,10 @@ test('constructs a Windows release plan with Compress-Archive and error preferen
 	})
 
 	assert.match(plan, /^\$ErrorActionPreference = 'stop'; /)
-	assert.match(plan, /New-Item -ItemType Directory -Force/)
-	assert.match(plan, /Compress-Archive/)
+	assert.match(
+		plan,
+		/New-Item -ItemType Directory -Force "\.context\/desktop-release" \| Out-Null; Compress-Archive/,
+	)
 	assert.match(plan, /-Path "apps\/desktop\/dist\/windows"/)
 	assert.match(
 		plan,
