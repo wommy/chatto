@@ -105,7 +105,7 @@ test.describe('External identity confirmation flows', () => {
 
     await page.goto(routes.settingsAccount);
     await expect(page.getByText('GitHub', { exact: true })).toBeVisible();
-    const githubRow = page.locator('div.rounded.border').filter({ hasText: 'GitHub' });
+    const githubRow = page.getByTestId('sso-provider-github-main');
     await expect(githubRow.getByText('Linked')).toBeVisible();
 
     let disconnectRequestCount = 0;
@@ -192,8 +192,8 @@ test.describe('External identity confirmation flows', () => {
     await page.goto(routes.settingsAccount);
     await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
     await expect(page.getByText('Discord', { exact: true })).toBeVisible();
-    const discordRow = page.locator('div.rounded.border').filter({ hasText: 'Discord' });
-    const githubRow = page.locator('div.rounded.border').filter({ hasText: 'GitHub' });
+    const discordRow = page.getByTestId('sso-provider-discord-main');
+    const githubRow = page.getByTestId('sso-provider-github-main');
     await expect(discordRow.getByText('Linked')).toBeVisible();
 
     let releaseDisconnectRequest: (() => void) | undefined;
@@ -241,7 +241,7 @@ test.describe('External identity confirmation flows', () => {
     await page.waitForURL(routes.patterns.chatRedirect);
 
     await page.goto(routes.settingsAccount);
-    const retiredRow = page.locator('div.rounded.border').filter({ hasText: 'retired-provider' });
+    const retiredRow = page.getByTestId('sso-provider-retired-provider');
     await expect(retiredRow.getByText('Provider no longer configured')).toBeVisible();
 
     await retiredRow.getByRole('button', { name: 'Disconnect' }).click();
