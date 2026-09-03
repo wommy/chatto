@@ -213,6 +213,7 @@ dir = "packages/api-types"
 run = "pnpm build"
 sources = ["package.json", "tsconfig.json", "src/**/*"]
 outputs = ["dist/**/*"]
+cache = { enabled = true, env = ["CHATTO_BUILD_VERSION", "CHATTO_FRONTEND_PRECOMPRESS"] }
 
 [tasks.build-lingua]
 description = "Build the JSON internationalisation runtime package"
@@ -221,6 +222,7 @@ dir = "packages/lingua"
 run = "pnpm build"
 sources = ["package.json", "tsconfig.json", "src/**/*"]
 outputs = ["dist/**/*"]
+cache = { enabled = true, env = ["CHATTO_BUILD_VERSION", "CHATTO_FRONTEND_PRECOMPRESS"] }
 
 [tasks.build-frontend]
 description = "Build the frontend application"
@@ -254,6 +256,7 @@ sources = [
     "apps/frontend/vite.config.ts",
 ]
 outputs = ["apps/frontend/build/**/*", "cli/internal/http_server/.client/**/*"]
+cache = { enabled = true, env = ["CHATTO_BUILD_VERSION", "CHATTO_FRONTEND_PRECOMPRESS"] }
 
 [tasks.build-dev-cli]
 description = "Build the development CLI application for the current architecture"
