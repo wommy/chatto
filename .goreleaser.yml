@@ -152,6 +152,47 @@ docker_manifests:
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-amd64"
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-arm64"
 
+# Homebrew cask rendering and publishing.
+#
+# The render/publish split is intentional and mirrors the server image's
+# floating tag strategy (see docker_manifests above, issue #52).
+# `skip_upload: "true"` renders the cask to dist/homebrew/Casks/chatto.rb
+# but skips the publish phase. The release workflow runs the publish phase
+# manually, after a smoke check of the binaries and images proves the release
+# is good. This prevents the tap pointing at a broken or unpublished asset.
+# See issue #40 for the design and migration strategy.
+#
+# Casks differ from formulas:
+# - The install definition moves to `hooks.post.install` rather than `def install`.
+# - macOS Intel (on_intel) emits an error via Homebrew's standard mechanism,
+#   not a custom `odie` call. (The issue discusses both options; this uses the
+#   standard idiom.)
+# - FreeBSD and Windows remain untapped today, matching the current formula
+#   behavior (they build but have no tap entry).
+homebrew_casks:
+  - name: chatto
+    skip_upload: "true"
+    repository:
+      owner: chattocorp
+      name: homebrew-tap
+      branch: main
+    directory: Casks
+    binaries:
+      - chatto
+    description: "Real-time chat app CLI and server"
+    homepage: "https://github.com/chattocorp/chatto"
+    # Homebrew Cask hooks run instance_eval'd against Cask::DSL::Base
+    # (Homebrew/brew Library/Homebrew/cask/dsl/base.rb), which delegates
+    # `staged_path` from the cask and exposes `system_command` -- Formula's
+    # `bin/"chatto"` and plain `system` don't exist in this context, unlike
+    # the hand-written Formula step this cask is meant to replace.
+    hooks:
+      post:
+        install: |
+          system_command "codesign", args: ["--force", "--sign", "-", "#{staged_path}/chatto"] if OS.mac?
+    caveats: |
+      On macOS, this cask performs ad-hoc code signing at install time.
+
 ## R2 blob upload disabled until R2 API tokens are configured
 ## See: https://github.com/chattocorp/chatto/actions/runs/21843246346
 # blobs:
