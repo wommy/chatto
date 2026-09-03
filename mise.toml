@@ -744,6 +744,16 @@ run = "pnpm check"
 description = "Run linters"
 run = [{ task = "lint-*" }]
 
+[tasks.check]
+description = "Run all checks including tests, linters, and validators"
+run = [
+    { task = "lint" },
+    { task = "knip" },
+    { task = "license-check" },
+    { task = "verify-docker" },
+    { task = "test" },
+]
+
 [tasks.test-frontend]
 description = "Run frontend unit tests"
 depends = ["setup-frontend", "build-api-types", "build-lingua"]

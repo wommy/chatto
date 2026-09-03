@@ -11,7 +11,7 @@
     "namespaceMembers": "off",
     "duplicates": "warn"
   },
-  "ignoreBinaries": ["mise", "playwright"],
+  "ignoreBinaries": ["mise", "playwright", "security", "openssl", "gh", "go", "buf", "tsc"],
   "ignoreDependencies": ["gemoji"],
   "workspaces": {
     ".": {
@@ -40,7 +40,8 @@
       ],
       "ignoreIssues": {
         "src/lib/i18n/messages.ts": ["exports", "types"],
-        "src/lib/pb/**": ["exports", "types", "enumMembers"]
+        "src/lib/pb/**": ["exports", "types", "enumMembers"],
+        "e2e/routes.ts": ["duplicates"]
       }
     },
     "apps/docs-website": {
@@ -64,6 +65,10 @@
     "packages/lingua": {
       "entry": ["src/**/*.spec.ts", "test/**/*.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "authling": {
+      "entry": ["e2e/**/*.ts"],
+      "project": ["e2e/**/*.ts"]
     }
   }
 }
