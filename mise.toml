@@ -15,6 +15,7 @@ buf = "latest"
 go = "1.26.7"
 goreleaser = "latest"
 node = "22"
+"npm:portless" = "0.15.5"
 uv = "0.11.30"
 
 [env]
@@ -283,7 +284,7 @@ outputs = ["../apps/frontend/e2e/fixtures/bin/chatto-current"]
 description = "Run the Storybook design-system catalog with Portless"
 depends = ["setup-frontend", "build-api-types"]
 dir = "apps/frontend"
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   PORTLESS_PORT = "{{env.CHATTO_DEV_PROXY_PORT | default(value='42444')}}",
   PORTLESS_HTTPS = "1",
@@ -350,7 +351,7 @@ exec tools/dev-supervisor.sh mise run --jobs 5 --output prefix \
 
 [tasks.dev-stack-mailpit]
 hide = true
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   CHATTO_DEV_MAILPIT_SMTP_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 8}}",
   CHATTO_DEV_MAILPIT_UI_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 9}}",
@@ -368,7 +369,7 @@ exec portless \
 
 [tasks.dev-stack-livekit]
 hide = true
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   CHATTO_DEV_BACKEND_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 1}}",
   CHATTO_DEV_LIVEKIT_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 5}}",
@@ -386,7 +387,7 @@ exec portless \
 
 [tasks.dev-stack-authling]
 hide = true
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   AUTHLING_HTTP_BIND_ADDRESS = "127.0.0.1:{{env.CONDUCTOR_PORT | default(value='4000') | int + 2}}",
   AUTHLING_HTTP_TRUST_PROXY_HEADERS = "true",
@@ -423,7 +424,7 @@ exec portless \
 
 [tasks.dev-stack-backend]
 hide = true
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   CHATTO_WEBSERVER_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 1}}",
   CHATTO_NATS_EMBEDDED_PORT = "{{env.CONDUCTOR_PORT | default(value='4000') | int + 4}}",
@@ -500,7 +501,7 @@ exec bin/chatto-dev start
 
 [tasks.dev-stack-frontend]
 hide = true
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   VITE_PORT = "{{env.CONDUCTOR_PORT | default(value='4000')}}",
   CHATTO_BACKEND_URL = "http://127.0.0.1:{{env.CONDUCTOR_PORT | default(value='4000') | int + 1}}",
@@ -517,7 +518,7 @@ exec portless \
 description = "Run the docs website development server with Portless"
 depends = ["setup-frontend"]
 dir = "apps/docs-website"
-tools = { node = "24", "npm:portless" = "0.15.5" }
+tools = { node = "24" }
 env = {
   PORTLESS_PORT = "{{env.CHATTO_DEV_PROXY_PORT | default(value='42444')}}",
   PORTLESS_HTTPS = "1",
@@ -773,10 +774,13 @@ description = "Clean all build artifacts"
 run = [
     "rm -rf cli/bin/*",
     "rm -rf cli/cmd/embedded",
+    "rm -f cli/cmd/embedded/LICENSE cli/cmd/embedded/NOTICE",
     "rm -rf cli/internal/http_server/.client",
     "rm -rf apps/frontend/build",
     "rm -rf apps/desktop/dist",
+    "rm -f apps/frontend/e2e/fixtures/bin/chatto apps/frontend/e2e/fixtures/bin/chatto-current",
     "rm -rf packages/lingua/dist",
+    "rm -rf packages/api-types/dist",
 ]
 
 [tasks.reset-config]
