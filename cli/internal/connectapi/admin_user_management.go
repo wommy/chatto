@@ -127,6 +127,9 @@ func (s *adminUserManagementService) AssignRole(ctx context.Context, req *connec
 	if req.Msg.GetRoleName() == "" {
 		return nil, invalidArgument("role_name is required")
 	}
+	if err := s.api.requireFreshCredential(ctx, caller, ""); err != nil {
+		return nil, connectError(err)
+	}
 	if err := s.api.core.AdminAssignServerRole(ctx, caller.UserID, req.Msg.GetUserId(), req.Msg.GetRoleName()); err != nil {
 		return nil, connectError(err)
 	}
@@ -147,6 +150,9 @@ func (s *adminUserManagementService) RevokeRole(ctx context.Context, req *connec
 	}
 	if req.Msg.GetRoleName() == "" {
 		return nil, invalidArgument("role_name is required")
+	}
+	if err := s.api.requireFreshCredential(ctx, caller, ""); err != nil {
+		return nil, connectError(err)
 	}
 	if err := s.api.core.AdminRevokeServerRole(ctx, caller.UserID, req.Msg.GetUserId(), req.Msg.GetRoleName()); err != nil {
 		return nil, connectError(err)
