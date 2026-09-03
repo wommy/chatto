@@ -152,6 +152,25 @@ docker_manifests:
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-amd64"
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-arm64"
 
+homebrew_casks:
+  - name: chatto
+    skip_upload: "true"
+    repository:
+      owner: chattocorp
+      name: homebrew-tap
+      branch: main
+    directory: Casks
+    binaries:
+      - chatto
+    description: "Real-time chat app CLI and server"
+    homepage: "https://github.com/chattocorp/chatto"
+    hooks:
+      post:
+        install: |
+          system_command "codesign", args: ["--force", "--sign", "-", "#{staged_path}/chatto"] if OS.mac?
+    caveats: |
+      On macOS, this cask performs ad-hoc code signing at install time.
+
 ## R2 blob upload disabled until R2 API tokens are configured
 ## See: https://github.com/chattocorp/chatto/actions/runs/21843246346
 # blobs:

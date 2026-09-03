@@ -1,0 +1,45 @@
+name: scratch-cask-hook-verify
+
+on:
+  pull_request:
+    branches: [scratch/cask-hook-target]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
+      - name: Build and verify versioned frontend
+        uses: ./.github/actions/build-versioned-frontend
+        with:
+          version: 0.0.0-scratch
+
+      - name: goreleaser check
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+
+      - name: goreleaser release --snapshot (no publish/docker/sign)
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean --skip=docker,sign,notarize,announce,sbom
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dump rendered cask
+        run: |
+          echo "=== dist/homebrew/Casks/chatto.rb ==="
+          cat dist/homebrew/Casks/chatto.rb
