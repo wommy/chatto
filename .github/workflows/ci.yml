@@ -520,6 +520,10 @@ jobs:
         working-directory: authling
         run: mise test
 
+      - name: Lint Authling module
+        working-directory: authling
+        run: mise lint
+
       - name: Vet the CLI module
         run: mise lint-cli
 
