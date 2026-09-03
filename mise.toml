@@ -516,6 +516,14 @@ exec portless \
   ./node_modules/.bin/vite dev --host 127.0.0.1
 '''
 
+# Named noun-verb, like desktop-build, so `mise build`'s `build-*` glob does
+# not sweep in the public docs site alongside Chatto's own build products.
+[tasks.docs-website-build]
+description = "Build the documentation website"
+depends = ["setup-frontend"]
+dir = "apps/docs-website"
+run = "pnpm build"
+
 [tasks.dev-docs-website]
 description = "Run the docs website development server with Portless"
 depends = ["setup-frontend"]
