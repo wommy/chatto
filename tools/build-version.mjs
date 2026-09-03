@@ -3,20 +3,18 @@
 /**
  * Build version derivation for Chatto releases.
  *
- * Three sites in `.github/workflows/release.yml` construct the same version
- * string: base version, literal `+`, first 12 characters of the commit SHA.
- * The sites are the image-metadata step, its historical-ref fallback, and the
- * desktop frontend-version step. This module holds the one derivation so the
- * three sites stay in sync.
+ * Three sites construct the same version string: base version, literal `+`,
+ * first 12 characters of the commit SHA. The sites are `release.yml`'s
+ * image-metadata step, its desktop frontend-version step, and `ci.yml`'s
+ * main-image-version step. This module holds the one derivation so all three
+ * sites stay in sync.
  *
  * ## Why this is a module
  *
- * Deleting this module reveals the derivation at three call sites in two
- * places: the shell expressions in release.yml and the existing call in ci.yml.
- * This is a structural move: the three expressions reappear as
- * `"${development_version}+${sha:0:12}"` and similar (issue #56 "Deletion
- * test"). This module makes the duplication visible and gives the pattern a
- * tested home. Future work: migrate ci.yml to call the module.
+ * Deleting this module reveals the derivation at all three call sites again,
+ * each reappearing as `"${development_version}+${sha:0:12}"` or similar
+ * (issue #56 "Deletion test"). This module makes the duplication visible and
+ * gives the pattern a tested home.
  *
  * ## Why this module is self-contained
  *
