@@ -30,6 +30,10 @@ import {
   parseMacOSGameCaptureSources,
   supportsMacOSGameCapture,
 } from "./game_capture.mjs";
+import {
+  macOSCaptureHelperAppName,
+  macOSCaptureHelperExecutable,
+} from "./capture-helper-constants.mjs";
 import { hasAppOrigin, isDesktopPermissionAllowed } from "./security.mjs";
 
 const desktopRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -259,7 +263,7 @@ function escapeHTML(value) {
 }
 
 function runMacOSCaptureHelper(arguments_) {
-  const executable = macOSCaptureHelperExecutable();
+  const executable = macOSCaptureHelperExecutablePath();
   return new Promise((resolve, reject) => {
     const child = spawn(executable, arguments_, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -296,7 +300,7 @@ function runMacOSCaptureHelper(arguments_) {
 
 function runMacOSCaptureHelperBinary(arguments_) {
   cancelActiveGameCaptureSourceList();
-  const executable = macOSCaptureHelperExecutable();
+  const executable = macOSCaptureHelperExecutablePath();
   return new Promise((resolve, reject) => {
     const child = spawn(executable, arguments_, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -403,10 +407,15 @@ function cancelActiveGameCaptureSourceList() {
   gameCaptureSourceOffers.clear();
 }
 
-function macOSCaptureHelperExecutable() {
+function macOSCaptureHelperExecutablePath() {
   return path.resolve(
     process.resourcesPath,
-    "../Helpers/Chatto Capture Helper.app/Contents/MacOS/chatto-macos-capture-probe",
+    "..",
+    "Helpers",
+    macOSCaptureHelperAppName,
+    "Contents",
+    "MacOS",
+    macOSCaptureHelperExecutable,
   );
 }
 
@@ -415,7 +424,7 @@ async function runMacOSCaptureProbeList() {
     throw new Error("The macOS capture probe requires a packaged macOS app.");
   }
 
-  const executable = macOSCaptureHelperExecutable();
+  const executable = macOSCaptureHelperExecutablePath();
   await new Promise((resolve, reject) => {
     const child = spawn(executable, ["list"], { stdio: "inherit" });
     child.once("error", reject);
@@ -548,7 +557,7 @@ function startGameCaptureSession(source, publisherRequest, port) {
     );
   }
   const child = spawn(
-    macOSCaptureHelperExecutable(),
+    macOSCaptureHelperExecutablePath(),
     [
       "publish",
       ...sourceArguments,
@@ -662,7 +671,7 @@ function isGameCaptureAvailable() {
     process.platform === "darwin" &&
     app.isPackaged &&
     supportsMacOSGameCapture(process.getSystemVersion()) &&
-    existsSync(macOSCaptureHelperExecutable())
+    existsSync(macOSCaptureHelperExecutablePath())
   );
 }
 

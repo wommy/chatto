@@ -295,13 +295,24 @@ jobs:
 
       - name: Verify macOS bundle signature
         if: runner.os == 'macOS'
-        run: codesign --verify --deep --strict --verbose=2 "apps/desktop/dist/Chatto Desktop.app"
+        shell: bash
+        env:
+          ARTIFACT_PATH: ${{ matrix.artifact-path }}
+        run: codesign --verify --deep --strict --verbose=2 "$ARTIFACT_PATH"
 
       - name: Verify macOS game-capture helper
         if: runner.os == 'macOS'
         shell: bash
+        env:
+          ARTIFACT_PATH: ${{ matrix.artifact-path }}
         run: |
-          helper="apps/desktop/dist/Chatto Desktop.app/Contents/Helpers/Chatto Capture Helper.app/Contents/MacOS/chatto-macos-capture-probe"
+          # Read the helper bundle and executable names from the same module
+          # that embeds the helper at build time (apps/desktop/scripts/macos-capture-helper.mjs
+          # re-exports them from apps/desktop/capture-helper-constants.mjs), so this
+          # check cannot drift from what the build actually produces.
+          helper_app_name="$(node -e "import('./apps/desktop/capture-helper-constants.mjs').then(m => console.log(m.macOSCaptureHelperAppName))")"
+          helper_executable="$(node -e "import('./apps/desktop/capture-helper-constants.mjs').then(m => console.log(m.macOSCaptureHelperExecutable))")"
+          helper="$ARTIFACT_PATH/Contents/Helpers/$helper_app_name/Contents/MacOS/$helper_executable"
           test -x "$helper"
           "$helper" help | grep -F 'publish --window'
           otool -l "$helper" | grep -F '@executable_path/../Frameworks'
