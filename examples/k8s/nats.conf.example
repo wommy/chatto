@@ -1,0 +1,17 @@
+# Example NATS server configuration file
+# This file is mounted into the NATS container from a Kubernetes Secret.
+# The token is sourced from a Secret to avoid exposing it via process arguments
+# (/proc/<pid>/cmdline, kubectl describe pod, ps output).
+
+# Authentication configuration
+authorization: {
+  # Provide the NATS authentication token here.
+  # In Kubernetes deployments, this value should come from a Secret:
+  # kubectl create secret generic chatto-config --from-literal=NATS_CONFIG="$(cat nats.conf)"
+  token: "YOUR_NATS_TOKEN_HERE"
+}
+
+# Enable JetStream for event streaming
+jetstream: {
+  store_dir: /data
+}
