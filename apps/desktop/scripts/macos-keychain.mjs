@@ -41,7 +41,7 @@
  * environment that provisioning set.
  */
 
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -138,10 +138,11 @@ export function provisionMacOSKeychainFiles(options) {
 	writeFileSync(paths.apiKey, apiKeyData)
 
 	// Set file permissions to 600.
-	try {
-		execSync(`chmod 600 "${paths.certificate}" "${paths.apiKey}"`)
-	} catch (error) {
-		throw new Error(`Failed to set credential file permissions: ${error.message}`)
+	const chmodResult = spawnSync('chmod', ['600', paths.certificate, paths.apiKey])
+	if (chmodResult.error || chmodResult.status !== 0) {
+		throw new Error(
+			`Failed to set credential file permissions: ${chmodResult.error?.message || `exit code ${chmodResult.status}`}`,
+		)
 	}
 }
 
@@ -157,25 +158,73 @@ export function provisionMacOSKeychainSecurity(options) {
 	const { paths, certificatePassword, keychainPassword } = options
 
 	// Create and configure the keychain.
-	try {
-		execSync(`security create-keychain -p "${keychainPassword}" "${paths.keychain}"`)
-		execSync(`security set-keychain-settings -lut 21600 "${paths.keychain}"`)
-		execSync(`security unlock-keychain -p "${keychainPassword}" "${paths.keychain}"`)
+	let result
 
-		// Import the certificate.
-		execSync(
-			`security import "${paths.certificate}" -k "${paths.keychain}" -P "${certificatePassword}" -T /usr/bin/codesign -T /usr/bin/security`,
+	// Create keychain
+	result = spawnSync('security', ['create-keychain', '-p', keychainPassword, paths.keychain])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to create keychain: ${result.error?.message || `exit code ${result.status}`}`,
 		)
+	}
 
-		// Set the key partition list.
-		execSync(
-			`security set-key-partition-list -S apple-tool:,apple: -s -k "${keychainPassword}" "${paths.keychain}"`,
+	// Set keychain settings
+	result = spawnSync('security', ['set-keychain-settings', '-lut', '21600', paths.keychain])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to set keychain settings: ${result.error?.message || `exit code ${result.status}`}`,
 		)
+	}
 
-		// Add the keychain to the user's search list.
-		execSync(`security list-keychains -d user -s "${paths.keychain}"`)
-	} catch (error) {
-		throw new Error(`Keychain configuration failed: ${error.message}`)
+	// Unlock keychain
+	result = spawnSync('security', ['unlock-keychain', '-p', keychainPassword, paths.keychain])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to unlock keychain: ${result.error?.message || `exit code ${result.status}`}`,
+		)
+	}
+
+	// Import the certificate
+	result = spawnSync('security', [
+		'import',
+		paths.certificate,
+		'-k',
+		paths.keychain,
+		'-P',
+		certificatePassword,
+		'-T',
+		'/usr/bin/codesign',
+		'-T',
+		'/usr/bin/security',
+	])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to import certificate: ${result.error?.message || `exit code ${result.status}`}`,
+		)
+	}
+
+	// Set the key partition list
+	result = spawnSync('security', [
+		'set-key-partition-list',
+		'-S',
+		'apple-tool:,apple:',
+		'-s',
+		'-k',
+		keychainPassword,
+		paths.keychain,
+	])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to set key partition list: ${result.error?.message || `exit code ${result.status}`}`,
+		)
+	}
+
+	// Add the keychain to the user's search list
+	result = spawnSync('security', ['list-keychains', '-d', 'user', '-s', paths.keychain])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to add keychain to search list: ${result.error?.message || `exit code ${result.status}`}`,
+		)
 	}
 }
 
@@ -187,18 +236,18 @@ export function provisionMacOSKeychainSecurity(options) {
  * @throws {Error} When the identity cannot be found.
  */
 export function findMacOSSigningIdentity(keychainPath) {
-	try {
-		const output = execSync(`security find-identity -v -p codesigning "${keychainPath}"`, {
-			encoding: 'utf8',
-		})
-		const match = output.match(/Developer ID Application:.*?([A-F0-9]{40})/)
-		if (!match) {
-			throw new Error('The certificate does not contain a Developer ID Application identity.')
-		}
-		return match[1]
-	} catch (error) {
-		throw new Error(`Failed to find signing identity: ${error.message}`)
+	const result = spawnSync('security', ['find-identity', '-v', '-p', 'codesigning', keychainPath])
+	if (result.error || result.status !== 0) {
+		throw new Error(
+			`Failed to find signing identity: ${result.error?.message || `exit code ${result.status}`}`,
+		)
 	}
+	const output = result.stdout.toString('utf8')
+	const match = output.match(/Developer ID Application:.*?([A-F0-9]{40})/)
+	if (!match) {
+		throw new Error('The certificate does not contain a Developer ID Application identity.')
+	}
+	return match[1]
 }
 
 /**
@@ -281,20 +330,17 @@ export function removeMacOSKeychain(environment) {
 
 	// Delete the keychain if it exists.
 	if (keychainPath) {
-		try {
-			execSync(`security delete-keychain "${keychainPath}"`, {
-				stdio: 'pipe',
-			})
-		} catch {
-			// Keychain may not exist; ignore the error.
+		const result = spawnSync('security', ['delete-keychain', keychainPath])
+		// Keychain may not exist; ignore errors
+		if (result.error && result.error.code !== 'ENOENT') {
+			console.error(`::warning::Failed to delete keychain: ${result.error.message}`)
 		}
 	}
 
 	// Remove the credential files.
-	try {
-		execSync(`rm -f "${certificatePath}" "${apiKeyPath}"`)
-	} catch (error) {
-		console.error(`::warning::Failed to remove credential files: ${error.message}`)
+	const rmResult = spawnSync('rm', ['-f', certificatePath, apiKeyPath])
+	if (rmResult.error) {
+		console.error(`::warning::Failed to remove credential files: ${rmResult.error.message}`)
 	}
 }
 
