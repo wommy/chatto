@@ -1,7 +1,7 @@
 # FDR-015: Quick Switcher (Cmd-K)
 
 **Status:** Active
-**Last reviewed:** 2026-08-27
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -12,14 +12,16 @@ fuzzy matching and remembers recent destinations on the device.
 
 ## Behavior
 
-- `Cmd+K` / `Ctrl+K` opens the palette from anywhere in the app. `Escape` or clicking outside closes it.
+- `Cmd+K` / `Ctrl+K` opens the palette from anywhere in the app. A header button also opens it. `Escape` or clicking outside closes it.
 - On open, the palette reads each registered server's current projected
   navigation state. The empty catalogue contains every registered server,
   joined channel room, visible DM, and Notifications.
 - A non-`#` and non-`?` query also searches the member directory on each
   registered server where the viewer can start DMs.
-- Typing filters results with a fuzzy matcher. Items match on both label and
-  detail, such as the server name. Label matches score higher.
+- Typing filters results with a fuzzy matcher. The query splits into
+  whitespace-separated tokens, and every token must match an item's label,
+  detail, or server name for the item to appear. Label matches score higher
+  than detail or server-name matches.
 - Typing `#` as the first character restricts results to rooms only. The `#` is stripped before matching the rest.
 - Typing `?` as the first character switches to message search. The client asks every registered server whose Search feature is supported and ready or degraded for its top results, then combines them by the provider relevance score. A failed or unavailable server does not hide results from the others.
 - Message results identify their author, room, and server. Selecting one opens that message in its room or thread context; message results are not recorded as recent destinations.
@@ -93,5 +95,5 @@ message search uses the server's Search availability and normal read boundary.
 
 ## Related
 
-- **ADRs:** ADR-025 (multi-instance client architecture)
-- **FDRs:** FDR-007 (Direct Messages), FDR-012 (Notifications)
+- **ADRs:** ADR-025 (multi-server client architecture), ADR-055 (pluggable message search over NATS)
+- **FDRs:** FDR-007 (Direct Messages), FDR-012 (Notifications), FDR-025 (User Search & Member Directory), FDR-033 (Message Search)

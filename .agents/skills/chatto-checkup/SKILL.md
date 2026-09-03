@@ -1,6 +1,6 @@
 ---
 name: "chatto-checkup"
-description: "Run a documentation-focused maintenance checkup of the Chatto codebase. Fans out to /fdr, /adr, and /chatto-architecture-inventory, then compiles a single consolidated report. Always propose-only; no changes are applied without explicit user approval. At the end, points the human at other maintenance skills (/update-project-dependencies, /chatto-security-review) they may want to run themselves."
+description: "Run a documentation-focused maintenance checkup of the Chatto codebase. Fans out to /fdr, /adr-review, and /chatto-architecture-inventory, then compiles a single consolidated report. Always propose-only; no changes are applied without explicit user approval. At the end, points the human at other maintenance skills (/update-project-dependencies, /chatto-security-review) they may want to run themselves."
 ---
 
 # Chatto Checkup
@@ -14,7 +14,7 @@ Heavier or more opinionated work — dependency upgrades, security review — is
 Run these in parallel via the Skill tool:
 
 - **`/fdr`** (no args) — audit all FDRs against the codebase. Surface discrepancies, stale design decisions, and any user-facing features that should now have an FDR.
-- **`/adr`** — audit ADRs for staleness. Surface cited file paths or APIs that no longer exist; flag superseded ADRs still referenced as authoritative.
+- **`/adr-review`** — audit ADRs for staleness. Surface cited file paths or APIs that no longer exist; flag superseded ADRs still referenced as authoritative.
 - **`/chatto-architecture-inventory`** — audit `docs/architecture/` against the current state of runtime components, projections and snapshots, EVT event tokens, EVT/live subject patterns, NATS resources and runtime-state keys, durable effects, mounted interface boundaries, and realtime delivery. Report drift; propose updates.
 
 ## How To Run
