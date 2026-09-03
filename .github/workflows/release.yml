@@ -120,11 +120,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build frontend assets for CLI image
-        run: mise build-frontend
-        env:
-          CHATTO_BUILD_VERSION: ${{ steps.image.outputs.version }}
-          CHATTO_FRONTEND_PRECOMPRESS: "1"
+      - name: Build and verify versioned frontend
+        uses: ./.github/actions/build-versioned-frontend
+        with:
+          version: ${{ steps.image.outputs.version }}
 
       - name: Prepare Docker context
         env:
