@@ -552,10 +552,27 @@ jobs:
       - name: Setup environment
         uses: ./.github/actions/setup
 
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Build frontend once
         run: mise build-frontend
         env:
+          CHATTO_BUILD_VERSION: ${{ steps.version.outputs.version }}
           CHATTO_FRONTEND_PRECOMPRESS: "1"
+
+      # Verify that the frontend build received the correct version before GoReleaser
+      # packages it into the server binary and client image. The bundled version must
+      # match the release tag, not the npm_package_version fallback.
+      - name: Verify bundled frontend version
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          jq -e --arg expected "$EXPECTED_VERSION" \
+            '.version == $expected' \
+            apps/frontend/build/_app/version.json
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -603,10 +620,6 @@ jobs:
           CHATTO_SKIP_PUSH_MAJOR_MINOR: ${{ steps.image_tags.outputs.chatto_skip_push_major_minor }}
           CHATTO_SKIP_PUSH_LATEST: ${{ steps.image_tags.outputs.chatto_skip_push_latest }}
           CHATTO_SKIP_PUSH_NEXT: ${{ steps.image_tags.outputs.chatto_skip_push_next }}
-
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       # Only the immutable {version} tag is pushed here. The floating tags
       # move in the last step of this job, after the smoke check proved that
