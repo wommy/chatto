@@ -63,6 +63,13 @@ similar workflow state may use dedicated expiring runtime storage when replay
 and historical retention would be inappropriate. Such runtime state must not
 become the only record of a durable domain fact.
 
+> **Note:** [ADR-004](ADR-004-cimd-native-openid-provider.md) superseded the
+> relying-party-as-event clause above. Authling resolves OIDC relying parties
+> from `authling.toml` configuration or a fetched Client ID Metadata Document,
+> not from durable events; no relying-party event type exists in
+> `authling/proto/authling/core/v1/event.proto`. Consent remains event-sourced
+> (`OIDCGrantAuthorizedEvent`, `OIDCGrantRevokedEvent`) and is unaffected.
+
 ### Models and projections
 
 Authling models will serve state from in-memory projections rebuilt by ordered
