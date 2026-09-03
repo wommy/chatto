@@ -59,32 +59,37 @@ run = [
 [tasks.deps-cli]
 description = "Install Go dependencies"
 dir = "cli"
-run = "go mod download"
+run = ["go mod download", "touch ../.stamp-deps-cli"]
 sources = ["go.mod", "go.sum"]
+outputs = ["../.stamp-deps-cli"]
 
 [tasks.deps-appconfig]
 description = "Install application configuration dependencies"
 dir = "pkg/appconfig"
-run = "GOWORK=off go mod download"
+run = ["GOWORK=off go mod download", "touch ../../.stamp-deps-appconfig"]
 sources = ["go.mod", "go.sum"]
+outputs = ["../../.stamp-deps-appconfig"]
 
 [tasks.deps-datacrypto]
 description = "Install data cryptography dependencies"
 dir = "pkg/datacrypto"
-run = "GOWORK=off go mod download"
+run = ["GOWORK=off go mod download", "touch ../../.stamp-deps-datacrypto"]
 sources = ["go.mod", "go.sum"]
+outputs = ["../../.stamp-deps-datacrypto"]
 
 [tasks.deps-events]
 description = "Install event framework Go dependencies"
 dir = "pkg/events"
-run = "GOWORK=off go mod download"
+run = ["GOWORK=off go mod download", "touch ../../.stamp-deps-events"]
 sources = ["go.mod", "go.sum"]
+outputs = ["../../.stamp-deps-events"]
 
 [tasks.deps-natsruntime]
 description = "Install embedded NATS runtime Go dependencies"
 dir = "pkg/natsruntime"
-run = "GOWORK=off go mod download"
+run = ["GOWORK=off go mod download", "touch ../../.stamp-deps-natsruntime"]
 sources = ["go.mod", "go.sum"]
+outputs = ["../../.stamp-deps-natsruntime"]
 
 [tasks.deps-frontend]
 description = "Install frontend dependencies"
@@ -93,6 +98,7 @@ run = "pnpm install"
 # package.json also contains app metadata and scripts; the lockfile is the
 # dependency-resolution input that should trigger installs.
 sources = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".npmrc", "apps/*/package.json", "packages/*/package.json"]
+outputs = ["node_modules/**/*"]
 
 [tasks.deps]
 description = "Install all dependencies"
