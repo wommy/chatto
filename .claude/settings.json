@@ -5,6 +5,9 @@
     "code-simplifier@claude-plugins-official": true,
     "mattpocock-skills@claude-plugins-official": true
   },
+  "worktree": {
+    "symlinkDirectories": ["node_modules"]
+  },
   "hooks": {
     "SessionStart": [
       {
