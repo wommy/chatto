@@ -87,3 +87,4 @@ official branding for a fork or modified version; see [NOTICE](NOTICE).
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local development notes. This project is **not accepting outside contributions** at this time.
+Test commit to verify proto gating works (non-proto change)

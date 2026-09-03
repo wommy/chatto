@@ -144,6 +144,7 @@ jobs:
       docs_only: ${{ steps.check-docs-only.outputs.result }}
       docs_website_touched: ${{ steps.check-docs-only.outputs.docs_website_touched }}
       desktop_touched: ${{ steps.check-docs-only.outputs.desktop_touched }}
+      proto_touched: ${{ steps.check-docs-only.outputs.proto_touched }}
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -231,6 +232,18 @@ jobs:
           fi
           echo "desktop_touched=$desktop_touched" >> "$GITHUB_OUTPUT"
           echo "::notice::desktop_touched=${desktop_touched}"
+
+          # Check if any changed files are proto-relevant. Computed separately
+          # so it checks the full list. Proto-relevant paths include the main
+          # proto config, templates, schema files, and Authling's proto setup.
+          proto_pattern='^(proto/buf\.yaml|proto/buf\.gen\.yaml|proto/buf\.lock|proto/templates/|proto/.*\.proto|authling/buf\.yaml|authling/buf\.gen\.yaml|authling/buf\.lock|authling/.*\.proto)'
+          if grep -qE "$proto_pattern" <<< "$changed_files"; then
+            proto_touched="true"
+          else
+            proto_touched="false"
+          fi
+          echo "proto_touched=$proto_touched" >> "$GITHUB_OUTPUT"
+          echo "::notice::proto_touched=${proto_touched}"
 
   docs-website-build:
     # Job-level if: ensures this job reports "skipped" (not "absent") on
@@ -338,6 +351,12 @@ jobs:
         run: tools/test-desktop-macos-capture.sh
 
   codegen-proto-drift:
+    # Job-level if: ensures this job reports "skipped" (not "absent") on
+    # unrelated PRs. A skipped required check passes; an absent one would block
+    # every unrelated pull request forever. Always run on non-PR events (main
+    # and release branch pushes) for safety; only gate on PR path changes.
+    if: github.event_name != 'pull_request' || needs.changes.outputs.proto_touched == 'true'
+    needs: [changes]
     # runs-on: ubicloud-standard-4
     runs-on: ubuntu-latest
     timeout-minutes: 15
