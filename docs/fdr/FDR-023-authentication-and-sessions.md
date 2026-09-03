@@ -78,7 +78,7 @@ For the 0.5 upgrade only, a dedicated same-origin route migrates the typed cooki
 ### 5. Per-request user resolution, no in-session caching
 
 **Decision:** Even though the session stores a user ID, the user record is resolved from the current projections on every request and every realtime websocket handler.
-**Why:** Caching the user in the session would mean serving stale data (display name, roles) across requests. Users expect profile, role, and deletion changes to be immediate; projection-backed resolution gives the current view while keeping sessions small. Dataloaders batch within a single request to prevent fan-out.
+**Why:** Caching the user in the session would mean serving stale data (display name, roles) across requests. Users expect profile, role, and deletion changes to be immediate; projection-backed resolution gives the current view while keeping sessions small.
 **Tradeoff:** Each request still performs server-side user and permission resolution. At Chatto's volume, this is far below noise.
 
 ### 6. Parallel bearer and cookie presentation
