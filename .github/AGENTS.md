@@ -79,7 +79,8 @@ and still move `:latest`.
 
 To rehearse a change to the image build, run the `build-image` job:
 `workflow_dispatch` on `release.yml` with `target: image`. It builds any ref
-through the release `Dockerfile` and pushes one tag that carries the commit SHA.
+whose `mise.toml` defines `CHATTO_DEVELOPMENT_VERSION` through the release
+`Dockerfile` and pushes one tag that carries the commit SHA.
 No floating tag moves, so the rehearsal publishes nothing that a user tracks.
 
 **A `v*` tag is a real release.** Any `v*` push starts the full release job, and
