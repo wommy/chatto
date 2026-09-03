@@ -119,26 +119,30 @@ test('.goreleaser.yml contains nomsgpack in builds tags', () => {
 	assert.ok(tags.includes('nomsgpack'), '.goreleaser.yml builds.tags must include nomsgpack')
 })
 
-test('.github/workflows/ci.yml build step includes nomsgpack tag', () => {
-	const workflow = readFileSync(path.join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8')
-	const tagSets = goBuildTagSets(workflow)
+test('.github/workflows/ci.yml or tools/build-image-context.sh includes nomsgpack tag', () => {
+	// The nomsgpack tag was moved from ci.yml inline assembly into tools/build-image-context.sh.
+	// Check the script file for the tag.
+	const script = readFileSync(path.join(repositoryRoot, 'tools/build-image-context.sh'), 'utf8')
+	const tagSets = goBuildTagSets(script)
 
-	assert.ok(tagSets.length > 0, '.github/workflows/ci.yml must have go build commands')
+	assert.ok(tagSets.length > 0, 'tools/build-image-context.sh must have go build commands')
 
 	// At least one build should have nomsgpack
 	const hasNomsgpack = tagSets.some(tags => tags.includes('nomsgpack'))
-	assert.ok(hasNomsgpack, '.github/workflows/ci.yml go build must include nomsgpack tag')
+	assert.ok(hasNomsgpack, 'tools/build-image-context.sh go build must include nomsgpack tag')
 })
 
-test('.github/workflows/release.yml build step includes nomsgpack tag', () => {
-	const workflow = readFileSync(path.join(repositoryRoot, '.github/workflows/release.yml'), 'utf8')
-	const tagSets = goBuildTagSets(workflow)
+test('.github/workflows/release.yml or tools/build-image-context.sh includes nomsgpack tag', () => {
+	// The nomsgpack tag was moved from release.yml inline assembly into tools/build-image-context.sh.
+	// Check the script file for the tag.
+	const script = readFileSync(path.join(repositoryRoot, 'tools/build-image-context.sh'), 'utf8')
+	const tagSets = goBuildTagSets(script)
 
-	assert.ok(tagSets.length > 0, '.github/workflows/release.yml must have go build commands')
+	assert.ok(tagSets.length > 0, 'tools/build-image-context.sh must have go build commands')
 
 	// At least one build should have nomsgpack
 	const hasNomsgpack = tagSets.some(tags => tags.includes('nomsgpack'))
-	assert.ok(hasNomsgpack, '.github/workflows/release.yml go build must include nomsgpack tag')
+	assert.ok(hasNomsgpack, 'tools/build-image-context.sh go build must include nomsgpack tag')
 })
 
 test('mise.toml has go build commands that build chatto binaries', () => {
@@ -161,7 +165,7 @@ test('mise.toml production builds include nomsgpack tag', () => {
 	}
 })
 
-test('nomsgpack tag is consistently present across all configuration files', () => {
+test('nomsgpack tag is consistently present across all configuration files and scripts', () => {
 	const repositoryRootPath = repositoryRoot
 
 	// Check .goreleaser.yml
@@ -169,22 +173,13 @@ test('nomsgpack tag is consistently present across all configuration files', () 
 	const goreleaserTags = goreleaserBuildTags(goreleaserConfig)
 	assert.ok(goreleaserTags.includes('nomsgpack'), '.goreleaser.yml must include nomsgpack')
 
-	// Check ci.yml
-	const ciWorkflow = readFileSync(path.join(repositoryRootPath, '.github/workflows/ci.yml'), 'utf8')
-	const ciTags = goBuildTagSets(ciWorkflow)
-	const ciHasTag = ciTags.some(tags => tags.includes('nomsgpack'))
-	assert.ok(ciHasTag, '.github/workflows/ci.yml must include nomsgpack')
+	// Check tools/build-image-context.sh (the canonical location after refactoring)
+	const script = readFileSync(path.join(repositoryRootPath, 'tools/build-image-context.sh'), 'utf8')
+	const scriptTags = goBuildTagSets(script)
+	const scriptHasTag = scriptTags.some(tags => tags.includes('nomsgpack'))
+	assert.ok(scriptHasTag, 'tools/build-image-context.sh must include nomsgpack')
 
-	// Check release.yml
-	const releaseWorkflow = readFileSync(
-		path.join(repositoryRootPath, '.github/workflows/release.yml'),
-		'utf8',
-	)
-	const releaseTags = goBuildTagSets(releaseWorkflow)
-	const releaseHasTag = releaseTags.some(tags => tags.includes('nomsgpack'))
-	assert.ok(releaseHasTag, '.github/workflows/release.yml must include nomsgpack')
-
-	// Check mise.toml
+	// Check mise.toml production builds
 	const miseToml = readFileSync(path.join(repositoryRootPath, 'mise.toml'), 'utf8')
 	const miseTags = goBuildTagSets(miseToml, { outputPattern: /chatto/ })
 	for (const tags of miseTags) {

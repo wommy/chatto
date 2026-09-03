@@ -882,7 +882,7 @@ pkgsite -http=localhost:6060 .
 [tasks.verify-docker]
 description = "Validate Docker, GoReleaser, and image workflow wiring"
 run = """
-set -eu
+set -euo pipefail
 
 goreleaser check
 
