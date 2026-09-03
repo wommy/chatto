@@ -1,0 +1,19 @@
+name: "Fetch build-version module"
+description: "Fetch tools/build-version.mjs from the exact commit executing this workflow"
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch build-version module from workflow commit
+      shell: bash
+      run: |
+        # Fetch the module from the exact commit executing this YAML.
+        # $GITHUB_SHA pins the module code to the workflow's own revision,
+        # not to a later change on main. This ensures reproducibility:
+        # old release-branch builds use the module that shipped with that
+        # branch's YAML, not a retargeted newer module from main.
+        mkdir -p "$RUNNER_TEMP"
+        # Skip fetch if the commit already exists locally (e.g. from a
+        # fetch-depth: 0 checkout) -- redundant otherwise, and can fail
+        # for a shallow-checkout job that already has it.
+        git cat-file -e "$GITHUB_SHA^{commit}" 2>/dev/null || git fetch --depth=1 origin "$GITHUB_SHA"
+        git show "$GITHUB_SHA:tools/build-version.mjs" > "$RUNNER_TEMP/build-version.mjs"
