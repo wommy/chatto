@@ -3,6 +3,7 @@ import { createAndLoginTestUser } from './fixtures/testUser';
 import { withServerUser } from './fixtures/serverUser';
 import { waitForRoomReady } from './fixtures/realtimeSync';
 import { waitForUserDeletedViaConnect } from './fixtures/connectHelpers';
+import { collectBrowserErrors } from './fixtures/browserErrors';
 import { test } from './setup';
 import { AccountPage } from './pages';
 import { TIMEOUTS } from './constants';
@@ -60,6 +61,8 @@ test.describe('Account Deletion', () => {
       const user = await createAndLoginTestUser(page);
       await accountPage.goto();
 
+      const browserErrors = collectBrowserErrors(page);
+
       // Delete account
       await accountPage.deleteAccount();
 
@@ -73,6 +76,8 @@ test.describe('Account Deletion', () => {
 
       // Should show error (user doesn't exist)
       await authPage.expectError(/invalid/i);
+
+      expect(browserErrors).toEqual([]);
     });
   });
 
