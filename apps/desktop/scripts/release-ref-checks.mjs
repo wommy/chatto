@@ -80,7 +80,7 @@ export function verifyOidcSubject(ghResult, environment) {
  *   an `::error::` annotation.
  */
 export function runReleaseRefCommand(argv, environment, execGit, execGh) {
-	const [command, ...rest] = argv
+	const [command] = argv
 	switch (command) {
 		case 'verify-trusted-ref': {
 			// Fetch origin/main to ensure we have the latest
