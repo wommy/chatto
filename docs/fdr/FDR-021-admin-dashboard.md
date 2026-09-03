@@ -1,7 +1,7 @@
 # FDR-021: Admin Dashboard & System Monitoring
 
 **Status:** Active
-**Last reviewed:** 2026-08-27
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -13,8 +13,8 @@ The server-management section gives owners and admins visibility into the server
 - Legacy `/chat/[serverId]/server-admin/...` deep links permanently redirect to their equivalent management routes so bookmarks and shared links continue to work.
 - Every member can open Settings from the primary server navigation. The server sidebar then shows a unified Settings sidebar with three collapsible groups: App preferences, Your account, and Server configuration. It also shows a Back to Server action. App preferences apply to all servers. Your account and Server configuration apply to the server named in the Settings header. Server configuration contains only the destinations that the viewer can use. Settings opens the first permitted server-wide destination. If there is no permitted destination, Settings opens the member's Profile.
 - Delegated managers enter a specific room or room group through its contextual settings action. Resource pages use effective scoped permissions and do not imply access to unrelated server-management pages.
-- **Users page** — paginated list of all server members with login, email, roles, verification status. Admins can edit profiles, assign roles, suspend, or delete users when they hold the relevant permission.
-- **System Info page** — owner-only page showing backing message-broker connection status, storage account limits and current usage, stream/consumer health, known durable-worker queue health, projection health (lag, entry counts, and rough memory estimates), and `AdminDiagnosticsService.GetSystemInfo` stats (user count, channel room count, DM room count).
+- **Users page** — paginated list of all server members with user, login, joined date, and roles. Verified email addresses appear on the per-user detail page. Admins can edit profiles, assign roles, suspend, or delete users when they hold the relevant permission.
+- **System Info page** — owner-only page showing backing message-broker connection status, storage account limits and current usage, stream/consumer health, known durable-worker queue health, projection health (lag, entry counts, and rough memory estimates), asset-cleanup health (health state, pending count, and whether the deletion-event scan is caught up), and `AdminDiagnosticsService.GetSystemInfo` stats (user count, channel room count, DM room count).
 - **Audit log page** — chronological diagnostic event-log view for forensic review, grouped by event creation date. The list view uses `AdminEventLogService.ListEvents`; the detail view uses `AdminEventLogService.GetEvent` to show sanitized payload JSON for human inspection. Password verifiers are omitted.
 - The audit log UI can be filtered by exact event type and exact actor ID. Event type suggestions come from the admin event-log API; the actor field reuses the server member lookup but still accepts synthetic actor IDs such as `system:bootstrap`. The API also supports inclusive created-at bounds for callers, but the server-management page does not expose time-range controls.
 - The audit/event-log API returns `totalCount` as a 64-bit value because it reflects retained stream message counts, which can exceed 32-bit integer range on long-running servers.
@@ -49,7 +49,7 @@ The server-management section gives owners and admins visibility into the server
 ### 5. Diagnostic values are operator tooling, not product contracts
 
 **Decision:** Raw storage subjects, stream/consumer names, sanitized payload JSON, projection metric names, and memory estimates are documented as diagnostic values. The admin diagnostics APIs are intentional operator APIs, but clients should not parse those values as stable product-domain data. Payload JSON omits password verifiers.
-**Why:** Operators need visibility into what the runtime is doing, especially during the 0.1 stabilization lane. At the same time, these values reflect storage and projection implementation details that may evolve as the event-sourcing model settles.
+**Why:** Operators need visibility into what the runtime is doing. At the same time, these values reflect storage and projection implementation details that may evolve as the event-sourcing model settles.
 **Tradeoff:** Third-party admin clients can display diagnostics but should treat raw strings and JSON as best-effort inspection data. If a future integration needs a stable audit export format, it should get a dedicated schema instead of depending on diagnostic payloads.
 
 Known durable workers use stable diagnostic keys and stream-scoped,

@@ -1,7 +1,7 @@
 # FDR-024: Permission Inspection Tool
 
 **Status:** Active
-**Last reviewed:** 2026-08-27
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -19,7 +19,7 @@ bundled permission-explainer UI.
   administration namespace and requires `role.manage`.
 - The trace lists the nearest applicable (subject, scope) entry for the direct user and each assigned named role. It also includes the nearest `everyone` baseline entry.
 - Denies win across direct-user and named-role entries. A named/direct allow wins over an `everyone` deny only at the same or a nearer scope; otherwise the nearer baseline row is marked as winning.
-- Each trace entry shows: the subject (a role name, or "user" for user-level overrides), the scope (server / room group / room / user), the decided state (allow / deny / none), and whether this is the entry that won.
+- Each trace entry shows: the subject (a role name, or "user" for user-level overrides), the scope (server / room group / room), the decided state (allow / deny / none), and whether this is the entry that won.
 - If no role or override produced a decision, the resulting state is "none" — which the API boundary treats as deny by default.
 
 ## Design Decisions

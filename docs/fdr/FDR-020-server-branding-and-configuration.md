@@ -1,7 +1,7 @@
 # FDR-020: Server Branding & Configuration
 
 **Status:** Active
-**Last reviewed:** 2026-08-27
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -18,7 +18,7 @@ Operators can customize how their Chatto server presents itself. The server's na
   clients when changed.
 - **Logo** — shown in the chat header, login page, and OG image fallback. Uploaded as an image; the public server profile exposes its canonical URL without transform arguments.
 - **Banner** — shown on the login page and in OG previews. Same upload/serve pipeline as the logo.
-- **Blocked usernames** — newline-separated list checked at signup. Matches are rejected before account creation.
+- **Blocked usernames** — newline-separated list checked at signup. Matches are rejected before account creation. A fresh, unconfigured server ships with a non-empty default list (`root`, `admin`, `superuser`, `op`, `operator`, `support`); clearing the field explicitly stores an empty list.
 - Text configuration is bounded before storage: server name 80 bytes, description 500 bytes, MOTD 1,000 bytes, welcome message 10,000 bytes, blocked-usernames field 10,000 bytes, and each blocked username no longer than a normal username.
 
 ## Design Decisions

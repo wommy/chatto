@@ -1,7 +1,7 @@
 # FDR-030: Inline Message Timestamps
 
 **Status:** Active
-**Last reviewed:** 2026-07-12
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -22,8 +22,8 @@ events or reminders.
   opens a compact details popover showing local time and a live-updating
   relative time.
 - Invalid timestamp tokens stay visible as literal message text.
-- Timestamp tokens inside inline code, code blocks, and blockquotes stay
-  literal.
+- Timestamp tokens inside inline code, code blocks, blockquotes, and link
+  text stay literal.
 - Editing a message exposes and preserves the raw timestamp token.
 - Older clients that do not understand timestamp tokens show the raw token.
 
