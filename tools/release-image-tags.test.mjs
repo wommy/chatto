@@ -221,11 +221,12 @@ test("the server tags are split into the version tag and the floating tags", () 
   assert.deepEqual(older.serverFloatingTags, [`${SERVER_IMAGE}:0.4`]);
 });
 
-test("a release with no floating tag gives an empty output value", () => {
+test("an empty floating-tag list gives an empty output value, per image", () => {
   // A stable release that is not the highest version publishes the version
-  // tag only for `latest`, though `{major}.{minor}` still floats for the
-  // server. The tag-move step then moves what the plan lists, and nothing
-  // more, and it must stay green even when a list is empty.
+  // tag only for the client's `latest`, but the server still floats
+  // `{major}.{minor}`. The tag-move step then moves what the plan lists for
+  // each image, and nothing more, and it must stay green even when one
+  // image's list is empty while the other's is not.
   const output = formatGithubOutput(
     releaseImageTags({ tag: "v0.4.7", pushLatest: false }),
   );

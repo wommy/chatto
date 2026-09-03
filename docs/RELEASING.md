@@ -48,8 +48,10 @@ The client image gets no `1.2` tag. This is not intended. Issue #43 keeps the
 tag set unchanged until a separate change adds that tag.
 
 `tools/release-image-tags.mjs` holds this policy for both images.
-`.goreleaser.yml` and the release workflow read the result and decide nothing.
-To see the tags for a release tag before you push it, run:
+`.goreleaser.yml` publishes only the immutable version manifest and decides
+nothing else. The release workflow reads the rest of the plan from this
+module and decides nothing itself. To see the tags for a release tag before
+you push it, run:
 
 ```sh
 node tools/release-image-tags.mjs --tag v1.2.3 --push-latest true
