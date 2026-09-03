@@ -126,6 +126,7 @@ test('deleting first message in group removes it and recomputes the group leader
 
   const msg1 = await roomPage.sendMessage(message1);
   const msg1EventId = await msg1.getEventId();
+  if (!msg1EventId) throw new Error('expected eventId from sent message');
   await roomPage.sendMessage(message2);
   await roomPage.sendMessage(message3);
 
@@ -136,9 +137,7 @@ test('deleting first message in group removes it and recomputes the group leader
   // Delete the first message. Its context-free row disappears immediately,
   // and the next message becomes the group leader.
   await msg1.delete();
-  if (msg1EventId) {
-    await expect(roomPage.getMessageByEventId(msg1EventId).locator).toHaveCount(0);
-  }
+  await expect(roomPage.getMessageByEventId(msg1EventId).locator).toHaveCount(0);
 
   await roomPage.expectAvatarCount(1);
   await roomPage.expectUserHeaderCount(testUser.displayName, 1);
@@ -421,18 +420,17 @@ test('user can delete their own message', async ({ page, chatPage, roomPage }) =
 
   // Get event ID for stable lookup after deletion
   const eventId = await message.getEventId();
+  if (!eventId) throw new Error('expected eventId from sent message');
 
   // Delete the message.
   await message.delete();
 
   // The context-free row disappears immediately and stays absent after reload.
   await roomPage.expectMessageNotVisible(testMessage);
-  if (eventId) {
-    const deletedMessage = roomPage.getMessageByEventId(eventId);
-    await expect(deletedMessage.locator).toHaveCount(0);
-    await page.reload();
-    await expect(deletedMessage.locator).toHaveCount(0);
-  }
+  const deletedMessage = roomPage.getMessageByEventId(eventId);
+  await expect(deletedMessage.locator).toHaveCount(0);
+  await page.reload();
+  await expect(deletedMessage.locator).toHaveCount(0);
 });
 
 test('user can cancel deleting a message', async ({ page, chatPage, roomPage }) => {
@@ -465,6 +463,7 @@ test('streamed context-free deletion disappears for other connected clients', as
   const testMessage = `Real-time delete test ${Date.now()}`;
   const message1 = await roomPage.sendAttachment('e2e/fixtures/brighton.jpg', testMessage);
   const eventId = await message1.getEventId();
+  if (!eventId) throw new Error('expected eventId from sent message');
 
   // User 2: Create user and open the server
   await withServerUser(
@@ -481,18 +480,14 @@ test('streamed context-free deletion disappears for other connected clients', as
 
       // Both clients immediately remove the context-free row.
       await roomPage.expectMessageNotVisible(testMessage);
-      if (eventId) {
-        const message1AfterDelete = roomPage.getMessageByEventId(eventId);
-        await expect(message1AfterDelete.locator).toHaveCount(0);
-      }
+      const message1AfterDelete = roomPage.getMessageByEventId(eventId);
+      await expect(message1AfterDelete.locator).toHaveCount(0);
 
-      if (eventId) {
-        const message2AfterDelete = page2.locator(`[data-event-id="${eventId}"]`);
-        await expect(page2.getByText(testMessage)).not.toBeVisible({
-          timeout: TIMEOUTS.UI_STANDARD
-        });
-        await expect(message2AfterDelete).toHaveCount(0);
-      }
+      const message2AfterDelete = page2.locator(`[data-event-id="${eventId}"]`);
+      await expect(page2.getByText(testMessage)).not.toBeVisible({
+        timeout: TIMEOUTS.UI_STANDARD
+      });
+      await expect(message2AfterDelete).toHaveCount(0);
     },
     { viewport: { width: 1280, height: 720 } }
   );
@@ -510,15 +505,14 @@ test('deleted attachment-only message disappears immediately', async ({
   // Send attachment-only message
   const message = await roomPage.sendAttachment('e2e/fixtures/brighton.jpg');
   const eventId = await message.getEventId();
+  if (!eventId) throw new Error('expected eventId from sent message');
 
   // Delete the message.
   await message.delete();
 
   // No visible context remains, so the row disappears.
-  if (eventId) {
-    const messageAfterDelete = roomPage.getMessageByEventId(eventId);
-    await expect(messageAfterDelete.locator).toHaveCount(0);
-  }
+  const messageAfterDelete = roomPage.getMessageByEventId(eventId);
+  await expect(messageAfterDelete.locator).toHaveCount(0);
 });
 
 test('deleting attachment-only message in group does not mark text message as edited', async ({
@@ -539,15 +533,14 @@ test('deleting attachment-only message in group does not mark text message as ed
   // Post an attachment-only message (should be grouped with text message)
   const attachmentMsg = await roomPage.sendAttachment('e2e/fixtures/brighton.jpg');
   const attachmentEventId = await attachmentMsg.getEventId();
+  if (!attachmentEventId) throw new Error('expected eventId from sent message');
 
   // Delete the attachment-only message
   await attachmentMsg.delete();
 
   // Deleted attachment-only row disappears immediately.
-  if (attachmentEventId) {
-    const messageAfterDelete = roomPage.getMessageByEventId(attachmentEventId);
-    await expect(messageAfterDelete.locator).toHaveCount(0);
-  }
+  const messageAfterDelete = roomPage.getMessageByEventId(attachmentEventId);
+  await expect(messageAfterDelete.locator).toHaveCount(0);
 
   // Verify the text message still exists and is NOT marked as edited
   // Re-fetch the message locator after DOM updates from deletion
@@ -568,6 +561,7 @@ test('removing attachment from attachment-only message hides it', async ({
   // Send attachment-only message (no text body)
   const message = await roomPage.sendAttachment('e2e/fixtures/brighton.jpg');
   const eventId = await message.getEventId();
+  if (!eventId) throw new Error('expected eventId from sent message');
 
   // Verify attachment is visible
   await message.expectAttachment();
@@ -576,10 +570,8 @@ test('removing attachment from attachment-only message hides it', async ({
   await message.deleteAttachment();
 
   // The empty edited row disappears immediately.
-  if (eventId) {
-    const messageAfterRemove = roomPage.getMessageByEventId(eventId);
-    await expect(messageAfterRemove.locator).toHaveCount(0);
-  }
+  const messageAfterRemove = roomPage.getMessageByEventId(eventId);
+  await expect(messageAfterRemove.locator).toHaveCount(0);
 });
 
 test('deleted message with reactions remains visible', async ({ page, chatPage, roomPage }) => {
@@ -590,6 +582,7 @@ test('deleted message with reactions remains visible', async ({ page, chatPage, 
   const testMessage = `Delete with reaction ${Date.now()}`;
   const message = await roomPage.sendMessage(testMessage);
   const eventId = await message.getEventId();
+  if (!eventId) throw new Error('expected eventId from sent message');
 
   // Add a reaction before deleting
   await message.reactViaToolbar('👍');
@@ -600,11 +593,9 @@ test('deleted message with reactions remains visible', async ({ page, chatPage, 
 
   // Message should still be visible with "This message has been deleted" because it has a reaction
   await roomPage.expectMessageNotVisible(testMessage);
-  if (eventId) {
-    const deletedMessage = roomPage.getMessageByEventId(eventId);
-    await deletedMessage.expectDeleted();
-    await deletedMessage.expectReaction('👍', 1);
-  }
+  const deletedMessage = roomPage.getMessageByEventId(eventId);
+  await deletedMessage.expectDeleted();
+  await deletedMessage.expectReaction('👍', 1);
 });
 
 test('deletion of a reacted message shows placeholder for other connected clients in real-time', async ({
@@ -666,6 +657,7 @@ test('deleted message with thread replies remains visible', async ({
   const testMessage = `Delete with thread ${Date.now()}`;
   const message = await roomPage.sendMessage(testMessage);
   const eventId = await message.getEventId();
+  if (!eventId) throw new Error('expected eventId from sent message');
 
   // Open thread and post a reply
   await message.openThread();
@@ -684,10 +676,8 @@ test('deleted message with thread replies remains visible', async ({
 
   // Message should still be visible with "This message has been deleted" because it has thread replies
   await roomPage.expectMessageNotVisible(testMessage);
-  if (eventId) {
-    const deletedMessage = roomPage.getMessageByEventId(eventId);
-    await deletedMessage.expectDeleted();
-  }
+  const deletedMessage = roomPage.getMessageByEventId(eventId);
+  await deletedMessage.expectDeleted();
 });
 
 test('image lightbox supports keyboard navigation with multiple images', async ({

@@ -5,14 +5,6 @@ import { TIMEOUTS } from './constants';
 
 test.describe('Message duplication bug', () => {
   test('posting a message should not create duplicates', async ({ page, chatPage, roomPage }) => {
-    // Capture console logs for debugging
-    const consoleLogs: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'log') {
-        consoleLogs.push(msg.text());
-      }
-    });
-
     await createAndLoginTestUser(page);
     await chatPage.goto();
     await chatPage.enterRoom('general');
@@ -38,22 +30,6 @@ test.describe('Message duplication bug', () => {
     }).toPass({ timeout: TIMEOUTS.UI_STANDARD, intervals: [100, 250, 500, 1000] });
 
     const count = await messagesWithText.count();
-
-    // Print relevant console logs for debugging BEFORE the assertion
-    const relevantLogs = consoleLogs.filter((log) => log.includes('SpaceEventBus'));
-    console.log('\n=== Console logs ===');
-    for (const log of relevantLogs) {
-      console.log(log);
-    }
-    console.log('=== End console logs ===\n');
-
-    // Debug: print info about all messages
-    console.log(`Found ${count} messages with text "${testMessage}"`);
-    for (let i = 0; i < count; i++) {
-      const msg = messagesWithText.nth(i);
-      const evtId = await msg.getAttribute('data-event-id');
-      console.log(`  Message ${i}: eventId=${evtId}`);
-    }
 
     // Should be exactly ONE message with this text
     expect(count).toBe(1);
@@ -82,6 +58,19 @@ test.describe('Message duplication bug', () => {
     chatPage,
     roomPage
   }) => {
+    // Playwright does not fail a test on a console/page error unless something
+    // explicitly asserts on it -- this actually re-verifies the "prev" bug
+    // report this test was written for, instead of assuming it's implicit.
+    const runtimeErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        runtimeErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (error) => {
+      runtimeErrors.push(error.message);
+    });
+
     await createAndLoginTestUser(page);
     await chatPage.goto();
     await chatPage.enterRoom('general');
@@ -108,7 +97,8 @@ test.describe('Message duplication bug', () => {
       expect(msg2Count).toBe(1);
     }).toPass({ timeout: TIMEOUTS.UI_STANDARD, intervals: [100, 250, 500, 1000] });
 
-    // Check there are no console errors about "prev"
-    // (This is checked implicitly - if there are uncaught errors, Playwright will fail)
+    // Check there are no console/page errors about "prev".
+    const prevErrors = runtimeErrors.filter((log) => log.toLowerCase().includes('prev'));
+    expect(prevErrors).toEqual([]);
   });
 });
