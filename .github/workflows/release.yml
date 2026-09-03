@@ -757,55 +757,12 @@ jobs:
       # tag back, so the rollback is the mechanism that each release exercises.
       # `docs/RELEASING.md` holds the recovery.
       - name: Move the client image floating tags
-        shell: bash
+        uses: ./.github/actions/move-image-floating-tags
         timeout-minutes: 10
-        env:
-          CLIENT_VERSION_TAG: ${{ steps.image_tags.outputs.client_version_tag }}
-          CLIENT_FLOATING_TAGS: ${{ steps.image_tags.outputs.client_floating_tags }}
-        run: |
-          set -euo pipefail
-
-          floating=()
-          while IFS= read -r tag; do
-            [[ -n "$tag" ]] && floating+=("$tag")
-          done <<< "$CLIENT_FLOATING_TAGS"
-
-          if (( ${#floating[@]} == 0 )); then
-            echo "This release publishes no floating client tag."
-            exit 0
-          fi
-
-          # Write the rollback command for each tag before it moves. An
-          # operator then finds the previous digest in this job log.
-          digest_of() {
-            printf '%s\n' "$1" |
-              awk '/^Digest:/ { if (!found) { print $2; found = 1 } }'
-          }
-
-          repository="${CLIENT_VERSION_TAG%:*}"
-          for tag in "${floating[@]}"; do
-            if inspected="$(docker buildx imagetools inspect "$tag" 2>/dev/null)"; then
-              previous="$(digest_of "$inspected")"
-              echo "Roll ${tag} back with:"
-              echo "  docker buildx imagetools create --tag ${tag} ${repository}@${previous}"
-            else
-              echo "${tag} does not exist yet, so it has no previous digest."
-            fi
-          done
-
-          create=()
-          for tag in "${floating[@]}"; do
-            create+=(--tag "$tag")
-          done
-
-          docker buildx imagetools create "${create[@]}" "$CLIENT_VERSION_TAG"
-
-          # The assignment makes a failed read of the moved tag red. To put
-          # the command in the `echo` arguments would hide that failure.
-          for tag in "${floating[@]}"; do
-            moved="$(docker buildx imagetools inspect "$tag")"
-            echo "${tag} now holds $(digest_of "$moved")"
-          done
+        with:
+          image-type: client
+          version-tag: ${{ steps.image_tags.outputs.client_version_tag }}
+          floating-tags: ${{ steps.image_tags.outputs.client_floating_tags }}
 
       # The true last step of the release moves the server image floating
       # tags. `chatto:latest` is the least withdrawable reference this
@@ -820,55 +777,12 @@ jobs:
       # same command moves a tag back, so the rollback is the mechanism that
       # each release exercises. `docs/RELEASING.md` holds the recovery.
       - name: Move the server image floating tags
-        shell: bash
+        uses: ./.github/actions/move-image-floating-tags
         timeout-minutes: 10
-        env:
-          SERVER_VERSION_TAG: ${{ steps.image_tags.outputs.server_version_tag }}
-          SERVER_FLOATING_TAGS: ${{ steps.image_tags.outputs.server_floating_tags }}
-        run: |
-          set -euo pipefail
-
-          floating=()
-          while IFS= read -r tag; do
-            [[ -n "$tag" ]] && floating+=("$tag")
-          done <<< "$SERVER_FLOATING_TAGS"
-
-          if (( ${#floating[@]} == 0 )); then
-            echo "This release publishes no floating server tag."
-            exit 0
-          fi
-
-          # Write the rollback command for each tag before it moves. An
-          # operator then finds the previous digest in this job log.
-          digest_of() {
-            printf '%s\n' "$1" |
-              awk '/^Digest:/ { if (!found) { print $2; found = 1 } }'
-          }
-
-          repository="${SERVER_VERSION_TAG%:*}"
-          for tag in "${floating[@]}"; do
-            if inspected="$(docker buildx imagetools inspect "$tag" 2>/dev/null)"; then
-              previous="$(digest_of "$inspected")"
-              echo "Roll ${tag} back with:"
-              echo "  docker buildx imagetools create --tag ${tag} ${repository}@${previous}"
-            else
-              echo "${tag} does not exist yet, so it has no previous digest."
-            fi
-          done
-
-          create=()
-          for tag in "${floating[@]}"; do
-            create+=(--tag "$tag")
-          done
-
-          docker buildx imagetools create "${create[@]}" "$SERVER_VERSION_TAG"
-
-          # The assignment makes a failed read of the moved tag red. To put
-          # the command in the `echo` arguments would hide that failure.
-          for tag in "${floating[@]}"; do
-            moved="$(docker buildx imagetools inspect "$tag")"
-            echo "${tag} now holds $(digest_of "$moved")"
-          done
+        with:
+          image-type: server
+          version-tag: ${{ steps.image_tags.outputs.server_version_tag }}
+          floating-tags: ${{ steps.image_tags.outputs.server_floating_tags }}
 
   publish-stable-docs:
     needs: release
