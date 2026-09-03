@@ -31,6 +31,11 @@
 
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import {
+	macOSCaptureHelperAppName,
+	macOSCaptureHelperExecutable,
+} from '../capture-helper-constants.mjs'
+import packageJson from '../package.json' with { type: 'json' }
 
 /**
  * The name of the archive file for a macOS release.
@@ -165,10 +170,10 @@ export function runPackagingCommand(argv, environment, spawnSync) {
 
 	switch (command) {
 		case 'package-macos': {
+			const appPath = `apps/desktop/dist/${packageJson.productName}.app`
 			const helperPath =
-				'apps/desktop/dist/Chatto Desktop.app/Contents/Helpers/' +
-				'Chatto Capture Helper.app/Contents/MacOS/chatto-macos-capture-probe'
-			const appPath = 'apps/desktop/dist/Chatto Desktop.app'
+				`${appPath}/Contents/Helpers/${macOSCaptureHelperAppName}/` +
+				`Contents/MacOS/${macOSCaptureHelperExecutable}`
 			const archivePath = `.context/desktop-release/${macOSReleaseArchiveName(version, arch)}`
 
 			const plan = macOSReleasePlan({ appPath, helperPath, archivePath })

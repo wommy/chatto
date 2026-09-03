@@ -5,9 +5,17 @@ import { execFileSync } from "node:child_process";
 import { chmod, copyFile, cp, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  macOSCaptureHelperAppName,
+  macOSCaptureHelperExecutable,
+} from "../capture-helper-constants.mjs";
 
-export const macOSCaptureHelperAppName = "Chatto Capture Helper.app";
-export const macOSCaptureHelperExecutable = "chatto-macos-capture-probe";
+// Re-exported so existing importers of this module (build.mjs,
+// desktop-packaging.mjs, tests) keep working unchanged. The canonical
+// definitions live in ../capture-helper-constants.mjs, outside this
+// scripts/ directory, so the packaged Electron runtime (main.mjs) can also
+// import them without pulling build-only tooling into the shipped app.
+export { macOSCaptureHelperAppName, macOSCaptureHelperExecutable };
 
 const scriptsRoot = path.dirname(fileURLToPath(import.meta.url));
 const probeRoot = path.resolve(scriptsRoot, "../native/macos-capture-probe");
