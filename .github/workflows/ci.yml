@@ -348,7 +348,8 @@ jobs:
             base_ref="$GITHUB_BASE_REF"
             git fetch --no-tags --depth=1 origin "${base_ref}:refs/remotes/origin/${base_ref}"
           elif [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
-            # Push to new branch (zero SHA): use main as baseline
+            # Push to new branch (zero SHA): use main as baseline.
+            # New release branches are cut from main, so main is the state the branch diverged from.
             base_ref="main"
             echo "::notice::Push event with no prior commit (zero SHA); comparing against main branch."
             git fetch --no-tags --depth=1 origin "main:refs/remotes/origin/main"
