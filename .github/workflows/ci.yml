@@ -534,6 +534,20 @@ jobs:
           CHATTO_GO_TEST_P: "1"
         run: mise test-cli
 
+      - name: Warm the E2E-server Go build cache
+        # test-cli's own build uses the default CGO_ENABLED (1) and the
+        # test_endpoints tag only. build-e2e-server builds with CGO_ENABLED=0
+        # and the bootstrap/nomsgpack/test_endpoints tag set. Go's build
+        # cache is content-addressed per compilation unit, so a CGO_ENABLED
+        # mismatch alone makes nearly the whole stdlib/dependency graph miss
+        # when test-e2e's jobs restore this shared cache. Building the
+        # e2e-server binary here, before this job's cache save, means the
+        # objects the e2e jobs actually need are already present.
+        # Confirmed by a real CI measurement: 88s -> 30s for the isolated
+        # `mise build-e2e-server` step (throwaway PR #168, closed).
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: mise build-e2e-server
+
   test-authling-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
