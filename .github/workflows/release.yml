@@ -633,6 +633,16 @@ jobs:
             --probe-path / \
             --expect-version "$VERSION"
 
+      - name: Log GitHub Release rollback
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          echo "If the release publishes incorrectly, re-draft it with:"
+          echo "  gh release edit v${VERSION} --repo chattocorp/chatto --draft=true"
+
       - name: Publish GitHub Release
         shell: bash
         env:
@@ -741,6 +751,13 @@ jobs:
 
           git -C "${tap_dir}" add Formula/chatto.rb
           git -C "${tap_dir}" commit -m "chore: update chatto to v${VERSION}"
+
+          # Capture the previous commit SHA before pushing, so the tap can be
+          # rolled back if needed.
+          previous_sha="$(git -C "${tap_dir}" rev-parse HEAD~1)"
+          echo "If the Homebrew tap update needs to be rolled back, use:"
+          echo "  git -C chattocorp/homebrew-tap reset --hard ${previous_sha}"
+
           git -C "${tap_dir}" push origin HEAD:main
 
       # The last step of the release moves the client image floating tags.
