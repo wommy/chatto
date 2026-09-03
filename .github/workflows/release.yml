@@ -189,6 +189,9 @@ jobs:
       actions: read
       contents: read
       id-token: write
+    # Windows signing and verification must use the same extension list.
+    env:
+      WINDOWS_SIGNING_EXTENSIONS: exe,dll,node
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -322,7 +325,7 @@ jobs:
           signing-account-name: ${{ vars.CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ vars.CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\apps\desktop\dist\windows
-          files-folder-filter: exe,dll,node
+          files-folder-filter: ${{ env.WINDOWS_SIGNING_EXTENSIONS }}
           files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
@@ -349,11 +352,12 @@ jobs:
           # which record passes, and it has a test beside it.
           $bundle = Resolve-Path "apps/desktop/dist/windows"
           $application = Join-Path $bundle "chatto-desktop.exe"
+          $filterExtensions = $env:WINDOWS_SIGNING_EXTENSIONS.Split(',') | ForEach-Object { ".$_" }
           $report = [ordered]@{
             mainBinaryPath = $application
             mainBinaryPresent = [bool](Test-Path -LiteralPath $application -PathType Leaf)
             files = @(Get-ChildItem -LiteralPath $bundle -File -Recurse |
-              Where-Object { $_.Extension -in '.exe', '.dll', '.node' } |
+              Where-Object { $_.Extension -in $filterExtensions } |
               ForEach-Object {
                 $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
                 [ordered]@{
