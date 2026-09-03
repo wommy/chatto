@@ -34,7 +34,7 @@ run_test() {
   # Create a temporary wrapper script that defines the stub docker and calls guard.sh.
   local wrapper
   wrapper=$(mktemp)
-  trap "rm -f '$wrapper'" RETURN
+  trap 'rm -f "$wrapper"' RETURN
 
   cat > "$wrapper" << 'WRAPPER_EOF'
 #!/bin/bash
@@ -134,6 +134,16 @@ run_test \
   "linux/amd64" \
   1 \
   "manifest unknown" \
+  ""
+
+# Test 6: Real error (auth/network) not "not found" → FAIL
+run_test \
+  "auth error, single-platform push" \
+  1 \
+  "ghcr.io/chattocorp/chatto:sha256" \
+  "linux/amd64" \
+  1 \
+  "unauthorized: authentication required" \
   ""
 
 # Report.
