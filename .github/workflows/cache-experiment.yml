@@ -1,6 +1,8 @@
 name: cache-experiment
 
 on:
+  push:
+    branches: [worktree-agent-a37d95c7b72f0fcc0]
   workflow_dispatch:
     inputs:
       mode:
@@ -20,7 +22,7 @@ jobs:
     name: "A: cold (no cache)"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event.inputs.mode == 'measure'
+    if: github.event_name != 'push' && github.event.inputs.mode == 'measure'
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -44,9 +46,13 @@ jobs:
         shell: bash
         run: mise setup-web
 
+      - name: Verify GOCACHE location
+        shell: bash
+        run: mise x -- go env GOCACHE
+
       - name: Clean build cache
         shell: bash
-        run: go clean -cache
+        run: mise x -- go clean -cache
 
       - name: Check cache size before build
         shell: bash
@@ -56,21 +62,24 @@ jobs:
         id: build
         shell: bash
         run: |
+          cd cli
           SECONDS=0
-          mise build-e2e-server
+          mise x -- bash -c 'CGO_ENABLED=0 go build -v -trimpath -tags "bootstrap nomsgpack test_endpoints" -ldflags "-s -w -X main.Version=$CHATTO_DEVELOPMENT_VERSION" -o ../apps/frontend/e2e/fixtures/bin/chatto .' 2>&1 | tee /tmp/build.log
           echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+          echo "pkgs_compiled=$(wc -l < /tmp/build.log)" >> "$GITHUB_OUTPUT"
 
       - name: Report build time
         shell: bash
         run: |
           echo "Build time: ${{ steps.build.outputs.build_seconds }}s"
+          echo "Packages compiled: ${{ steps.build.outputs.pkgs_compiled }}"
           du -sh ~/.cache/go-build
 
   cache-test-b-shared:
     name: "B: shared cache (baseline)"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event.inputs.mode == 'measure'
+    if: github.event_name != 'push' && github.event.inputs.mode == 'measure'
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -114,22 +123,25 @@ jobs:
         id: build
         shell: bash
         run: |
+          cd cli
           SECONDS=0
-          mise build-e2e-server
+          mise x -- bash -c 'CGO_ENABLED=0 go build -v -trimpath -tags "bootstrap nomsgpack test_endpoints" -ldflags "-s -w -X main.Version=$CHATTO_DEVELOPMENT_VERSION" -o ../apps/frontend/e2e/fixtures/bin/chatto .' 2>&1 | tee /tmp/build.log
           echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+          echo "pkgs_compiled=$(wc -l < /tmp/build.log)" >> "$GITHUB_OUTPUT"
 
       - name: Report build time and cache status
         shell: bash
         run: |
           echo "Cache matched key: ${{ steps.restore-shared.outputs.cache-matched-key }}"
           echo "Build time: ${{ steps.build.outputs.build_seconds }}s"
+          echo "Packages compiled: ${{ steps.build.outputs.pkgs_compiled }}"
           du -sh ~/.cache/go-build
 
   cache-test-c-warm:
     name: "C: warm scoped cache"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event.inputs.mode == 'warm'
+    if: github.event_name == 'push' || github.event.inputs.mode == 'warm'
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -155,11 +167,17 @@ jobs:
 
       - name: Clean build cache
         shell: bash
-        run: go clean -cache
+        run: mise x -- go clean -cache
 
       - name: Build E2E server for cache warming
+        id: build
         shell: bash
-        run: mise build-e2e-server
+        run: |
+          cd cli
+          SECONDS=0
+          mise x -- bash -c 'CGO_ENABLED=0 go build -v -trimpath -tags "bootstrap nomsgpack test_endpoints" -ldflags "-s -w -X main.Version=$CHATTO_DEVELOPMENT_VERSION" -o ../apps/frontend/e2e/fixtures/bin/chatto .' 2>&1 | tee /tmp/build.log
+          echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+          echo "pkgs_compiled=$(wc -l < /tmp/build.log)" >> "$GITHUB_OUTPUT"
 
       - name: Save scoped Go build cache
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
@@ -170,15 +188,14 @@ jobs:
       - name: Report cache saved
         shell: bash
         run: |
-          echo "Scoped cache warmed and saved"
+          echo "Scoped cache warmed and saved in ${{ steps.build.outputs.build_seconds }}s (${{ steps.build.outputs.pkgs_compiled }} packages)"
           du -sh ~/.cache/go-build
 
   cache-test-c-measure:
     name: "C: scoped cache (measure)"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event.inputs.mode == 'measure'
-    needs: cache-test-c-warm
+    if: github.event_name != 'push' && github.event.inputs.mode == 'measure'
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -223,13 +240,16 @@ jobs:
         id: build
         shell: bash
         run: |
+          cd cli
           SECONDS=0
-          mise build-e2e-server
+          mise x -- bash -c 'CGO_ENABLED=0 go build -v -trimpath -tags "bootstrap nomsgpack test_endpoints" -ldflags "-s -w -X main.Version=$CHATTO_DEVELOPMENT_VERSION" -o ../apps/frontend/e2e/fixtures/bin/chatto .' 2>&1 | tee /tmp/build.log
           echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+          echo "pkgs_compiled=$(wc -l < /tmp/build.log)" >> "$GITHUB_OUTPUT"
 
       - name: Report build time and cache status
         shell: bash
         run: |
           echo "Cache matched key: ${{ steps.restore-scoped.outputs.cache-matched-key }}"
           echo "Build time: ${{ steps.build.outputs.build_seconds }}s"
+          echo "Packages compiled: ${{ steps.build.outputs.pkgs_compiled }}"
           du -sh ~/.cache/go-build
