@@ -151,6 +151,51 @@ test('stops at the first nonzero exit code in a macOS plan', () => {
 	assert.equal(callCount, 4) // test, codesign, xcrun, spctl
 })
 
+test('stops when a command fails to spawn (ENOENT)', () => {
+	const plan = macOSReleasePlan({
+		appPath: APP_PATH,
+		helperPath: HELPER_PATH,
+		archivePath: `${ARCHIVE_DIR}/test.zip`,
+	})
+
+	const tools = {
+		spawnSync: (cmd, args) => {
+			if (cmd === 'test') {
+				return { status: null, error: { code: 'ENOENT', message: 'not found' } }
+			}
+			return { status: 0 }
+		},
+	}
+
+	const result = runMacOSReleasePlan(plan, tools)
+	assert.equal(result.step, 'verify-helper')
+	assert.equal(result.exitCode, 1) // null status converted to 1
+})
+
+test('stops when a command is killed by signal', () => {
+	const plan = macOSReleasePlan({
+		appPath: APP_PATH,
+		helperPath: HELPER_PATH,
+		archivePath: `${ARCHIVE_DIR}/test.zip`,
+	})
+
+	let callCount = 0
+	const tools = {
+		spawnSync: (cmd, args) => {
+			callCount++
+			if (cmd === 'codesign') {
+				return { status: null, signal: 'SIGKILL' }
+			}
+			return { status: 0 }
+		},
+	}
+
+	const result = runMacOSReleasePlan(plan, tools)
+	assert.equal(result.step, 'verify-codesign')
+	assert.equal(result.exitCode, 1) // null status converted to 1
+	assert.equal(callCount, 2) // test, codesign
+})
+
 test('runs package-macos command and reports success', () => {
 	let spawnCalls = []
 	const spawnSync = (cmd, args, opts) => {

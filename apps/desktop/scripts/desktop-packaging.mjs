@@ -138,8 +138,8 @@ export function runMacOSReleasePlan(plan, tools) {
 		const result = tools.spawnSync(item.command, item.args, {
 			stdio: 'inherit',
 		})
-		if (result.status !== 0 && result.status !== null) {
-			return { step: item.step, exitCode: result.status }
+		if (result.error || result.status !== 0) {
+			return { step: item.step, exitCode: result.status ?? 1 }
 		}
 	}
 	return null
@@ -190,8 +190,8 @@ export function runPackagingCommand(argv, environment, spawnSync) {
 				stdio: 'inherit',
 			})
 
-			if (result.status !== 0 && result.status !== null) {
-				process.exitCode = result.status
+			if (result.error || result.status !== 0) {
+				process.exitCode = result.status ?? 1
 			}
 			return null
 		}
