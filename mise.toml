@@ -202,6 +202,14 @@ run = "tools/sync-cli-legal.sh"
 sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE", "tools/sync-cli-legal.sh"]
 outputs = ["cli/LICENSE", "cli/NOTICE", "cli/cmd/embedded/LICENSE", "cli/cmd/embedded/NOTICE"]
 
+[tasks.build-image-context]
+description = "Assemble Docker image context: copy files and build Chatto binary"
+# The script holds the canonical list of files for the Docker context.
+# Environment variables (required): GOOS, GOARCH, VERSION, CONTEXT_DIR.
+# Hidden from `mise build` glob; explicitly called from workflows only.
+hide = true
+run = "tools/build-image-context.sh"
+
 [tasks.build]
 description = "Build Chatto and its bundled frontend"
 run = [{ task = "build-*" }, "ls -lah cli/bin/*"]
@@ -874,7 +882,7 @@ pkgsite -http=localhost:6060 .
 [tasks.verify-docker]
 description = "Validate Docker, GoReleaser, and image workflow wiring"
 run = """
-set -euo pipefail
+set -eu
 
 goreleaser check
 
@@ -890,15 +898,50 @@ docker compose --project-directory "$compose_example" --env-file "$compose_examp
 docker buildx build --check -f docker/Dockerfile.frontend.prebuilt .
 docker buildx build --check -f apps/frontend/Dockerfile.storybook .
 
-context="$tmp/linux-amd64"
-mkdir -p "$context/docker"
-cp docker/Dockerfile.goreleaser "$context/Dockerfile"
-cp docker/docker-entrypoint.sh "$context/docker/docker-entrypoint.sh"
-cp docker/nats-wrapper.sh "$context/docker/nats-wrapper.sh"
-mkdir -p "$context/LICENSES"
-cp LICENSES/AGPL-3.0-or-later.txt "$context/LICENSES/AGPL-3.0-or-later.txt"
-cp NOTICE "$context/NOTICE"
-printf '#!/bin/sh\necho chatto dummy\n' > "$context/chatto"
-chmod +x "$context/chatto"
-docker buildx build --build-arg TARGETARCH=amd64 -f "$context/Dockerfile" "$context"
+# Use the canonical script to assemble the context with dummy binary (no Go build needed)
+GOOS=linux GOARCH=amd64 VERSION=dummy CONTEXT_DIR="$tmp/linux-amd64" DUMMY_BINARY=1 tools/build-image-context.sh > /dev/null
+
+# Drift assertion: verify .goreleaser.yml extra_files exactly matches the script's list.
+# The script holds the source of truth; the config must stay in sync.
+script_files="$(tools/build-image-context.sh --list-extra-files | sort)"
+
+# Extract extra_files from both docker sections in .goreleaser.yml (they must be identical).
+# Count the dockers sections to verify we have two (amd64 and arm64).
+docker_sections=$(grep -c '^  - image_templates:' .goreleaser.yml)
+if [ "$docker_sections" != "2" ]; then
+	echo "drift: expected 2 docker sections in .goreleaser.yml, found $docker_sections" >&2
+	exit 1
+fi
+
+# Extract extra_files from .goreleaser.yml using flag-based awk scan.
+# Collect all - entries under every extra_files: block, deduplicate, and verify each appears
+# once per docker section (ensuring both sections have identical extra_files).
+extra_files_raw=$(awk '/^    extra_files:/{f=1;next} f&&/^      - /{sub(/^      - /,"");print;next} f{f=0}' .goreleaser.yml)
+extra_files=$(printf '%s\n' "$extra_files_raw" | sort -u)
+extra_files_count=$(printf '%s\n' "$extra_files_raw" | wc -l)
+expected_count=$(($(printf '%s\n' "$extra_files" | wc -l) * docker_sections))
+if [ "$extra_files_count" != "$expected_count" ]; then
+	echo "drift: extra_files entry counts mismatch: $extra_files_count vs expected $expected_count" >&2
+	exit 1
+fi
+
+# Compare the collected extra_files to the script's list.
+extra_files_sorted=$(printf '%s\n' "$extra_files" | sort)
+if [ "$script_files" != "$extra_files_sorted" ]; then
+	echo "drift: .goreleaser.yml extra_files does not match script" >&2
+	echo "script:" >&2
+	printf '%s\n' "$script_files" | sed 's/^/  /' >&2
+	echo "config:" >&2
+	printf '%s\n' "$extra_files_sorted" | sed 's/^/  /' >&2
+	exit 1
+fi
+
+# Verify dockerfile path is present (count must equal docker_sections).
+dockerfile_count=$(grep -c '^    dockerfile: docker/Dockerfile.goreleaser$' .goreleaser.yml)
+if [ "$dockerfile_count" != "$docker_sections" ]; then
+	echo "drift: dockerfile path count mismatch: $dockerfile_count vs expected $docker_sections" >&2
+	exit 1
+fi
+
+docker buildx build --build-arg TARGETARCH=amd64 -f "$tmp/linux-amd64/Dockerfile" "$tmp/linux-amd64"
 """
