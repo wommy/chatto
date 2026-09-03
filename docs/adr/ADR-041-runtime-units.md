@@ -112,3 +112,13 @@ operator convenience, not a correctness boundary.
 
 Replaceable provider units communicate with the main app through the same
 versioned NATS contract in embedded and standalone topologies. See ADR-053.
+
+## Realized by
+
+The [runtime component inventory](../architecture/runtime-components.md) lists
+the concrete units behind this taxonomy: the Runtime-unit catalogue row
+(`cli/cmd/run.go`, `cli/internal/runtimeunit/runtimeunit.go`) is the shared
+composition and supervision mechanism, `exporter.Unit` is the current Observer,
+`bleve.Unit` is the current Projection service, and `video.Unit` is the current
+Worker. `ChattoCore` remains the Main app. No Main-app auxiliary unit exists
+yet.

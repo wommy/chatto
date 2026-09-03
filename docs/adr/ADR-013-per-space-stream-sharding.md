@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-01
 
-**Status:** Superseded by ADR-030 (Retire the Space tier). The per-space stream and KV bucket family (`SPACE_{id}_EVENTS`, `SPACE_{id}_CONFIG`, etc.) was collapsed into the unified `SERVER_*` resources by the Phase-4 migration (#354); the `kind` segment in subjects (`server.room.channel.*` / `server.room.dm.*`) now disambiguates what space-sharding used to. The decision recorded here is preserved as historical context.
+**Status:** Superseded by ADR-030 (Retire the Space tier). The per-space stream and KV bucket family (`SPACE_{id}_EVENTS`, `SPACE_{id}_CONFIG`, etc.) was collapsed into the unified `SERVER_*` resources by the Phase-4 migration (#354); the `kind` segment in subjects (`server.room.channel.*` / `server.room.dm.*`) now disambiguates what space-sharding used to. [ADR-034](ADR-034-single-event-stream.md) later replaced that unified `SERVER_*` stream itself with a single `EVT` stream; current runtime code no longer opens, writes, imports, or republishes `SERVER_EVENTS`. The decision recorded here is preserved as historical context.
 
 ## Context
 

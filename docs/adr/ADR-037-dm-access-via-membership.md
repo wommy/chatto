@@ -2,6 +2,14 @@
 
 **Date:** 2026-05-31
 
+**Status:** Partially superseded
+
+**Partially superseded by:** [ADR-080](ADR-080-explicit-message-read-permissions.md),
+which adds `message.read` as an additional gate on top of membership for
+channel-room message content. This ADR's core rule — that room membership
+alone is sufficient to read a DM — is unchanged; ADR-080 explicitly keeps DMs
+on the membership-only rule recorded here.
+
 ## Context
 
 Direct messages used to carry two server-scope permissions:

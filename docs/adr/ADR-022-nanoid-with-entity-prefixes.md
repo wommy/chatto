@@ -36,15 +36,20 @@ purpose. Chatto uses these prefixes for primary entity identifiers:
 | `A` | Asset |
 | `I` | Invitation |
 | `E` | Event |
-| `N` | Legacy notification |
+| `N` | Legacy notification / Neighbor |
+| `K` | Bot API key |
+| `W` | Bot incoming webhook |
+| `RS` | Renewable session |
 
 Multi-character prefixes also identify opaque tokens. Current examples include
 password-reset (`PR`), registration-completion (`RG`), external-identity
-(`EC`, `EL`, `ELS`), and account-deletion (`AD`) tokens.
+(`EC`, `EL`, `ELS`), account-deletion (`AD`), and pending-OAuth-authorize
+(`OA`) tokens.
 
 Some credential formats add the `cht_` marker before the NanoID prefix. These
-formats include access tokens (`cht_AT`), link-preview tokens (`cht_LP`), and
-OAuth authorization codes (`cht_AC`).
+formats include access tokens (`cht_AT`), link-preview tokens (`cht_LP`), OAuth
+authorization codes (`cht_AC`), bot API keys (`cht_BK_`), and bot incoming
+webhook credentials (`cht_IW_`).
 
 Email verification codes use six numeric digits. They do not use a NanoID
 prefix.
