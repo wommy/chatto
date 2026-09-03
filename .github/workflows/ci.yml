@@ -119,6 +119,9 @@ jobs:
       - name: Test composite action scripts
         run: mise test-guard-multiarch
 
+      - name: Test cache-pruning logic
+        run: mise test-prune-caches
+
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -565,6 +568,85 @@ jobs:
         # `mise build-e2e-server` step (throwaway PR #168, closed).
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: mise build-e2e-server
+
+  prune-superseded-caches:
+    # actions/cache keys are immutable and restore-keys only ever resolve to
+    # the single most-recently-created entry under a prefix. Once test-cli
+    # saves a new go-build entry, every older sibling under the same
+    # os/arch/hash prefix is unreachable dead weight that nothing else
+    # deletes -- see issue #187. This has to be a separate job, not a step
+    # appended to test-cli: actions/cache's save runs from an automatic
+    # post-step that fires after every one of that job's own steps, so a
+    # step we add there would always run before the save it's meant to
+    # follow. `needs: test-cli` (with no explicit success()/always()) only
+    # starts once test-cli, post-steps included, has completed successfully.
+    #
+    # Deletion candidates are skipped if accessed in the last 15 minutes (a
+    # restore elsewhere could still be mid-download of them). In practice
+    # this job runs 1-2 minutes after test-cli's save, and the go-build
+    # restore step in the *next* main push's test-cli run touches whichever
+    # entry it superseded on the way to a cache miss -- so the entry this
+    # run's save just made unreachable is usually still "recently accessed"
+    # and gets skipped here, then deleted on the run after that. Steady
+    # state is normally 2 live entries per prefix (current + one pending),
+    # not 1. This still bounds growth and fixes the issue's runaway
+    # accumulation; it does not make cleanup instantaneous, and shouldn't be
+    # tuned to be -- shortening the guard enough to catch it same-run would
+    # gut the protection against deleting an entry a concurrent job needs.
+    needs: test-cli
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Prune superseded Go build caches
+        # Keep this hashFiles() list and runner.os/runner.arch usage in sync
+        # with the "Restore and save Go build artifacts" step in
+        # .github/actions/setup/action.yml: this must reconstruct the exact
+        # key that step just saved, or the cross-check below refuses to
+        # delete anything (fail safe, not fail loud).
+        uses: ./.github/actions/prune-superseded-caches
+        with:
+          repo: ${{ github.repository }}
+          ref: refs/heads/main
+          mode: exact
+          key-prefix: go-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-
+          expected-key: go-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-${{ github.sha }}
+
+      - name: Prune superseded mise tool caches
+        # jdx/mise-action restores its tool cache with `cache.restoreCache`
+        # given only a single exact key -- no restore-keys fallback -- so
+        # any change that bumps its internal file-hash makes the previous
+        # generation immediately unreachable, the same shape as the Go
+        # build cache above (confirmed by reading mise-action's source, not
+        # assumed). Unlike that cache, we don't control or know
+        # mise-action's exact key: its platform label and file hash are
+        # computed inside the action. This mode groups entries by stripping
+        # the trailing 64-hex-char hash and keeps the newest per group by
+        # creation time -- recency alone, with no independent cross-check
+        # like the exact mode above has.
+        #
+        # Edge case this implies: reverting mise.toml to a config whose
+        # cache entry is older-created than one from a newer config makes
+        # the *older* entry live again (an exact-key hit, so mise-action
+        # doesn't re-save it) while this job still sees it as the group's
+        # non-newest entry. It gets caught in the idle guard the same as
+        # any live entry, so it isn't deleted while jobs keep restoring it;
+        # if a gap opens up (no push for the idle window) it can be deleted
+        # once, the next push re-saves it with a fresh createdAt on a cache
+        # miss, and the group converges. Self-healing, not destructive.
+        uses: ./.github/actions/prune-superseded-caches
+        with:
+          repo: ${{ github.repository }}
+          ref: refs/heads/main
+          mode: generic
+          key-prefix: mise-v1-
+          group-suffix-re: '-[0-9a-f]{64}$'
 
   test-authling-e2e:
     runs-on: ubuntu-latest
