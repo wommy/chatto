@@ -260,6 +260,20 @@ func (s *HTTPServer) setupRoutes() error {
 	sessionStore = newDebugSessionStore(sessionStore, s.logger)
 	s.router.Use(sessions.Sessions("chatto_session", sessionStore))
 
+	// HSTS header when Chatto self-terminates TLS
+	if s.config.Webserver.TLS.Enabled {
+		s.router.Use(func(c *gin.Context) {
+			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			c.Next()
+		})
+	}
+
+	// Security headers applied to all routes (before CORS/CSRF so all routes receive them)
+	s.router.Use(func(c *gin.Context) {
+		setFrontendSecurityHeaders(c)
+		c.Next()
+	})
+
 	// Cross-origin API access is open to bearer-token clients. Cookie
 	// authentication remains same-origin only.
 	s.router.Use(s.corsMiddleware())
