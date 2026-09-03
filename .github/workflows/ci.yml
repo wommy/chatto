@@ -519,7 +519,7 @@ jobs:
         run: mise build-e2e-server
 
       - name: Run E2E tests
-        run: cd apps/frontend && pnpm exec playwright test --grep-invert @ffmpeg --shard=${{ matrix.shard }}/4
+        run: mise test-e2e -- --grep-invert @ffmpeg --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -551,7 +551,7 @@ jobs:
         run: mise build-e2e-server
 
       - name: Run media E2E tests
-        run: cd apps/frontend && pnpm exec playwright test --grep @ffmpeg
+        run: mise test-e2e -- --grep @ffmpeg
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
