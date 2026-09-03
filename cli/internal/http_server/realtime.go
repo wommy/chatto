@@ -101,26 +101,17 @@ func (s *HTTPServer) checkRealtimeWebSocketOrigin(r *http.Request) bool {
 		return true
 	}
 
-	// Check if origin is syntactically valid
-	if _, ok := parseBrowserOrigin(origin); !ok {
-		s.logger.Warn("Realtime WebSocket connection rejected: invalid origin syntax")
-		return false
+	// Accept any syntactically valid origin. Authentication (bearer token or
+	// same-origin cookie) is validated post-upgrade in the hello frame.
+	// Per ADR-025, all public HTTP and realtime entry points permit browser
+	// transport from any syntactically valid origin. Cross-origin clients
+	// must present bearer tokens; ambient cookie credentials remain same-origin
+	// only, enforced by requestIsSameOrigin in the auth layer.
+	_, ok := parseBrowserOrigin(origin)
+	if !ok {
+		s.logger.Warn("Realtime WebSocket connection rejected: invalid origin syntax", "origin", origin)
 	}
-
-	// If AllowedOrigins contains "*", accept any syntactically valid origin
-	for _, allowed := range s.config.Webserver.AllowedOrigins {
-		if allowed == "*" {
-			return true
-		}
-	}
-
-	// Otherwise, validate against same-origin logic
-	if s.requestIsSameOrigin(r) {
-		return true
-	}
-
-	s.logger.Warn("Realtime WebSocket connection rejected: origin not allowed", "origin", origin)
-	return false
+	return ok
 }
 
 func (s *HTTPServer) serveRealtimeWebSocket(parent context.Context, conn *websocket.Conn) {
