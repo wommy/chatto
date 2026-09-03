@@ -129,26 +129,7 @@ jobs:
         env:
           VERSION: ${{ steps.image.outputs.version }}
         run: |
-          set -euo pipefail
-
-          context="/tmp/chatto-docker/linux-amd64"
-          mkdir -p "$context"
-          cp docker/Dockerfile.goreleaser "$context/Dockerfile"
-          mkdir -p "$context/docker"
-          cp docker/docker-entrypoint.sh "$context/docker/docker-entrypoint.sh"
-          cp docker/nats-wrapper.sh "$context/docker/nats-wrapper.sh"
-          mkdir -p "$context/LICENSES"
-          cp LICENSES/AGPL-3.0-or-later.txt "$context/LICENSES/AGPL-3.0-or-later.txt"
-          cp NOTICE "$context/NOTICE"
-
-          (
-            cd cli
-            # Chatto does not expose Gin's MessagePack binding; omit its large codec.
-            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
-              -tags=nomsgpack \
-              -ldflags="-s -w -X main.Version=${VERSION}" \
-              -o "$context/chatto" .
-          )
+          GOOS=linux GOARCH=amd64 VERSION="$VERSION" CONTEXT_DIR="/tmp/chatto-docker/linux-amd64" mise run build-image-context > /dev/null
 
       - name: Build and push Chatto image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
