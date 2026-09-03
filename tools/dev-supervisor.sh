@@ -8,9 +8,12 @@ supervised_pid=""
 supervised_pgid=""
 cleaning_up=false
 
-# shellcheck source=tools/lib/descendants-of.sh
+# shellcheck source=lib/descendants-of.sh
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$script_dir/lib/descendants-of.sh" || exit 1
+source "$script_dir/lib/descendants-of.sh" || {
+	echo "Error: failed to source descendants-of.sh" >&2
+	exit 1
+}
 
 stop_descendants() {
 	if [[ "$cleaning_up" == true ]]; then
