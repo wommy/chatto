@@ -150,6 +150,12 @@ jobs:
               -o "$context/chatto" .
           )
 
+      - name: Guard against multi-platform manifest downgrade
+        uses: ./.github/actions/guard-multiarch-push
+        with:
+          image: ghcr.io/chattocorp/chatto:${{ steps.image.outputs.sha }}
+          platforms: linux/amd64
+
       - name: Build and push Chatto image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
