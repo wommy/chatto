@@ -1,7 +1,7 @@
 # FDR-018: Account Lifecycle
 
 **Status:** Active
-**Last reviewed:** 2026-08-28
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -77,7 +77,7 @@ This FDR covers human accounts from registration through deletion: signup, email
 
 ### 3. Deliberate deletion confirmation
 
-**Decision:** Self-service deletion requires the user to type a confirmation phrase, not only click a button. Administrator deletion requires the administrator to type the target member's exact login. The `requestAccountDeletion` mutation sets up the self-service flow, and `deleteMyAccount` completes it.
+**Decision:** Self-service deletion requires the user to type a confirmation phrase, not only click a button. Administrator deletion requires the administrator to type the target member's exact login. The `RequestAccountDeletion` RPC sets up the self-service flow, and `DeleteMyAccount` completes it.
 **Why:** Deletion is irreversible because the encryption key is destroyed and messages cannot be recovered. The typed value reduces accidental deletion and makes the administrator confirm the correct target. It is a user-interface safety measure, not authentication proof or protection against script execution in the trusted origin.
 **Tradeoff:** The additional step makes deletion slower. This is acceptable for an irreversible action.
 
@@ -101,7 +101,7 @@ This FDR covers human accounts from registration through deletion: signup, email
 
 ### 7. KMS service boundary, even though it's in-process
 
-**Decision:** KEK creation, DEK wrapping/unwrapping, and KEK shredding go through a KMS service interface (`createKey`, `wrapContentKey`, `unwrapContentKey`, `shredKey`) using opaque key refs rather than direct KEK access or user IDs. DEK record create/load/shred stays in application-owned `RUNTIME_STATE` storage.
+**Decision:** KEK creation, DEK wrapping/unwrapping, and KEK shredding go through a KMS service interface (`CreateKey`, `WrapContentKey`, `UnwrapContentKey`, `ShredKey`) using opaque key refs rather than direct KEK access or user IDs. DEK record create/load/shred stays in application-owned `RUNTIME_STATE` storage.
 **Why:** A clean KMS boundary is what makes future extraction to Vault / AWS KMS / HSM possible without turning the external KMS into Chatto's DEK registry. Keeping wrapped DEKs in `RUNTIME_STATE` also preserves them in normal data backups without backing up the KEKs needed to unwrap them. See ADR-007.
 **Tradeoff:** A tiny indirection layer for what's currently an in-process call. Legacy direct-key body decrypt still has a local raw-KEK compatibility path until old bodies age out.
 
@@ -122,7 +122,7 @@ This FDR covers human accounts from registration through deletion: signup, email
 - **ADRs:** ADR-007 (per-user encryption with crypto-shredding), ADR-060
   (application-neutral data cryptography), ADR-069 (explicit durable consumer
   lifecycle), ADR-076 (notification occurrences), ADR-077 (persistent notification list)
-- **FDRs:** FDR-001 (Roles & Permissions), FDR-012 (Notifications), FDR-013 (Web Push Notifications), FDR-022 (User Profile), FDR-023 (Authentication & Sessions), FDR-038 (Bot Accounts)
+- **FDRs:** FDR-001 (Roles & Permissions), FDR-012 (Notifications), FDR-013 (Web Push Notifications), FDR-021 (Admin Dashboard & System Monitoring), FDR-022 (User Profile), FDR-023 (Authentication & Sessions), FDR-028 (Operator API & CLI), FDR-038 (Bot Accounts)
 
 ## Open Questions
 
