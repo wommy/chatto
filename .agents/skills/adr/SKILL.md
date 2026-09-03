@@ -26,7 +26,7 @@ docs/adr/
 
 ### Creating a new ADR
 
-1. Read `docs/adr/INDEX.md` to determine the next available number
+1. Read `docs/adr/INDEX.md` to determine the next available number. In this fork, append `-F` to the number (e.g., `ADR-087-F` instead of `ADR-087`) to distinguish fork-authored ADRs from upstream's sequential numbering.
 2. Create the ADR file using the template below
 3. Update `docs/adr/INDEX.md` to add the new entry to the TOC
 4. **FDR sweep**: after writing, scan `docs/fdr/INDEX.md` for features whose design now relates to this ADR. Update those FDRs to cite the new ADR in their `Related → ADRs` line. (ADRs themselves don't carry a `Related FDRs` section — citations flow FDR → ADR only.)
@@ -46,17 +46,25 @@ docs/adr/
 
 ## File Naming
 
+**In this fork:**
+```
+ADR-{NNN}-F-{kebab-case-slug}.md
+```
+
+- `NNN`: Zero-padded three-digit number, derived from `docs/adr/INDEX.md`
+- `-F`: Suffix that marks this ADR as fork-authored (distinguishes it from upstream's sequential numbers)
+- Slug: Short kebab-case summary of the decision (not the full title)
+
+**Upstream (reference):**
 ```
 ADR-{NNN}-{kebab-case-slug}.md
 ```
-
-- `NNN`: Zero-padded three-digit number, sequential
-- Slug: Short kebab-case summary of the decision (not the full title)
+- `NNN`: Zero-padded three-digit number, sequential in upstream's own ADR sequence
 
 ## ADR Template
 
 ```markdown
-# ADR-{NNN}: {Title}
+# ADR-{NNN}-F: {Title}
 
 **Date:** {YYYY-MM-DD}
 
@@ -75,10 +83,10 @@ What becomes easier or more difficult to do because of this change?
 
 ## TOC Format (in INDEX.md)
 
-Each entry in the TOC should be a markdown table row:
+Each entry in the TOC should be a markdown table row. Fork ADRs include the `-F` suffix:
 
 ```markdown
 | # | Decision | Date |
 |---|----------|------|
-| [ADR-001](ADR-001-slug.md) | Title of the decision | 2026-03-01 |
+| [ADR-001-F](ADR-001-F-slug.md) | Title of the decision | 2026-03-01 |
 ```
