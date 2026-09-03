@@ -9,13 +9,19 @@
  *
  * ## Why the policy is not in `.goreleaser.yml`
  *
- * GoReleaser pushes the server tags, but it must not decide which tags to
- * push. Nothing evaluates a GoReleaser template before the push that acts on
- * it: `docker.ManifestPipe` has a `Publish` method and no `Run` method, and
- * `goreleaser check` evaluates no templates. Thus a condition in a `skip_push`
- * template is a decision that no test can reach. `.goreleaser.yml` reads the
- * three `CHATTO_SKIP_PUSH_*` values that this module supplies, and it makes no
- * decision of its own.
+ * GoReleaser pushes the server's per-arch images and its immutable
+ * `{version}` manifest, but it must never decide which floating tags move.
+ * Nothing evaluates a GoReleaser template before the push that acts on it:
+ * `docker.ManifestPipe` has a `Publish` method and no `Run` method, and
+ * `goreleaser check` evaluates no templates. A condition in a `skip_push`
+ * template is thus a decision that no test can reach, and GoReleaser pushes
+ * before the release workflow creates the GitHub Release, so `skip_push`
+ * cannot gate on that either. `.goreleaser.yml` sets `skip_push: "true"` as a
+ * literal on every floating server manifest, so GoReleaser never publishes
+ * one. The release workflow reads `server_floating_tags` from this module and
+ * moves them with `docker buildx imagetools create`, after a smoke check and
+ * after the GitHub Release publishes — the same order issue #51 already uses
+ * for the client image.
  *
  * ## The policy
  *
@@ -58,23 +64,6 @@ const OUTPUT_DELIMITER = "CHATTO_IMAGE_TAGS";
 
 /** Image repository that holds the Chatto frontend image. */
 export const CLIENT_IMAGE = "ghcr.io/chattocorp/chatto-client";
-
-/**
- * Environment variable that `.goreleaser.yml` reads for each floating server
- * manifest. The key is the property name in {@link ReleaseImageTags.skipPush}.
- *
- * Each variable holds the string `"true"` or `"false"`. GoReleaser skips the
- * manifest only for the exact string `"true"`
- * (`internal/pipe/docker/manifest.go:99-105`). GoReleaser templates use the
- * `missingkey=error` option (`internal/tmpl/tmpl.go:275`), so the release
- * workflow must set every one of these variables. If one is absent, the
- * manifest push fails.
- */
-export const SKIP_PUSH_ENV = Object.freeze({
-  majorMinor: "CHATTO_SKIP_PUSH_MAJOR_MINOR",
-  latest: "CHATTO_SKIP_PUSH_LATEST",
-  next: "CHATTO_SKIP_PUSH_NEXT",
-});
 
 /**
  * Anchored SemVer 2.0.0 pattern. It keeps the prerelease and the build
@@ -131,15 +120,19 @@ export function parseReleaseTag(tag) {
  * @typedef {object} ReleaseImageTags
  * @property {string} version The version that the tag names.
  * @property {boolean} isPrerelease
- * @property {string[]} serverTags Full references that GoReleaser publishes.
+ * @property {string} serverVersionTag The immutable `{version}` reference
+ *   that GoReleaser publishes.
+ * @property {string[]} serverFloatingTags The server references that move:
+ *   `{major}.{minor}`, `latest`, `next`, any subset, or none. The release
+ *   workflow smoke-checks `serverVersionTag`, then moves these references
+ *   onto the digest that it checked with `docker buildx imagetools create`.
+ *   The list is empty for a stable release that is not the highest version.
  * @property {string} clientVersionTag The immutable `{version}` reference.
  * @property {string[]} clientFloatingTags The client references that
  *   move: `latest`, `next`, or neither. The release workflow pushes the
  *   version tag first, checks that image, then moves these references onto
  *   the digest that it checked. The list is empty for a stable release that
  *   is not the highest version.
- * @property {{majorMinor: string, latest: string, next: string}} skipPush
- *   Value for each `CHATTO_SKIP_PUSH_*` variable. See {@link SKIP_PUSH_ENV}.
  */
 
 /**
@@ -178,24 +171,17 @@ export function releaseImageTags({ tag, pushLatest = false }) {
     { name: "next", server: isPrerelease, client: isPrerelease },
   ];
 
-  const published = (image, key) =>
-    rows.filter((row) => row[key]).map((row) => `${image}:${row.name}`);
-  const skipPush = (name) =>
-    rows.find((row) => row.name === name)?.server ? "false" : "true";
-
   return {
     version,
     isPrerelease,
-    serverTags: published(SERVER_IMAGE, "server"),
+    serverVersionTag: `${SERVER_IMAGE}:${version}`,
+    serverFloatingTags: rows
+      .filter((row) => row.server && row.name !== version)
+      .map((row) => `${SERVER_IMAGE}:${row.name}`),
     clientVersionTag: `${CLIENT_IMAGE}:${version}`,
     clientFloatingTags: rows
       .filter((row) => row.client && row.name !== version)
       .map((row) => `${CLIENT_IMAGE}:${row.name}`),
-    skipPush: {
-      majorMinor: skipPush(majorMinor),
-      latest: skipPush("latest"),
-      next: skipPush("next"),
-    },
   };
 }
 
@@ -203,10 +189,11 @@ export function releaseImageTags({ tag, pushLatest = false }) {
  * Give the GitHub Actions output lines for a tag plan.
  *
  * Every key is written here in full, so that a reader who greps a key out of
- * the release workflow lands on this function. The workflow builds the client
- * image with `client_version_tag`, checks that image, then moves
- * `client_floating_tags` onto it, and it labels the image with `version`.
-
+ * the release workflow lands on this function. GoReleaser publishes
+ * `server_version_tag` itself; the workflow smoke-checks it, then moves
+ * `server_floating_tags` onto it. The workflow builds the client image with
+ * `client_version_tag`, checks that image, then moves `client_floating_tags`
+ * onto it, and it labels the image with `version`.
  *
  * @param {ReleaseImageTags} plan
  * @returns {string} Text that ends with a newline.
@@ -214,9 +201,8 @@ export function releaseImageTags({ tag, pushLatest = false }) {
 export function formatGithubOutput(plan) {
   return [
     `version=${plan.version}`,
-    `chatto_skip_push_major_minor=${plan.skipPush.majorMinor}`,
-    `chatto_skip_push_latest=${plan.skipPush.latest}`,
-    `chatto_skip_push_next=${plan.skipPush.next}`,
+    `server_version_tag=${plan.serverVersionTag}`,
+    ...multilineOutput("server_floating_tags", plan.serverFloatingTags),
     `client_version_tag=${plan.clientVersionTag}`,
     ...multilineOutput("client_floating_tags", plan.clientFloatingTags),
     "",

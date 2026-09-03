@@ -92,29 +92,43 @@ dockers:
     goos: linux
 
 docker_manifests:
-  # tools/release-image-tags.mjs decides which of these manifests a release
-  # publishes. It is the one answer to "which tags does this release publish?"
-  # for the server image and for the client image, and its test runs on every
-  # pull request.
-  #
-  # Keep every skip_push template a bare variable. Nothing evaluates a
-  # GoReleaser template before the push that acts on it: the manifest pipe has
-  # a Publish method and no Run method, and `goreleaser check` evaluates no
-  # templates. A condition here is thus a decision that no test can reach.
-  #
-  # The release workflow must set all three CHATTO_SKIP_PUSH_* variables.
-  # GoReleaser templates use the missingkey=error option, so an absent
-  # variable fails the manifest push.
-
   # Always: the fully-qualified version tag (e.g. 0.0.190, 0.1.0-alpha.1).
+  # This is the one manifest GoReleaser actually publishes. It is both the
+  # immutable tag operators pin to and the source that `docker buildx
+  # imagetools create` copies from when the release workflow moves a
+  # floating tag onto it.
   - name_template: "ghcr.io/chattocorp/chatto:{{ .Version }}"
     image_templates:
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-amd64"
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-arm64"
 
+  # Every floating manifest below carries skip_push: "true" as a literal
+  # string, unconditionally. Issue #52: GoReleaser is the wrong place to
+  # decide whether a floating tag moves, because nothing evaluates a
+  # GoReleaser template before the push that acts on it (the manifest pipe
+  # has a Publish method and no Run method, and `goreleaser check` evaluates
+  # no templates), and because GoReleaser pushes before the release workflow
+  # creates the GitHub Release, so `skip_push` cannot gate on release success
+  # either way. `:latest` is the least withdrawable reference this release
+  # publishes, so it must not move except through a step this repository can
+  # test and that can fail loud.
+  #
+  # tools/release-image-tags.mjs still holds the one answer to "which tags
+  # does this release publish?" for the server image. The release workflow
+  # reads its `server_floating_tags` output and moves the answer with `docker
+  # buildx imagetools create`, after a smoke check proves the version image
+  # that skip_push left untouched, and after the GitHub Release publishes.
+  # `docs/RELEASING.md` documents that order and its recovery command.
+  #
+  # Note the exact semantics: after the template renders and is trimmed, only
+  # the literal string `true` counts (GoReleaser compares the rendered value,
+  # so `True`, `1`, and `yes` do not skip the push). A bare `"true"` needs no
+  # template at all, which is why these read as plain strings and not
+  # `'{{ .Env... }}'` variables.
+
   # Stable only: the Major.Minor floater.
   - name_template: "ghcr.io/chattocorp/chatto:{{ .Major }}.{{ .Minor }}"
-    skip_push: '{{ .Env.CHATTO_SKIP_PUSH_MAJOR_MINOR }}'
+    skip_push: "true"
     image_templates:
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-amd64"
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-arm64"
@@ -123,7 +137,7 @@ docker_manifests:
   # lets a late 0.2.x maintenance release publish 0.2 and 0.2.x tags without
   # moving :latest back from a newer stable line.
   - name_template: "ghcr.io/chattocorp/chatto:latest"
-    skip_push: '{{ .Env.CHATTO_SKIP_PUSH_LATEST }}'
+    skip_push: "true"
     image_templates:
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-amd64"
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-arm64"
@@ -133,7 +147,7 @@ docker_manifests:
   # release. Skipped on stable releases so it never drifts to a
   # non-prerelease build.
   - name_template: "ghcr.io/chattocorp/chatto:next"
-    skip_push: '{{ .Env.CHATTO_SKIP_PUSH_NEXT }}'
+    skip_push: "true"
     image_templates:
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-amd64"
       - "ghcr.io/chattocorp/chatto:{{ .Version }}-arm64"
