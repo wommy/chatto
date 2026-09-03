@@ -2,9 +2,11 @@ services:
   nats:
     image: nats:latest
     restart: unless-stopped
-    command: ["--jetstream", "--store_dir=/data", "--auth=${NATS_TOKEN}"]
+    command: ["--jetstream", "--store_dir=/data", "-c=/etc/nats-server/nats.conf"]
     volumes:
       - nats_data:/data
+      # Mount NATS config from Secret to avoid token exposure via /proc/<pid>/cmdline
+      - ./nats.conf:/etc/nats-server/nats.conf:ro
 
   livekit:
     image: livekit/livekit-server:latest
