@@ -1,0 +1,235 @@
+name: cache-experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Experiment mode"
+        required: true
+        default: "measure"
+        type: choice
+        options:
+          - warm
+          - measure
+
+permissions:
+  contents: read
+
+jobs:
+  cache-test-a-cold:
+    name: "A: cold (no cache)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.mode == 'measure'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup mise
+        uses: ./.github/actions/setup-mise
+
+      - name: Cache Go modules
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup Go CLI and shared framework modules
+        shell: bash
+        run: mise setup-go
+
+      - name: Setup frontend (required by build-e2e-server depends)
+        shell: bash
+        run: mise setup-web
+
+      - name: Clean build cache
+        shell: bash
+        run: go clean -cache
+
+      - name: Check cache size before build
+        shell: bash
+        run: du -sh ~/.cache/go-build || echo "no cache yet"
+
+      - name: Build E2E server (cold cache)
+        id: build
+        shell: bash
+        run: |
+          SECONDS=0
+          mise build-e2e-server
+          echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+
+      - name: Report build time
+        shell: bash
+        run: |
+          echo "Build time: ${{ steps.build.outputs.build_seconds }}s"
+          du -sh ~/.cache/go-build
+
+  cache-test-b-shared:
+    name: "B: shared cache (baseline)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.mode == 'measure'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup mise
+        uses: ./.github/actions/setup-mise
+
+      - name: Cache Go modules
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Restore shared Go build cache
+        id: restore-shared
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.cache/go-build
+          key: go-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-
+            go-build-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup Go CLI and shared framework modules
+        shell: bash
+        run: mise setup-go
+
+      - name: Setup frontend (required by build-e2e-server depends)
+        shell: bash
+        run: mise setup-web
+
+      - name: Check cache restore result
+        shell: bash
+        run: |
+          echo "Cache matched key: ${{ steps.restore-shared.outputs.cache-matched-key }}"
+          du -sh ~/.cache/go-build || echo "cache not restored"
+
+      - name: Build E2E server (shared cache)
+        id: build
+        shell: bash
+        run: |
+          SECONDS=0
+          mise build-e2e-server
+          echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+
+      - name: Report build time and cache status
+        shell: bash
+        run: |
+          echo "Cache matched key: ${{ steps.restore-shared.outputs.cache-matched-key }}"
+          echo "Build time: ${{ steps.build.outputs.build_seconds }}s"
+          du -sh ~/.cache/go-build
+
+  cache-test-c-warm:
+    name: "C: warm scoped cache"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.mode == 'warm'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup mise
+        uses: ./.github/actions/setup-mise
+
+      - name: Cache Go modules
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup Go CLI and shared framework modules
+        shell: bash
+        run: mise setup-go
+
+      - name: Setup frontend (required by build-e2e-server depends)
+        shell: bash
+        run: mise setup-web
+
+      - name: Clean build cache
+        shell: bash
+        run: go clean -cache
+
+      - name: Build E2E server for cache warming
+        shell: bash
+        run: mise build-e2e-server
+
+      - name: Save scoped Go build cache
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.cache/go-build
+          key: go-build-e2e-server-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-${{ github.run_id }}
+
+      - name: Report cache saved
+        shell: bash
+        run: |
+          echo "Scoped cache warmed and saved"
+          du -sh ~/.cache/go-build
+
+  cache-test-c-measure:
+    name: "C: scoped cache (measure)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.mode == 'measure'
+    needs: cache-test-c-warm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup mise
+        uses: ./.github/actions/setup-mise
+
+      - name: Cache Go modules
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}
+          restore-keys: |
+            go-mod-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Restore scoped Go build cache
+        id: restore-scoped
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.cache/go-build
+          # Note: needs to reference the previous warm run's key
+          key: go-build-e2e-server-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-${{ github.run_id }}
+          restore-keys: |
+            go-build-e2e-server-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'authling/mise.toml', 'cli/go.sum', 'authling/go.sum', 'pkg/appconfig/go.sum', 'pkg/datacrypto/go.sum', 'pkg/events/go.sum', 'pkg/natsruntime/go.sum', 'go.work.sum') }}-
+            go-build-e2e-server-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup Go CLI and shared framework modules
+        shell: bash
+        run: mise setup-go
+
+      - name: Setup frontend (required by build-e2e-server depends)
+        shell: bash
+        run: mise setup-web
+
+      - name: Check cache restore result
+        shell: bash
+        run: |
+          echo "Cache matched key: ${{ steps.restore-scoped.outputs.cache-matched-key }}"
+          du -sh ~/.cache/go-build || echo "cache not restored"
+
+      - name: Build E2E server (scoped cache)
+        id: build
+        shell: bash
+        run: |
+          SECONDS=0
+          mise build-e2e-server
+          echo "build_seconds=$SECONDS" >> "$GITHUB_OUTPUT"
+
+      - name: Report build time and cache status
+        shell: bash
+        run: |
+          echo "Cache matched key: ${{ steps.restore-scoped.outputs.cache-matched-key }}"
+          echo "Build time: ${{ steps.build.outputs.build_seconds }}s"
+          du -sh ~/.cache/go-build
