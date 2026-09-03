@@ -1,7 +1,7 @@
 # FDR-040: Backup and Restore
 
 **Status:** Active
-**Last reviewed:** 2026-08-27
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -17,6 +17,11 @@ separate backup policy.
 - The archive includes `EVT`, `RUNTIME_STATE`, notification history,
   NATS-backed assets, and NATS-backed projection snapshots.
 - Regeneratable caches, user presence, and S3-backed objects are not included.
+- `KV_AUTH_TOKENS`, the legacy pre-`RUNTIME_STATE` bearer-token bucket, is
+  always excluded, with no `--include-keys` override, so a leftover legacy
+  bucket cannot leak bearer tokens through a backup archive. Current bearer
+  tokens and sessions live in `RUNTIME_STATE` (see FDR-023) and are included in
+  the archive like the rest of that bucket.
 - Encryption keys are not included by default. `--include-keys` makes a backup
   self-contained for the built-in KMS.
 - `--encrypt` protects the complete archive with an age passphrase. Automated

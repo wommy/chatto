@@ -1,7 +1,7 @@
 # FDR-016: Voice Calls
 
 **Status:** Active
-**Last reviewed:** 2026-08-20
+**Last reviewed:** 2026-09-03
 
 ## Overview
 
@@ -54,7 +54,7 @@ Rooms support real-time voice conversations with optional camera video and scree
 ### 4. Audio tracks must be explicitly attached
 
 **Decision:** The frontend listens for `RoomEvent.TrackSubscribed` and calls `track.attach()` to wire LiveKit audio into a hidden `<audio>` element. On leave or `TrackUnsubscribed`, it calls `track.detach()`.
-**Why:** LiveKit delivers audio data over WebRTC, but the browser doesn't autoplay it without an attached element. Without explicit attach, the UI looks like everything works — participant rings even animate — but nobody hears anything. The pattern lives in `apps/frontend/src/lib/state/voiceCall.svelte.ts`; any refactor that touches LiveKit subscription handling needs to keep the `track.attach()` / `track.detach()` calls intact.
+**Why:** LiveKit delivers audio data over WebRTC, but the browser doesn't autoplay it without an attached element. Without explicit attach, the UI looks like everything works — participant rings even animate — but nobody hears anything. The pattern lives in `apps/frontend/src/lib/state/server/voiceCall.svelte.ts`; any refactor that touches LiveKit subscription handling needs to keep the `track.attach()` / `track.detach()` calls intact.
 **Tradeoff:** A subtle requirement that's easy to miss when refactoring; the skill warns explicitly.
 
 ### 5. Speaking indicators use neutral inline glyphs
@@ -89,13 +89,13 @@ Rooms support real-time voice conversations with optional camera video and scree
 
 ### 10. E2EE keys are KMS-backed per-call secrets
 
-**Decision:** `voiceCallToken` returns both `token` and `e2eeKey`. The first join for a room creates a new call ID and per-call E2EE key through Chatto's KMS boundary, stores the raw key in `ENCRYPTION_KEYS` under `call.e2ee.{callId}`, and records only the key ref in `CallStartedEvent`. The final leave records `CallEndedEvent`, then attempts idempotent key shredding. That event is also the durable trigger for the shared call-key cleanup consumer, which retries unfinished shredding across crashes and replicas. The frontend creates an `ExternalE2EEKeyProvider`, configures the LiveKit E2EE worker, sets the key, enables E2EE, then connects.
+**Decision:** `GetCallToken` returns both `token` and `e2eeKey`. The first join for a room creates a new call ID and per-call E2EE key through Chatto's KMS boundary, stores the raw key in `ENCRYPTION_KEYS` under `call.e2ee.{callId}`, and records only the key ref in `CallStartedEvent`. The final leave records `CallEndedEvent`, then attempts idempotent key shredding. That event is also the durable trigger for the shared call-key cleanup consumer, which retries unfinished shredding across crashes and replicas. The frontend creates an `ExternalE2EEKeyProvider`, configures the LiveKit E2EE worker, sets the key, enables E2EE, then connects.
 **Why:** LiveKit E2EE key generation/distribution is application responsibility. Chatto already authorizes token access by room membership, so the token resolver is the narrow place to distribute the shared call key. Keeping the raw key out of EVT and normal backups avoids turning event-log copies into permanent decrypt material for captured media. Making the end fact the retry source closes the post-commit crash window without coupling recovery to LiveKit reconciliation.
 **Tradeoff:** Always-on E2EE breaks media compatibility with older clients that do not enable E2EE. Key deletion is at least once, so replicas may repeat the same idempotent shredding attempt; an unavailable KMS can briefly retain an ended call's key until retry succeeds. Restoring a backup without `ENCRYPTION_KEYS` cannot recover active call keys; active calls should be considered interrupted across such restores.
 
 ### 11. Screen sharing is one action with an optional native host capability
 
-**Decision:** Voice controls expose one screen-share action. When the host advertises the narrow native screen-share capability, Chatto presents short-lived, single-use opaque window and display offers with in-memory previews in its own picker. Enumeration requires a user action, supersedes any earlier enumeration, and excludes Chatto Desktop's own windows. Without that capability, the action delegates to LiveKit and the browser's picker. Selecting a native source starts a publish-only LiveKit companion connection with its own opaque identity and the same per-call E2EE key. The frontend merges that connection's media into the owning member's logical participant, hides the companion as a separate tile, and never attaches the local owner's companion audio. Window capture publishes owning-application audio; full-display capture is video-only because system audio would contain remote call playback. Starting either implementation replaces the other; camera and microphone publications are unaffected.
+**Decision:** Voice controls expose one screen-share action. The native companion-publisher API models this capability as `CALL_MEDIA_PUBLISHER_KIND_GAME_SHARE` on `CreateCallMediaPublisherToken`, and the frontend API client exposes it as `createGameSharePublisherToken`. There is no separate generic "screen share" publisher kind; native capture always uses the game-share kind. When the host advertises the narrow native screen-share capability, Chatto presents short-lived, single-use opaque window and display offers with in-memory previews in its own picker. Enumeration requires a user action, supersedes any earlier enumeration, and excludes Chatto Desktop's own windows. Without that capability, the action delegates to LiveKit and the browser's picker. Selecting a native source starts a publish-only LiveKit companion connection with its own opaque identity and the same per-call E2EE key. The frontend merges that connection's media into the owning member's logical participant, hides the companion as a separate tile, and never attaches the local owner's companion audio. Window capture publishes owning-application audio; full-display capture is video-only because system audio would contain remote call playback. Starting either implementation replaces the other; camera and microphone publications are unaffected.
 **Why:** One action matches the user's intent independently of where Chatto runs. The browser keeps its required security chooser, while native capture can add previews, deterministic source choice, and owning-application audio that Chromium's path cannot provide consistently. Direct native publication also avoids an H.264 decode, canvas copy, browser capture, and second WebRTC encode. The optional capability pattern from ADR-072 keeps platform knowledge out of the shared product state and leaves macOS, Windows, and feasible Linux providers independent.
 **Tradeoff:** Desktop source enumeration requires macOS Screen & System Audio Recording permission, and static previews can become stale before selection; the helper re-resolves the offered source, verifies a window still belongs to the enumerated application, and fails safely. Full-display viewers do not receive source audio until the native path can exclude Chatto's own playback before capture. The server must mint a separate short-lived publisher credential because reusing the member's LiveKit identity would disconnect their primary call connection. Webhooks and reconciliation exclude companion identities from durable call membership, while stale-room cleanup still removes them. The first macOS target publishes aspect-ratio-preserving H.264 quality classes with maximum edges of 1920, 1280, and 640 pixels at 60, 60, and 30 fps respectively. Encoding multiple layers can consume more publisher CPU and upload when receivers simultaneously request different qualities, while dynacast avoids that cost for unused layers. Actual cadence and quality remain dependent on the source, hardware encoder, network, SFU, and receiving device.
 
@@ -107,11 +107,13 @@ Rooms support real-time voice conversations with optional camera video and scree
 
 ## Permissions
 
-- `voiceCallToken` query — requires room membership.
+- `GetCallToken` — requires room membership and an already active call.
 - `CreateCallMediaPublisherToken` — requires room membership and current participation in the active call.
-- `callParticipants` query — requires room membership.
-- `activeCallRoomIds` query — requires server membership.
-- `joinVoiceCall` / `leaveVoiceCall` mutations — require room membership.
+- `ListCallParticipants` — requires room membership.
+- `GetActiveCall` — requires room membership.
+- `BatchGetActiveCalls` — requires only an authenticated caller; rooms the caller is not a member of are silently omitted from the result instead of causing an error.
+- `ListActiveCalls` — requires only an authenticated caller; results are filtered to rooms the caller is a member of.
+- `JoinCall` / `LeaveCall` mutations — require room membership.
 
 Voice calling doesn't have a dedicated permission today; room membership is the gate.
 
