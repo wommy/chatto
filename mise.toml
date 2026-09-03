@@ -15,6 +15,7 @@ buf = "latest"
 go = "1.26.7"
 goreleaser = "latest"
 node = "22"
+"npm:@action-validator/cli" = "0.6.0"
 "npm:portless" = "0.15.5"
 uv = "0.11.30"
 
@@ -130,8 +131,12 @@ description = "Check SPDX/REUSE license metadata"
 run = "uvx --with charset-normalizer 'reuse==6.2.0' lint"
 
 [tasks.lint-actions]
-description = "Check GitHub Actions workflows and repository shell scripts"
-run = ["actionlint", "shellcheck --severity=warning tools/*.sh tools/lib/*.sh"]
+description = "Check GitHub Actions workflows, composite actions, and repository shell scripts"
+run = [
+    "mise x -- actionlint",
+    "mise x -- shellcheck --severity=warning tools/*.sh tools/lib/*.sh",
+    '''mise x -- find .github/actions -mindepth 2 -maxdepth 2 \( -name action.yml -o -name action.yaml \) -exec sh -c 'for f; do action-validator "$f" || exit 1; done' _ {} +''',
+]
 
 [tasks.build-version]
 description = "Give the version that a build of the working tree carries"
