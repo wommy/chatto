@@ -222,6 +222,6 @@ Infrastructure jargon. If only contributors say the word, it goes here.
 
 **OCC (Optimistic Concurrency Control)** — Publishing with an expected stream sequence so concurrent writers don't clobber each other. Used for message posting. See [ADR-016](adr/ADR-016-occ-for-message-publishing.md).
 
-**Nanoid** — Short URL-safe unique ID format. Every Chatto entity ID is a short type prefix followed by a NanoID body, for example `U…` for a user, `R…` for a room, or `A…` for an asset. See [ADR-022](adr/ADR-022-nanoid-with-entity-prefixes.md).
+**Nanoid** — Short URL-safe unique ID format. Most Chatto entity IDs are a short type prefix followed by a NanoID body, for example `U…` for a user, `R…` for a room, or `A…` for an asset. A DM room ID and a Notifications 2.0 identifier are exceptions with their own deterministic formats. See [ADR-022](adr/ADR-022-nanoid-with-entity-prefixes.md).
 
 **Crypto-shredding** — Deleting a user's data by destroying the app-owned DEK refs and KMS wrapping-key refs that protect their encrypted content rather than mutating storage. See [ADR-007](adr/ADR-007-per-user-encryption-with-crypto-shredding.md).
