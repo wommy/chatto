@@ -104,6 +104,19 @@ export CHATTO_MACOS_NOTARY_API_ISSUER_ID='ISSUER_UUID'
 mise desktop-build
 ```
 
+### Release workflow reference checks
+
+Before building the desktop bundle, the release workflow verifies the build
+context with two checks: first, that HEAD is an ancestor of `origin/main` (so
+only commits reachable from the public main branch are signed), and second (on
+Windows), that the repository's GitHub OIDC configuration uses immutable
+subjects (required by Azure federation).
+
+`scripts/release-ref-checks.mjs` holds these checks. The workflow calls them
+with `git` and `gh` commands injected, so `scripts/release-ref-checks.test.mjs`
+can run the logic on each platform and `mise test-desktop` runs that test on
+every pull request.
+
 ### Configure Windows release signing
 
 Windows releases use Microsoft Artifact Signing (formerly Trusted Signing) with
