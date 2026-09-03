@@ -218,8 +218,10 @@ Beta room-scoped histories without a canonical asset aggregate remain readable
 by projections but are not guessed at by the cleanup worker.
 
 Processing events use the same `evt.asset.{assetId}.*` aggregate. The asset
-projection also reads beta-era `evt.room.{roomId}.asset_*` facts, allowing 0.1.0
-histories to replay without a stream rewrite.
+projection also reads beta-era `evt.room.*.{eventType}` facts (`asset_created`,
+`asset_processing_started`, `asset_processing_succeeded`,
+`asset_processing_failed`, `asset_deleted`), allowing 0.1.0 histories to replay
+without a stream rewrite.
 
 After appending creation and processing-started events, message posting asks
 the durable asset-processing queue to start video or animated-GIF processing.

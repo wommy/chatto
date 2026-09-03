@@ -200,6 +200,7 @@ The republished `live.evt.{aggregateType}.{aggregateId}.{eventType}` subject is 
 | `evt.authorization.server.fence_advanced`        | Singleton OCC fence for changes that can alter mutation authority               |
 | `evt.auth.server.{eventType}`                    | Server-wide auth audit facts before a user aggregate exists                     |
 | `evt.invitation.{invitationId}.{eventType}`      | Invitation creation, redemption, and revocation facts                           |
+| `evt.oauth_client.{sha256(clientId)}.{eventType}` | Successful OAuth-client authorization and administrative policy facts. The aggregate ID is the SHA-256 hex digest of the public client ID, not the raw ID like other aggregates, so URL-shaped client identifiers stay out of subject tokens; the event payload still carries the exact client ID |
 | `live.evt.>`                                     | JetStream republish of committed `EVT` facts                                    |
 
 The aggregate ID is intentionally part of the subject; actor/user and detailed context stay in the protobuf payload. Asset subjects are keyed by asset ID, while room scope lives in `AssetCreatedEvent` and is resolved by `AssetProjection`. Cross-event-type invariants use wildcard OCC filters such as `evt.room.>`, `evt.asset.>`, or `evt.rbac.>`.
@@ -340,6 +341,8 @@ cursors are trusted integration coordinates and are not public API cursors.
 | `evt.user.{userId}.oauth_consent_denied`                    | `OAuthConsentDeniedEvent`                           |
 | `evt.user.{userId}.oauth_scoped_consent_granted`            | `OAuthScopedConsentGrantedEvent`; exact resource and scope grant that older projectors ignore |
 | `evt.user.{userId}.oauth_scoped_consent_denied`             | `OAuthScopedConsentDeniedEvent`                     |
+| `evt.oauth_client.{sha256(clientId)}.authorization_recorded` | `OAuthClientAuthorizationRecordedEvent`; one successful user authorization with client metadata and redirect origin, appended on each authorization |
+| `evt.oauth_client.{sha256(clientId)}.policy_changed`          | `OAuthClientPolicyChangedEvent`; administrative default/trusted/blocked policy change |
 | `evt.rbac.{server\|scopeId}.role_created`                   | `RbacRoleCreatedEvent`                             |
 | `evt.rbac.{server\|scopeId}.role_display_name_changed`      | `RbacRoleDisplayNameChangedEvent`                  |
 | `evt.rbac.{server\|scopeId}.role_description_changed`       | `RbacRoleDescriptionChangedEvent`                  |
@@ -358,7 +361,7 @@ cursors are trusted integration coordinates and are not public API cursors.
 | `evt.invitation.{invitationId}.redeemed`                   | `InvitationRedeemedEvent`                           |
 | `evt.invitation.{invitationId}.revoked`                    | `InvitationRevokedEvent`                            |
 
-Notes: Subject suffixes are stable NATS event tokens defined in [`cli/internal/evtstream/subjects.go`](../../cli/internal/evtstream/subjects.go). Protobuf message types are the concrete `evtv1.Event` oneof payloads defined in [`proto/chatto/core/evt/v1/event.proto`](../../proto/chatto/core/evt/v1/event.proto) and sibling `*_events.proto` files. The current asset write path uses `evt.asset.{assetId}.*`; `AssetProjection` also consumes beta-era `evt.room.{roomId}.asset_*` histories for replay compatibility.
+Notes: Subject suffixes are stable NATS event tokens defined in [`cli/internal/evtstream/subjects.go`](../../cli/internal/evtstream/subjects.go). Protobuf message types are the concrete `evtv1.Event` oneof payloads defined in [`proto/chatto/core/evt/v1/event.proto`](../../proto/chatto/core/evt/v1/event.proto) and sibling `*_events.proto` files. The current asset write path uses `evt.asset.{assetId}.*`; `AssetProjection` also consumes beta-era `evt.room.*.{eventType}` facts (`asset_created`, `asset_processing_started`, `asset_processing_succeeded`, `asset_processing_failed`, `asset_deleted`) for replay compatibility.
 
 Room-layout structural commands use atomic EVT batches. Channel-room creation
 commits `RoomCreatedEvent` with `RoomAddedToGroupEvent`. Channel-room deletion
