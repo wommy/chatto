@@ -23,6 +23,15 @@ concurrency:
 permissions:
   contents: read
 
+# NOTE: The docs_website_touched check in the `changes` job uses a narrower
+# paths list than `build-docs-image.yml`. The PR build (ci.yml) only checks
+# apps/docs-website/ files, while the image publish workflow (build-docs-image.yml)
+# also tracks lockfile/package.json changes: [apps/docs-website/**, .npmrc,
+# package.json, pnpm-lock.yaml, pnpm-workspace.yaml, LICENSES/Apache-2.0.txt,
+# NOTICE]. This is intentional: the PR check verifies the site builds on docs
+# changes, while the publish workflow must re-verify on dependency updates.
+# Divergence is allowed and deliberate; don't "fix" either list to match.
+
 jobs:
   build-main-image-contexts:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -130,6 +139,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       docs_only: ${{ steps.check-docs-only.outputs.result }}
+      docs_website_touched: ${{ steps.check-docs-only.outputs.docs_website_touched }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -143,6 +153,7 @@ jobs:
           # On push events (main or release-*), always run full CI
           if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
             echo "result=false" >> "$GITHUB_OUTPUT"
+            echo "docs_website_touched=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -188,6 +199,37 @@ jobs:
           fi
 
           echo "result=$docs_only" >> "$GITHUB_OUTPUT"
+
+          # Check if any changed files are in apps/docs-website/. Computed
+          # separately from docs_only so that lockfile/package.json changes
+          # (which affect docs building but not docs_only) still trigger this.
+          if grep -qE '^apps/docs-website/' <<< "$changed_files"; then
+            docs_website_touched="true"
+          else
+            docs_website_touched="false"
+          fi
+          echo "docs_website_touched=$docs_website_touched" >> "$GITHUB_OUTPUT"
+
+  docs-website-build:
+    # Job-level if: ensures this job reports "skipped" (not "absent") on
+    # unrelated PRs. A skipped required check passes; an absent one would block
+    # every unrelated pull request forever. This is why the job is in ci.yml
+    # with a job-level condition, not a separate workflow with paths: filters.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.docs_website_touched == 'true'
+    needs: [changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          install-cli-deps: "false"
+
+      - name: Build documentation site
+        run: mise x -- pnpm --filter docs-website build
 
   desktop:
     name: desktop (${{ matrix.platform }})
