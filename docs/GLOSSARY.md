@@ -152,6 +152,8 @@ Chatto's RBAC model. Read top-to-bottom — terms build on each other.
 
 **Scope** — Tier at which a permission is configured: `server`, `group`, or `room`. Each direct user or named role contributes only its nearest explicit decision (room, then group, then server). Denies win across those subject decisions; an allow must be at least as specific as an `everyone` deny to override the baseline. See [`cli/AGENTS.md`](../cli/AGENTS.md).
 
+**`message.read`** — Permission that gates broad message content in channel rooms: timelines, threads, pinned messages, search, attachment metadata and bytes, message-derived notifications, thread-follow state, unread state, typing indicators, and realtime message delivery. Channel-room membership is necessary but no longer sufficient for this content; DM content stays governed by membership alone. Humans and bots use the same permission, but a bot's grant is effective only while its owner also holds `message.read` at the same scope. See [ADR-080](adr/ADR-080-explicit-message-read-permissions.md).
+
 **Interaction relationship** — Derived account-to-thread authorization relationship created when the account authors a channel-room root or another account directly mentions it. With room membership and `message.read-interactions`, it permits the complete thread. See [FDR-039](fdr/FDR-039-message-access-and-interactions.md) and [ADR-082](adr/ADR-082-derive-thread-interactions-from-message-facts.md).
 
 **User-level decision** — Permission grant or deny attached directly to a user, not via a role. It participates alongside named-role decisions, so a user deny blocks named-role grants while a named-role deny blocks a user grant. Used for suspensions and ad-hoc grants.
@@ -163,6 +165,8 @@ Chatto's RBAC model. Read top-to-bottom — terms build on each other.
 Infrastructure jargon. If only contributors say the word, it goes here.
 
 **ChattoCore** — Go package (`cli/internal/core`) that owns domain models, projections, and NATS access. Low-level helpers are not public transport entry points and may assume their caller has already authorized the operation; public ConnectRPC paths should delegate to core operation models that own authorization before domain state changes. See [ADR-044](adr/ADR-044-connectrpc-service-conventions.md).
+
+**Runtime unit** — Convention for an optional Chatto process that can run standalone (`chatto <unit>`) or embedded in `chatto run`. Classified by behavior as Observer (read-only diagnostics, e.g. the Prometheus exporter), Projection service (consumes `EVT` and exposes a NATS service, e.g. the bundled search provider), Worker (background durable writes, e.g. asset processing), Main app (the `ChattoCore`-owning ConnectRPC/web/realtime process), or Main-app auxiliary (a supervised capability that reuses the main app's operation layer instead of running standalone). See [ADR-041](adr/ADR-041-runtime-units.md) and the [runtime component inventory](architecture/runtime-components.md).
 
 **System actor** — Synthetic actor ID used when Chatto itself, bootstrap code, or trusted operator automation performs a domain write. It is not a login-capable user account.
 
@@ -196,6 +200,12 @@ Infrastructure jargon. If only contributors say the word, it goes here.
 
 **Notification Signal** — Immutable event-shaped notification cause whose protobuf variant owns its exact destination and cause-specific data. Signals live in the bounded `NOTIFICATIONS` event stream rather than permanent `EVT`. See [ADR-076](adr/ADR-076-deterministic-notification-occurrences.md).
 
+**Bearer token** — Opaque credential presented in the `Authorization: Bearer` header for cross-origin HTTP, ConnectRPC, and realtime access. Stored server-side in `RUNTIME_STATE` rather than self-contained; deleting the stored record revokes it instantly. See [ADR-024](adr/ADR-024-opaque-bearer-tokens-for-cross-origin-auth.md).
+
+**Access token** — Short-lived bearer token (`cht_AT` prefix, 15-minute default lifetime) that authenticates ordinary API and realtime requests within one renewable session. See [ADR-079](adr/ADR-079-renewable-bearer-sessions.md).
+
+**Refresh credential** — Single-use, rotating credential presented at `/oauth/token` to obtain a new access token and extend a renewable session's window. Presenting an already-rotated generation revokes the whole session. See [ADR-079](adr/ADR-079-renewable-bearer-sessions.md).
+
 **Renewable session** — One human bearer login with short-lived access tokens, a single-use rotating refresh credential, and a session window that advances automatically while the client is active. Its stable `RUNTIME_STATE` record is the revocation authority for every access generation; it is not called a token family in Chatto vocabulary. See [ADR-079](adr/ADR-079-renewable-bearer-sessions.md) and [FDR-023](fdr/FDR-023-authentication-and-sessions.md).
 
 **Auth generation** — Per-user authentication epoch derived from durable user events. Cookie sessions, bearer tokens, and OAuth authorization codes are valid only when their stored generation matches the user's current generation. See [FDR-023](fdr/FDR-023-authentication-and-sessions.md).
@@ -212,6 +222,6 @@ Infrastructure jargon. If only contributors say the word, it goes here.
 
 **OCC (Optimistic Concurrency Control)** — Publishing with an expected stream sequence so concurrent writers don't clobber each other. Used for message posting. See [ADR-016](adr/ADR-016-occ-for-message-publishing.md).
 
-**Nanoid** — Short URL-safe unique ID format. All Chatto entities are prefixed (`usr_…`, `rm_…`, `srv_…`). See [ADR-022](adr/ADR-022-nanoid-with-entity-prefixes.md).
+**Nanoid** — Short URL-safe unique ID format. Most Chatto entity IDs are a short type prefix followed by a NanoID body, for example `U…` for a user, `R…` for a room, or `A…` for an asset. A DM room ID and a Notifications 2.0 identifier are exceptions with their own deterministic formats. See [ADR-022](adr/ADR-022-nanoid-with-entity-prefixes.md).
 
 **Crypto-shredding** — Deleting a user's data by destroying the app-owned DEK refs and KMS wrapping-key refs that protect their encrypted content rather than mutating storage. See [ADR-007](adr/ADR-007-per-user-encryption-with-crypto-shredding.md).

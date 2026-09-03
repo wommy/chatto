@@ -1,19 +1,19 @@
 # ADR-029: Rename `Instance` → `Server` across the codebase
 
-- **Status**: Accepted
+- **Status**: Completed
 - **Date**: 2026-05-11
 - **Related**: [ADR-025: Multi-Server Client Architecture](ADR-025-multi-instance-client-architecture.md), [ADR-027: Instance/Space/Server Consolidation](ADR-027-instance-space-server-consolidation.md)
 
 ## Context
 
-Chatto's user-facing terminology has been "server" for a long time — admin UI strings, marketing pages, docs, and ADR-027 all use it. The codebase still says "instance" everywhere, a leftover from the very early days when each Chatto deployment was framed as an "instance" of the app.
+Chatto's user-facing terminology had been "server" for a long time — admin UI strings, marketing pages, docs, and ADR-027 all used it. The codebase still said "instance" everywhere, a leftover from the very early days when each Chatto deployment was framed as an "instance" of the app.
 
-The split has bitten us repeatedly:
+The split had bitten us repeatedly:
 
-- Code reviewers ask "is `Instance` the server, the deployment, or the multi-instance client concept?".
-- New contributors mentally translate at every read.
-- Documentation contradicts code (`docs/ARCHITECTURE.md` describes a "server" that the code calls `Instance`).
-- ADR-027's narrative finished the conceptual collapse (instance/space → server); this PR finishes the naming.
+- Code reviewers asked "is `Instance` the server, the deployment, or the multi-instance client concept?".
+- New contributors mentally translated at every read.
+- Documentation contradicted code (`docs/ARCHITECTURE.md` described a "server" that the code called `Instance`).
+- ADR-027's narrative finished the conceptual collapse (instance/space → server); this PR finished the naming.
 
 ## Decision
 
@@ -50,7 +50,7 @@ Drop the prefix entirely when there's nothing left to disambiguate against (sing
 - One word for one concept across code, schema, and docs.
 - New contributors don't have to learn the historical naming.
 - Documentation can finally say what it means.
-- Permission ops gain naming symmetry: `GrantServerPermission` / `GrantRoomPermission` / (future) `GrantSpacePermission` all read the same.
+- Permission ops gain naming symmetry: `GrantServerPermission` / `GrantRoomPermission` all read the same. (A parallel `GrantSpacePermission` was anticipated here but never shipped: [ADR-030](ADR-030-space-tier-retirement.md) retired the Space tier as a code concept shortly after this ADR, so no space-scoped permission grant will exist.)
 
 ### Negative / risks
 
