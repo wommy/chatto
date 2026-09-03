@@ -93,5 +93,19 @@ test.describe('authorized remote asset URLs', () => {
     expect(srcUrl.port).toBe(expectedRemoteUrl.port);
     expect(srcUrl.pathname).toContain('/assets/files/');
     expect(srcUrl.pathname).not.toContain('/__chatto/');
+
+    // The signed access ticket is what actually gates this URL (see
+    // cli/internal/http_server/assets.go's resolveStableAssetViewerID) --
+    // tampering with it must be rejected, not just accepted with a valid one.
+    const tamperedUrl = new URL(srcUrl);
+    const originalTicket = tamperedUrl.searchParams.get('access')!;
+    tamperedUrl.searchParams.set('access', `${originalTicket}tampered`);
+    const tamperedResponse = await page.request.get(tamperedUrl.toString());
+    expect(tamperedResponse.status()).toBe(403);
+
+    const missingTicketUrl = new URL(srcUrl);
+    missingTicketUrl.searchParams.delete('access');
+    const missingTicketResponse = await page.request.get(missingTicketUrl.toString());
+    expect(missingTicketResponse.ok()).toBeFalsy();
   });
 });

@@ -49,6 +49,15 @@ test.describe('drag and drop image upload on settings pages', () => {
       await expect(page.getByText('Avatar uploaded successfully')).toBeVisible({
         timeout: TIMEOUTS.COMPLEX_OPERATION
       });
+
+      // A success toast only proves the upload request succeeded, not that the
+      // uploaded image is actually what's displayed -- confirm the preview
+      // really rendered real image data, not a stale or broken reference.
+      const avatarImage = avatarDropZone.locator('img');
+      await expect(avatarImage).toBeVisible();
+      await expect
+        .poll(() => avatarImage.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
     });
   });
 
@@ -78,6 +87,15 @@ test.describe('drag and drop image upload on settings pages', () => {
       await expect(page.getByText('Logo uploaded successfully')).toBeVisible({
         timeout: TIMEOUTS.COMPLEX_OPERATION
       });
+
+      // A success toast only proves the upload request succeeded, not that the
+      // uploaded image is actually what's displayed -- confirm the preview
+      // really rendered real image data, not a stale or broken reference.
+      const logoImage = logoDropZone.locator('img');
+      await expect(logoImage).toBeVisible();
+      await expect
+        .poll(() => logoImage.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
     });
   });
 
@@ -107,6 +125,15 @@ test.describe('drag and drop image upload on settings pages', () => {
       await expect(page.getByText('Banner uploaded successfully')).toBeVisible({
         timeout: TIMEOUTS.COMPLEX_OPERATION
       });
+
+      // A success toast only proves the upload request succeeded, not that the
+      // uploaded image is actually what's displayed -- confirm the preview
+      // really rendered real image data, not a stale or broken reference.
+      const bannerImage = bannerDropZone.locator('img');
+      await expect(bannerImage).toBeVisible();
+      await expect
+        .poll(() => bannerImage.evaluate((img) => (img as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
     });
   });
 });
