@@ -149,10 +149,12 @@
     {#if hasInstances}
       <button
         type="button"
-        class="iconify icon-[uil--signout] cursor-pointer hover:text-text"
+        class="app-header-icon"
         onclick={handleSignOut}
+        aria-label={m('ui.sign_out')}
         title={m('ui.sign_out')}
       >
+        <span class="iconify icon-[uil--signout] text-lg"></span>
       </button>
     {/if}
   </div>

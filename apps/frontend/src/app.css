@@ -661,9 +661,11 @@
 }
 
 /* Icon button in the app header: 44px tap target, negative margin to keep
-   visual alignment tight, subtle hover/active feedback. */
+   visual alignment tight, subtle hover/active feedback. `shrink-0` keeps the
+   44px target from collapsing toward its icon's min-content width when a
+   flex sibling (e.g. a long version label) crowds the row. */
 @utility app-header-icon {
-  @apply -m-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-muted transition-[background-color,color] duration-150;
+  @apply -m-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-[background-color,color] duration-150;
   @apply hover:bg-surface-emphasized hover:text-text active:bg-surface-selected;
   @apply focus-visible:bg-surface-emphasized focus-visible:outline-2 focus-visible:outline-action;
 }
