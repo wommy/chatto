@@ -181,8 +181,17 @@ homebrew_casks:
       - chatto
     description: "Real-time chat app CLI and server"
     homepage: "https://github.com/chattocorp/chatto"
+    # Homebrew Cask hooks run instance_eval'd against Cask::DSL::Base
+    # (Homebrew/brew Library/Homebrew/cask/dsl/base.rb), which delegates
+    # `staged_path` from the cask and exposes `system_command` -- Formula's
+    # `bin/"chatto"` and plain `system` don't exist in this context, unlike
+    # the hand-written Formula step this cask is meant to replace.
+    hooks:
+      post:
+        install: |
+          system_command "codesign", args: ["--force", "--sign", "-", "#{staged_path}/chatto"] if OS.mac?
     caveats: |
-      On macOS, this formula performs ad-hoc code signing at install time.
+      On macOS, this cask performs ad-hoc code signing at install time.
 
 ## R2 blob upload disabled until R2 API tokens are configured
 ## See: https://github.com/chattocorp/chatto/actions/runs/21843246346
