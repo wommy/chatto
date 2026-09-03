@@ -138,6 +138,9 @@ jobs:
       - name: Check workflows and shell scripts
         run: mise lint-actions
 
+      - name: Test composite action scripts
+        run: mise test-guard-multiarch
+
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5

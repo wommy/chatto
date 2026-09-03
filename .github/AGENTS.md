@@ -82,6 +82,9 @@ To rehearse a change to the image build, run the `build-image` job:
 whose `mise.toml` defines `CHATTO_DEVELOPMENT_VERSION` through the release
 `Dockerfile` and pushes one tag that carries the commit SHA.
 No floating tag moves, so the rehearsal publishes nothing that a user tracks.
+A pre-push guard confirms the tag does not already exist as a multi-platform
+manifest; if it does, the rehearsal fails rather than silently degrading the
+manifest.
 
 **A `v*` tag is a real release.** Any `v*` push starts the full release job, and
 a prerelease tag publishes `:next`, which the development cluster deploys. Keep
