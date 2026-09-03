@@ -60,20 +60,10 @@ jobs:
 
           echo "version=${development_version}+${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
-      - name: Build frontend for production image
-        env:
-          CHATTO_BUILD_VERSION: ${{ steps.image-version.outputs.version }}
-          CHATTO_FRONTEND_PRECOMPRESS: "1"
-        run: mise build-frontend
-
-      - name: Verify frontend build version
-        env:
-          EXPECTED_VERSION: ${{ steps.image-version.outputs.version }}
-        shell: bash
-        run: |
-          jq -e --arg expected "$EXPECTED_VERSION" \
-            '.version == $expected' \
-            apps/frontend/build/_app/version.json
+      - name: Build and verify versioned frontend
+        uses: ./.github/actions/build-versioned-frontend
+        with:
+          version: ${{ steps.image-version.outputs.version }}
 
       - name: Build production image contexts
         shell: bash
