@@ -458,7 +458,7 @@ jobs:
           save-cache: "true"
 
       - name: Run workspace unit tests
-        run: pnpm test
+        run: mise test-workspace
 
   test-cli:
     # runs-on: ubicloud-standard-4
