@@ -1,3 +1,10 @@
 packages:
   - apps/*
   - packages/*
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+
+ignoredBuiltDependencies:
+  - "@tailwindcss/oxide"
