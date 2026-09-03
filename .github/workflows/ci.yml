@@ -510,6 +510,11 @@ jobs:
         with:
           # PR caches are isolated from main and cannot accelerate a merge run.
           save-go-build-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          # This job always runs build-frontend (a real mise dependency of
+          # test-cli), so it's the one job guaranteed to produce a complete
+          # mise task-artifact cache -- see setup/action.yml's comment on
+          # why the saver must be a specific job, not every job racing to save.
+          save-task-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Run Authling tests
         working-directory: authling

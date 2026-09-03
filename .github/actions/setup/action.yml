@@ -17,6 +17,10 @@ inputs:
     description: "Save the shared Go build cache when the job completes"
     required: false
     default: "false"
+  save-task-cache:
+    description: "Save the shared mise task-artifact cache when the job completes"
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
@@ -56,7 +60,26 @@ runs:
     - name: Setup mise
       uses: ./.github/actions/setup-mise
 
-    - name: Cache mise task artifacts
+    - name: Restore mise task artifacts
+      if: inputs.save-task-cache != 'true'
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: ~/.cache/mise/task-artifacts
+        key: mise-task-cache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'packages/api-types/**/*', 'packages/lingua/**/*', 'apps/frontend/**/*') }}
+        restore-keys: |
+          mise-task-cache-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Restore and save mise task artifacts
+      # actions/cache keys are immutable: whichever job's post-step saves
+      # first under a given key wins it for good, even if that job never
+      # ran every cached task. Every job used to run this step unconditionally
+      # in parallel, so a job that doesn't need build-frontend (e.g. one that
+      # only needs build-api-types/build-lingua) could win the race and
+      # permanently freeze out build-frontend's artifact -- a real, measured
+      # cause of build-frontend cache misses even on an exact outer-key hit.
+      # Restricting the save to this one job, which always runs build-frontend
+      # as a real dependency, guarantees the saved cache actually contains it.
+      if: inputs.save-task-cache == 'true'
       uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.cache/mise/task-artifacts
