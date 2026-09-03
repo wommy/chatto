@@ -119,28 +119,39 @@ test('.goreleaser.yml contains nomsgpack in builds tags', () => {
 	assert.ok(tags.includes('nomsgpack'), '.goreleaser.yml builds.tags must include nomsgpack')
 })
 
-test('.github/workflows/ci.yml or tools/build-image-context.sh includes nomsgpack tag', () => {
-	// The nomsgpack tag was moved from ci.yml inline assembly into tools/build-image-context.sh.
-	// Check the script file for the tag.
+test('.github/workflows/ci.yml routes its image build through the tagged script', () => {
+	// The nomsgpack tag lives in tools/build-image-context.sh now, not inline in ci.yml.
+	// Verify ci.yml still actually calls into that path -- if someone re-inlines a raw
+	// `go build` here instead, this catches the drift even though the script itself
+	// still has the tag.
+	const workflow = readFileSync(path.join(repositoryRoot, '.github/workflows/ci.yml'), 'utf8')
+	assert.ok(
+		workflow.includes('image-context-build') || workflow.includes('build-image-context.sh'),
+		'.github/workflows/ci.yml must route image context assembly through the tagged script/task, not an inline go build',
+	)
+
 	const script = readFileSync(path.join(repositoryRoot, 'tools/build-image-context.sh'), 'utf8')
 	const tagSets = goBuildTagSets(script)
 
 	assert.ok(tagSets.length > 0, 'tools/build-image-context.sh must have go build commands')
 
-	// At least one build should have nomsgpack
 	const hasNomsgpack = tagSets.some(tags => tags.includes('nomsgpack'))
 	assert.ok(hasNomsgpack, 'tools/build-image-context.sh go build must include nomsgpack tag')
 })
 
-test('.github/workflows/release.yml or tools/build-image-context.sh includes nomsgpack tag', () => {
-	// The nomsgpack tag was moved from release.yml inline assembly into tools/build-image-context.sh.
-	// Check the script file for the tag.
+test('.github/workflows/release.yml routes its image build through the tagged script', () => {
+	// Same check as ci.yml, for the release workflow's image-build step.
+	const workflow = readFileSync(path.join(repositoryRoot, '.github/workflows/release.yml'), 'utf8')
+	assert.ok(
+		workflow.includes('image-context-build') || workflow.includes('build-image-context.sh'),
+		'.github/workflows/release.yml must route image context assembly through the tagged script/task, not an inline go build',
+	)
+
 	const script = readFileSync(path.join(repositoryRoot, 'tools/build-image-context.sh'), 'utf8')
 	const tagSets = goBuildTagSets(script)
 
 	assert.ok(tagSets.length > 0, 'tools/build-image-context.sh must have go build commands')
 
-	// At least one build should have nomsgpack
 	const hasNomsgpack = tagSets.some(tags => tags.includes('nomsgpack'))
 	assert.ok(hasNomsgpack, 'tools/build-image-context.sh go build must include nomsgpack tag')
 })

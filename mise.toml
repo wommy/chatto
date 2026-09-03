@@ -202,12 +202,15 @@ run = "tools/sync-cli-legal.sh"
 sources = ["LICENSES/AGPL-3.0-or-later.txt", "NOTICE", "tools/sync-cli-legal.sh"]
 outputs = ["cli/LICENSE", "cli/NOTICE", "cli/cmd/embedded/LICENSE", "cli/cmd/embedded/NOTICE"]
 
-[tasks.build-image-context]
+[tasks.image-context-build]
 description = "Assemble Docker image context: copy files and build Chatto binary"
 # The script holds the canonical list of files for the Docker context.
 # Environment variables (required): GOOS, GOARCH, VERSION, CONTEXT_DIR.
-# Hidden from `mise build` glob; explicitly called from workflows only.
-hide = true
+# Named noun-verb, like desktop-build and docs-website-build, so `mise
+# build`'s `build-*` glob does not sweep it in: `hide = true` only hides a
+# task from `mise tasks ls`, it does not exclude it from glob task
+# dependencies (confirmed empirically: `mise build --dry-run` still invoked
+# a hidden `build-image-context` task before this rename).
 run = "tools/build-image-context.sh"
 
 [tasks.build]

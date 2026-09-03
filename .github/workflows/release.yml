@@ -129,7 +129,7 @@ jobs:
         env:
           VERSION: ${{ steps.image.outputs.version }}
         run: |
-          GOOS=linux GOARCH=amd64 VERSION="$VERSION" CONTEXT_DIR="/tmp/chatto-docker/linux-amd64" mise run build-image-context > /dev/null
+          GOOS=linux GOARCH=amd64 VERSION="$VERSION" CONTEXT_DIR="/tmp/chatto-docker/linux-amd64" mise run image-context-build > /dev/null
 
       - name: Guard against multi-platform manifest downgrade
         uses: ./.github/actions/guard-multiarch-push
