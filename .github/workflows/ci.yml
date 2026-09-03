@@ -459,11 +459,14 @@ jobs:
         with:
           install-cli-deps: "false"
 
-      - name: Run workspace typechecks
-        run: pnpm run check
+      - name: Run frontend typechecks and linters
+        run: mise lint-frontend
 
-      - name: Run workspace linters
-        run: pnpm run lint
+      - name: Run lingua typechecks
+        run: mise lint-lingua
+
+      - name: Find unused files and dependencies
+        run: mise knip
 
       - name: Build Storybook design-system catalog
         run: pnpm run build:storybook
@@ -508,6 +511,21 @@ jobs:
       - name: Run Authling tests
         working-directory: authling
         run: mise test
+
+      - name: Vet the CLI module
+        run: mise lint-cli
+
+      - name: Vet application configuration
+        run: mise lint-appconfig
+
+      - name: Vet data cryptography
+        run: mise lint-datacrypto
+
+      - name: Vet the event framework
+        run: mise lint-events
+
+      - name: Vet the embedded NATS runtime
+        run: mise lint-natsruntime
 
       - name: Run application configuration tests
         run: mise test-appconfig
