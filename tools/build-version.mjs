@@ -3,16 +3,17 @@
 /**
  * Build version derivation for Chatto releases.
  *
- * Three sites in `.github/workflows/release.yml` (lines 83, 93, 234 as of this
- * writing; drift from other PRs may have moved them) construct the same
- * version string: base version, literal `+`, first 12 characters of the commit
- * SHA. This module holds the one derivation so the three sites stay in sync.
+ * Three sites in `.github/workflows/release.yml` construct the same version
+ * string: base version, literal `+`, first 12 characters of the commit SHA.
+ * The sites are the image-metadata step, its historical-ref fallback, and the
+ * desktop frontend-version step. This module holds the one derivation so the
+ * three sites stay in sync.
  *
  * ## Why this is a module
  *
  * Deleting this module reveals the derivation at three call sites in two
  * places: the shell expressions in release.yml and a future call in ci.yml.
- * A structural move that the three expressions reappear as
+ * This is a structural move: the three expressions reappear as
  * `"${development_version}+${sha:0:12}"` and similar (issue #56 "Deletion
  * test"). This module makes the duplication visible and gives the pattern a
  * tested home.
@@ -30,17 +31,15 @@
  * `"${base}+${sha:0:12}"` validates nothing: it takes whatever base is given,
  * slices whatever sha is given at 12 characters (short of the actual commit
  * length or not), and joins them. The module replicates this exactly. A base
- * version with existing build metadata (e.g., `1.0.0+build.1`) with a sha
- * produces `1.0.0+build.1+abc123…` with two `+` symbols — correct because that
+ * version with existing build metadata such as `1.0.0+build.1` produces
+ * `1.0.0+build.1+abc123…` with two `+` symbols — correct because that
  * is what the shell produces.
  *
  * ## Lifecycle
  *
  * The release workflow passes a base version and a commit SHA to the module on
  * the command line. The module reads no environment state, makes no git calls,
- * and writes no files. A contributor can run the same command at any time,
- * without a release in flight or local repository state beyond what
- * `git rev-parse HEAD` would read.
+ * and writes no files.
  *
  * ## Command line
  *

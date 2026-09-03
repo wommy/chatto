@@ -13,7 +13,7 @@ const modulePath = path.join(repositoryRoot, 'tools/build-version.mjs')
 /**
  * Compute the derived version using bash, the oracle for this module.
  *
- * The shell expression is `printf "%s+%s\n" "$base" "${sha:0:12}"`.
+ * The shell expression is `printf "%s+%s" "$base" "${sha:0:12}"`.
  *
  * @param {string} base
  * @param {string} sha
@@ -25,7 +25,7 @@ function bashVersion(base, sha) {
 	})
 }
 
-test('the function derives base + + + first 12 chars of SHA', () => {
+test('the function combines base and first 12 chars of SHA', () => {
 	const result = buildVersion('0.5.0-alpha.5', 'abcdef1234567890fedcba1234567890fedcba12')
 	assert.equal(result, '0.5.0-alpha.5+abcdef123456')
 })
@@ -163,7 +163,7 @@ test('the command writes the derived version to stdout', () => {
 	assert.equal(stdout, '0.5.0-alpha.5+abcdef123456\n')
 })
 
-test('the command writes nothing to stderr on success', () => {
+test('the command outputs one line to stdout on success', () => {
 	const result = execFileSync(
 		process.execPath,
 		[modulePath, '--base', '0.5.0', '--sha', 'abc123'],
