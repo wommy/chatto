@@ -1,0 +1,49 @@
+name: "Prune Superseded Caches"
+description: "Delete older GitHub Actions cache entries under a key prefix once a newer entry exists, so the repo cache budget doesn't fill with unreachable dead weight (issue #187)"
+inputs:
+  repo:
+    description: "owner/repo to operate on"
+    required: true
+  ref:
+    description: "Cache ref to scope the listing to, e.g. refs/heads/main. Cache entries are branch-scoped; never omit this, or entries that belong to another branch could be listed and deleted."
+    required: true
+  mode:
+    description: "'exact' cross-checks against expected-key; 'generic' groups by stripping a trailing per-generation suffix and trusts recency. See prune.sh for when to use which."
+    required: true
+  key-prefix:
+    description: "Cache key prefix to list and filter by"
+    required: true
+  expected-key:
+    description: "Exact key of the cache entry that was just saved. Required for mode=exact. Every deletion candidate must be strictly older than this entry; if it's missing from the listing, nothing is deleted."
+    required: false
+  group-suffix-re:
+    description: "Extended regex matching the trailing per-generation segment to strip when grouping keys, e.g. '-[0-9a-f]{64}$'. Required for mode=generic."
+    required: false
+  min-idle-seconds:
+    description: "Never delete an entry that was accessed more recently than this many seconds ago -- another job may still be mid-restore of it."
+    required: false
+    default: "900"
+  dry-run:
+    description: "List and print planned deletions without deleting anything"
+    required: false
+    default: "false"
+  github-token:
+    description: "Token gh uses to list and delete caches. Needs the actions:write permission on the calling job."
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Prune superseded cache entries
+      shell: bash
+      env:
+        REPO: ${{ inputs.repo }}
+        REF: ${{ inputs.ref }}
+        MODE: ${{ inputs.mode }}
+        KEY_PREFIX: ${{ inputs.key-prefix }}
+        EXPECTED_KEY: ${{ inputs.expected-key }}
+        GROUP_SUFFIX_RE: ${{ inputs.group-suffix-re }}
+        MIN_IDLE_SECONDS: ${{ inputs.min-idle-seconds }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: "${{ github.action_path }}/prune.sh"

@@ -801,6 +801,10 @@ run = "tools/test-desktop-macos-capture.sh"
 description = "Test the multi-platform manifest guard"
 run = "bash .github/actions/guard-multiarch-push/guard.test.sh"
 
+[tasks.test-prune-caches]
+description = "Test the superseded-cache-entry pruning logic"
+run = "bash .github/actions/prune-superseded-caches/prune.test.sh"
+
 [tasks.test-tools]
 description = "Test the release tooling in tools/"
 run = "pnpm run test:tools"
@@ -832,6 +836,7 @@ run = [
     { task = "test-natsruntime" },
     { task = "test-cli" },
     { task = "test-guard-multiarch" },
+    { task = "test-prune-caches" },
     { task = "test-desktop" },
     { task = "test-workspace" },
     { task = "test-e2e" },
