@@ -156,9 +156,11 @@ jobs:
 
           # On push events (main or release-*), always run full CI
           if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
-            echo "result=false" >> "$GITHUB_OUTPUT"
-            echo "docs_website_touched=false" >> "$GITHUB_OUTPUT"
-            echo "desktop_touched=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "result=false"
+              echo "docs_website_touched=false"
+              echo "desktop_touched=true"
+            } >> "$GITHUB_OUTPUT"
             # build-docs-image.yml owns the docs build on push; nothing to gate here.
             exit 0
           fi
@@ -228,6 +230,7 @@ jobs:
             desktop_touched="false"
           fi
           echo "desktop_touched=$desktop_touched" >> "$GITHUB_OUTPUT"
+          echo "::notice::desktop_touched=${desktop_touched}"
 
   docs-website-build:
     # Job-level if: ensures this job reports "skipped" (not "absent") on
