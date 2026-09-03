@@ -1,0 +1,65 @@
+name: "Move image floating tags"
+description: "Move floating tags to the version-tagged manifest a release already published, printing the rollback command for each moved tag"
+inputs:
+  image-type:
+    description: "Image kind being moved (client or server), used only in log text"
+    required: true
+  version-tag:
+    description: "Full version-tagged image reference the floating tags should point at"
+    required: true
+  floating-tags:
+    description: "Newline-separated floating tags to move (may be empty)"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Move the image floating tags
+      shell: bash
+      env:
+        IMAGE_TYPE: ${{ inputs.image-type }}
+        VERSION_TAG: ${{ inputs.version-tag }}
+        FLOATING_TAGS: ${{ inputs.floating-tags }}
+      run: |
+        set -euo pipefail
+
+        floating=()
+        while IFS= read -r tag; do
+          [[ -n "$tag" ]] && floating+=("$tag")
+        done <<< "$FLOATING_TAGS"
+
+        if (( ${#floating[@]} == 0 )); then
+          echo "This release publishes no floating ${IMAGE_TYPE} tag."
+          exit 0
+        fi
+
+        # Write the rollback command for each tag before it moves. An
+        # operator then finds the previous digest in this job log.
+        digest_of() {
+          printf '%s\n' "$1" |
+            awk '/^Digest:/ { if (!found) { print $2; found = 1 } }'
+        }
+
+        repository="${VERSION_TAG%:*}"
+        for tag in "${floating[@]}"; do
+          if inspected="$(docker buildx imagetools inspect "$tag" 2>/dev/null)"; then
+            previous="$(digest_of "$inspected")"
+            echo "Roll ${tag} back with:"
+            echo "  docker buildx imagetools create --tag ${tag} ${repository}@${previous}"
+          else
+            echo "${tag} does not exist yet, so it has no previous digest."
+          fi
+        done
+
+        create=()
+        for tag in "${floating[@]}"; do
+          create+=(--tag "$tag")
+        done
+
+        docker buildx imagetools create "${create[@]}" "$VERSION_TAG"
+
+        # The assignment makes a failed read of the moved tag red. To put
+        # the command in the `echo` arguments would hide that failure.
+        for tag in "${floating[@]}"; do
+          moved="$(docker buildx imagetools inspect "$tag")"
+          echo "${tag} now holds $(digest_of "$moved")"
+        done
