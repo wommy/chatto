@@ -1,0 +1,19 @@
+name: Guard Multi-Platform Manifest
+description: Prevent silent downgrade of multi-platform manifests to single-platform during image push
+inputs:
+  image:
+    description: "Full image reference including tag (e.g., ghcr.io/chattocorp/chatto:abc123)"
+    required: true
+  platforms:
+    description: "Comma-separated list of platforms being pushed (e.g., linux/amd64,linux/arm64)"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Guard against multi-platform manifest downgrade
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        PLATFORMS_TO_PUSH: ${{ inputs.platforms }}
+      run: "${{ github.action_path }}/guard.sh"

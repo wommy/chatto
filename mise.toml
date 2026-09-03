@@ -781,6 +781,10 @@ run = "pnpm check"
 description = "Test the native macOS game-capture helper"
 run = "tools/test-desktop-macos-capture.sh"
 
+[tasks.test-guard-multiarch]
+description = "Test the multi-platform manifest guard"
+run = "bash .github/actions/guard-multiarch-push/guard.test.sh"
+
 [tasks.test-tools]
 description = "Test the release tooling in tools/"
 run = "pnpm run test:tools"
@@ -811,6 +815,7 @@ run = [
     { task = "test-events" },
     { task = "test-natsruntime" },
     { task = "test-cli" },
+    { task = "test-guard-multiarch" },
     { task = "test-desktop" },
     { task = "test-workspace" },
     { task = "test-e2e" },
