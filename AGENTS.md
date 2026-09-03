@@ -159,11 +159,6 @@ Never leave a dev stack running in a detached or yielded terminal session.
   person credit for the agent's work. The `pre-commit` hook in
   `.claude/hooks/git/` refuses such a commit. It examines the author and the
   committer, because GitHub shows both.
-- An agent session that uses an OAuth token cannot push a change to
-  `.github/workflows/`. GitHub refuses the push, because the token does not have
-  the `workflow` scope. Files in `.github/actions/` do not have this limit. Put
-  the logic in a composite action when you can, then give the small remaining
-  workflow change to the user as a patch that `git am` applies.
 
 ## Agent Skills
 
