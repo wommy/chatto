@@ -29,6 +29,7 @@
  *   zip library, as that changes the layout and becomes a behavior change.
  */
 
+import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 /**
@@ -90,7 +91,7 @@ export function macOSReleasePlan(plan) {
 		{
 			step: 'mkdir',
 			command: 'mkdir',
-			args: ['-p', plan.archivePath.substring(0, plan.archivePath.lastIndexOf('/'))],
+			args: ['-p', path.dirname(plan.archivePath)],
 		},
 		{
 			step: 'package',
@@ -113,7 +114,7 @@ export function macOSReleasePlan(plan) {
  */
 export function windowsReleasePlan(plan) {
 	return {
-		archiveDir: plan.archivePath.substring(0, plan.archivePath.lastIndexOf('/')),
+		archiveDir: path.dirname(plan.archivePath),
 		sourceDir: plan.sourceDir,
 		archivePath: plan.archivePath,
 	}
