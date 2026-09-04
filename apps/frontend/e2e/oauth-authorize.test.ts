@@ -9,6 +9,7 @@ import {
 } from './fixtures/multiServer';
 import type { ServerInfo } from './fixtures/server';
 import { TIMEOUTS } from './constants';
+import { collectBrowserErrors } from './fixtures/browserErrors';
 
 /**
  * Returns the remote server's hostname:port (e.g., "127.0.0.1:4050")
@@ -36,7 +37,16 @@ test.describe('OAuth Authorization Code + PKCE Flow', () => {
 		}
 	});
 
-	test('full OAuth flow: add server via popup-based auth', async ({ page, chatPage }) => {
+	test('full OAuth flow: add server via popup-based auth', async ({ page, chatPage, context }) => {
+		const browserErrors = collectBrowserErrors(page);
+
+		// Set up error collection for popup pages
+		const popupErrors: string[] = [];
+		context.on('page', (popup) => {
+			const errors = collectBrowserErrors(popup);
+			errors.forEach((e) => popupErrors.push(`[popup] ${e}`));
+		});
+
 		// 1. Home instance: log in so the SPA works
 		await createAndLoginTestUser(page);
 		await chatPage.goto();
@@ -145,6 +155,9 @@ test.describe('OAuth Authorization Code + PKCE Flow', () => {
 			timeout: TIMEOUTS.COMPLEX_OPERATION
 		});
 		await expect(page.getByTitle('Sign out')).toBeVisible();
+
+		expect(browserErrors).toEqual([]);
+		expect(popupErrors).toEqual([]);
 	});
 
 	test('token exchange rejects invalid code_verifier', async () => {

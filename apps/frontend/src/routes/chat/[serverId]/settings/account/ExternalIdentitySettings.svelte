@@ -377,7 +377,10 @@
       {:else}
         <div class="flex flex-col gap-3">
           {#each providers as provider (provider.id)}
-            <div class="flex items-center justify-between gap-3 rounded border border-border p-3">
+            <div
+              class="flex items-center justify-between gap-3 rounded border border-border p-3"
+              data-testid={`sso-provider-${provider.id}`}
+            >
               <div class="flex min-w-0 items-center gap-3">
                 <span class={['iconify text-lg text-muted', providerIcon(provider.type)]}></span>
                 <div class="min-w-0">
@@ -422,7 +425,10 @@
           {/each}
 
           {#each unconfiguredLinkedIdentities as identity (identity.subjectHash)}
-            <div class="flex items-center justify-between gap-3 rounded border border-border p-3">
+            <div
+              class="flex items-center justify-between gap-3 rounded border border-border p-3"
+              data-testid={`sso-provider-${identity.providerId}`}
+            >
               <div class="flex min-w-0 items-center gap-3">
                 <span class={['iconify text-lg text-muted', providerIcon(identity.providerType)]}
                 ></span>

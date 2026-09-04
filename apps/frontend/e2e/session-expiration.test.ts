@@ -2,6 +2,7 @@ import { test, expect } from './setup';
 import type { Page } from '@playwright/test';
 import * as routes from './routes';
 import { TIMEOUTS } from './constants';
+import { collectBrowserErrors } from './fixtures/browserErrors';
 
 const VIEWER_RPC_PATH = '/api/connect/chatto.api.v1.ViewerService/GetViewer';
 const VIEWER_RPC_ROUTE = `**${VIEWER_RPC_PATH}`;
@@ -281,6 +282,8 @@ test.describe('Session Expiration Handling', () => {
     await gotoAndWaitForHydration(page, '/chat');
     await authPage.expectLoggedIn();
 
+    const browserErrors = collectBrowserErrors(page);
+
     // Intercept GetViewer to return an unauthenticated Connect error.
     await page.route(VIEWER_RPC_ROUTE, async (route) => {
       await route.fulfill({
@@ -306,11 +309,39 @@ test.describe('Session Expiration Handling', () => {
     // Clean up route handler
     await page.unroute(VIEWER_RPC_ROUTE);
 
+    // Track navigations to detect redirect loops. Each framenavigated event for the
+    // main frame represents a navigation (including SvelteKit pushState navigations).
+    const navigationUrls: string[] = [page.url()];
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame()) {
+        navigationUrls.push(frame.url());
+      }
+    });
+
     // Page should be stable (not in a redirect loop) — landed at /login, / or /chat
+    // Assert: URL matches expected endpoints, AND navigation count has stabilized.
     await expect(async () => {
-      const url = page.url();
-      expect(url.endsWith('/') || url.includes('/chat') || url.includes('/login')).toBe(true);
+      const currentUrl = page.url();
+      const isExpectedUrl =
+        currentUrl.endsWith('/') ||
+        currentUrl.includes('/chat') ||
+        currentUrl.includes('/login');
+      expect(isExpectedUrl).toBe(true);
+
+      // Verify the URL hasn't changed since the previous poll (settlement signal).
+      // Deduplicate consecutive URLs and check for cycles: ensure no pathname
+      // appears twice in the deduped sequence, which would indicate a redirect loop.
+      const dedupePathnamesOnly = navigationUrls
+        .map((u) => new URL(u, page.url()).pathname)
+        .reduce((acc, p) => (acc[acc.length - 1] !== p ? [...acc, p] : acc), [] as string[]);
+
+      // If any pathname appears twice, it's a redirect loop (e.g., /login -> / -> /login)
+      const pathnames = dedupePathnamesOnly;
+      const uniquePathnames = new Set(pathnames);
+      expect(uniquePathnames.size).toBe(pathnames.length);
     }).toPass({ timeout: TIMEOUTS.UI_STANDARD, intervals: [500, 1000] });
+
+    expect(browserErrors).toEqual([]);
   });
 });
 
