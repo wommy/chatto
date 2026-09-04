@@ -129,11 +129,11 @@ NATS communicate only over the private Compose network.
    Replace `chat.example.com` with your Chatto domain and `admin@example.com`
    with the email address you will use for the first account.
 
-   The script is the recommended setup path. It writes `.env` and
+   The script is the recommended setup path. It writes `.env`, `nats.conf`, and
    `livekit.generated.yaml`, generates strong secrets, and keeps the shared
    values aligned:
 
-   - `NATS_TOKEN` and `CHATTO_NATS_CLIENT_TOKEN`
+   - NATS auth token in `nats.conf` and `CHATTO_NATS_CLIENT_TOKEN` in `.env`
    - Chatto cookie, core, and asset signing secrets
    - `CHATTO_LIVEKIT_API_KEY` / `CHATTO_LIVEKIT_API_SECRET`
    - The matching LiveKit `keys:` and webhook URL
@@ -263,7 +263,7 @@ If you don't need calls, remove the `livekit` service from `compose.yml`, delete
 
 ## Troubleshooting
 
-**Chatto can't connect to NATS**: Ensure `NATS_TOKEN` and `CHATTO_NATS_CLIENT_TOKEN` match in your `.env` file.
+**Chatto can't connect to NATS**: Ensure the token in `nats.conf` matches `CHATTO_NATS_CLIENT_TOKEN` in `.env`. If you ran `init-env.sh`, they are automatically aligned. If you created files by hand, verify they use the same token value.
 
 **Registration says email delivery is not configured**: Configure the SMTP `CHATTO_SMTP_*` settings or set `CHATTO_EMAIL_TRANSPORT=jmap` with the required `CHATTO_EMAIL_JMAP_*` values in `.env`. Direct email/password registration sends a code by email.
 

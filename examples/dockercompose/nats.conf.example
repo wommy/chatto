@@ -1,0 +1,16 @@
+# Example NATS server configuration file.
+# This file is mounted into the NATS container from the local filesystem.
+# The token is kept in a config file to avoid exposing it via process arguments
+# (/proc/<pid>/cmdline, ps output).
+
+# Authentication configuration
+authorization: {
+  # Provide the NATS authentication token here.
+  # init-env.sh generates nats.conf with a matching token.
+  token: "YOUR_NATS_TOKEN_HERE"
+}
+
+# Enable JetStream for event streaming
+jetstream: {
+  store_dir: /data
+}
