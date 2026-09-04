@@ -935,7 +935,7 @@ func TestServerServiceGetMotdAndRuntimeConfig(t *testing.T) {
 	env.api.config = config.ChattoConfig{
 		Auth: config.AuthConfig{DirectRegistration: boolPtr(false)},
 		Push: config.PushConfig{
-			Enabled:         true,
+			Enabled:         boolPtr(true),
 			VAPIDPublicKey:  "test-public-key",
 			VAPIDPrivateKey: "test-private-key",
 			VAPIDSubject:    "mailto:admin@example.com",

@@ -1,11 +1,11 @@
 ---
 title: Notifications & Web Push
-description: Configure Chatto notifications, Web Push, VAPID keys, device behavior, and operator expectations.
+description: Configure Chatto notifications, Web Push, VAPID keys, device behavior, and operator expectations. Web Push works without operator setup.
 ---
 
 import { Aside, CardGrid, LinkCard, Tabs, TabItem } from "@astrojs/starlight/components";
 
-Chatto has persistent in-app notifications and optional browser Web Push. Operators configure whether push is available; members decide which rooms, threads, and devices should alert them.
+Chatto has persistent in-app notifications and browser Web Push. Web Push is available by default and needs no keys; a server that uses an `https:` URL, or that has an owner email address, needs no push setup at all. Members decide which rooms, threads, and devices should alert them.
 
 ## How Notifications Work
 
@@ -72,9 +72,42 @@ Do Not Disturb does not discard notifications. Chatto still records the pending 
 
 This preserves "review later" behavior without waking the user's devices.
 
-## Enable Web Push
+## Web Push Configuration
 
-Web Push is disabled until you provide VAPID keys. Without push config, Chatto hides the push UI entirely.
+Web Push is available by default. It needs no keys.
+
+It needs one thing: a contact URI for the push services. Chatto finds one in this order and uses the first one that it gets:
+
+1. `push.vapid_subject`, when you set it.
+2. `webserver.url`, when that URL uses `https:`.
+3. `mailto:` and the first address in `owners.emails`.
+
+RFC 8292 allows only `https:` and `mailto:` subjects, so an `http:` URL cannot become one. A server on a plain `http://` URL, which includes the `http://localhost` URL that `chatto init` writes, thus uses the owner address. Chatto uses the first address in `owners.emails` that is one valid email address. It ignores an empty entry, an entry with only spaces, and an entry that a `mailto:` URI cannot hold.
+
+The server URL comes before the owner address on purpose: a server with a public `https:` origin gives that origin, and no operator address, to the push services.
+
+<Aside type="caution">
+  Chatto sends the contact URI to the third-party push services of the browsers. Thus an owner email address that becomes the subject goes to those services as the operator contact. Set `push.vapid_subject` yourself if you do not want this. A `mailto:` address of a role account, such as `mailto:ops@example.com`, is a good alternative.
+</Aside>
+
+At its first start, the server makes a VAPID key pair. It keeps the pair in the `RUNTIME_STATE` KV bucket. Browsers receive the public key. The server signs each push with the private key. The server also sends the contact URI with each push. Push services use that URI to find the operator.
+
+The server contacts a browser push service only after a member gives notification permission on a device.
+
+Web Push stays unavailable, and Chatto hides the push UI, in these two conditions:
+
+- You set `push.enabled` to `false`.
+- The server has no contact URI. This occurs when `push.vapid_subject` is empty, `webserver.url` is not an `https:` URL, and `owners.emails` has no usable address. The server then writes a warning to its log. The warning names the configuration keys only; it does not contain an email address.
+
+### Keep The Generated Key Pair
+
+A browser subscription is related to the public key that made it. Keep the key pair to keep those subscriptions.
+
+The key pair is a part of `RUNTIME_STATE`. A standard backup includes it. If you erase the runtime state, or restore without it, the server makes a new key pair. Members do not give notification permission again. Their devices subscribe again with the new public key when they next open Chatto.
+
+### Use Your Own Key Pair
+
+Supply a key pair when you must control the key material, or when you move an installation to a new runtime state.
 
 Generate VAPID keys:
 
@@ -89,9 +122,10 @@ Then configure Chatto:
 
 ```toml
 [push]
-enabled = true
 vapid_public_key = "<generate-me>"
 vapid_private_key = "<generate-me>"
+# Optional. The default is webserver.url, when that URL uses https:,
+# and then mailto: and the first owners.emails address.
 vapid_subject = "mailto:admin@example.com"
 ```
 
@@ -99,16 +133,45 @@ vapid_subject = "mailto:admin@example.com"
 <TabItem label="Environment">
 
 ```bash
-CHATTO_PUSH_ENABLED=true
 CHATTO_PUSH_VAPID_PUBLIC_KEY=<generate-me>
 CHATTO_PUSH_VAPID_PRIVATE_KEY=<generate-me>
+# Optional. The default is webserver.url, when that URL uses https:,
+# and then mailto: and the first owners.emails address.
 CHATTO_PUSH_VAPID_SUBJECT=mailto:admin@example.com
 ```
 
 </TabItem>
 </Tabs>
 
-Use a `mailto:` or HTTPS contact URI for `vapid_subject`. Keep the private key secret and stable; changing it can invalidate existing browser subscriptions.
+Set `vapid_public_key` and `vapid_private_key` together. The server refuses to start if you set only one of the two. Keep the private key secret and stable. A different key pair makes the browsers subscribe again.
+
+Use a `mailto:` or HTTPS contact URI for `vapid_subject`.
+
+<Aside type="note">
+  Configured keys always have precedence. The server does not make a key pair while your own keys are configured.
+</Aside>
+
+### Turn Web Push Off
+
+<Tabs>
+<TabItem label="TOML">
+
+```toml
+[push]
+enabled = false
+```
+
+</TabItem>
+<TabItem label="Environment">
+
+```bash
+CHATTO_PUSH_ENABLED=false
+```
+
+</TabItem>
+</Tabs>
+
+Chatto then hides the push UI, and the server does not contact push services. Members keep their in-app notifications.
 
 ## Device Behavior
 
@@ -130,8 +193,8 @@ On iOS and iPadOS, Web Push works only for supported Home Screen web apps. Safar
 
 ## Operator Checklist
 
-1. Set `webserver.url` to the public HTTPS origin.
-2. Enable Web Push with stable VAPID keys.
+1. Set `webserver.url` to the public HTTPS origin, or set `owners.emails`. Web Push needs one of the two for its default contact URI. Set `push.vapid_subject` if you want a different contact URI.
+2. Include `RUNTIME_STATE` in your backups, or configure your own VAPID key pair. Both methods keep the key pair stable.
 3. Keep the service worker path reachable through your proxy.
 4. Test from a normal member account, not only an owner account.
 5. Test one desktop browser and one mobile installed PWA if mobile push matters.

@@ -57,6 +57,35 @@ func (c *ChattoConfig) ApplyDefaults() {
 		}
 	}
 
+	// Web Push needs a contact URI for the push services it calls. RFC 8292
+	// allows only https: and mailto: subjects, so an http: URL cannot become
+	// one. Chatto derives the subject in this order, and stops at the first
+	// step that gives a value:
+	//
+	//  1. push.vapid_subject, when the operator set it.
+	//  2. webserver.url, when that URL uses https:.
+	//  3. mailto: plus the first usable owners.emails address.
+	//
+	// The public server URL comes before the owner address on purpose. The
+	// subject goes to third-party push services, so a server that has a public
+	// https origin does not disclose an operator address to them. An operator
+	// who prefers a different contact URI sets push.vapid_subject.
+	//
+	// The generated key pair is resolved later, during server startup, because
+	// it lives in runtime state.
+	if c.Push.EnabledOrDefault() && c.Push.VAPIDSubject == "" {
+		// Parsing lowercases the scheme, so the derived subject keeps the
+		// https: prefix that push libraries and services check for.
+		if c.Webserver.URL != "" {
+			if u, err := url.Parse(c.Webserver.URL); err == nil && u.Scheme == "https" && u.Host != "" {
+				c.Push.VAPIDSubject = strings.TrimRight(u.String(), "/")
+			}
+		}
+		if c.Push.VAPIDSubject == "" {
+			c.Push.VAPIDSubject = ownerMailtoVAPIDSubject(c.Owners.Emails)
+		}
+	}
+
 	if c.LiveKit.ServerID == "" {
 		c.LiveKit.ServerID = c.LiveKit.InstanceID
 	}
@@ -81,6 +110,49 @@ func (c *ChattoConfig) Normalize() {
 	if c.SearchProvider.Languages != nil {
 		c.SearchProvider.Languages = normalizeSearchProviderLanguages(c.SearchProvider.Languages)
 	}
+}
+
+// ownerMailtoVAPIDSubject returns a mailto: VAPID subject made from the first
+// usable owner email address, or an empty string when the list holds none.
+//
+// The rule is deterministic: the list keeps its configured order, and the
+// first entry that can be a mailto: URI wins. An entry that is empty, that is
+// only whitespace, that is not one valid address, or that holds a character
+// which a mailto: URI cannot carry unescaped is skipped, because such a value
+// would reach push services as a broken sub claim instead of a contact URI.
+//
+// The address is never logged: it is only put in the subject that Chatto sends
+// to push services, and the callers that report a missing subject name the
+// configuration keys instead of any value.
+func ownerMailtoVAPIDSubject(emails []string) string {
+	for _, entry := range emails {
+		trimmed := strings.TrimSpace(entry)
+		if trimmed == "" {
+			continue
+		}
+		parsed, err := mail.ParseAddress(trimmed)
+		if err != nil {
+			continue
+		}
+		// ParseAddress also accepts a display-name form such as
+		// "Ops <ops@example.com>". Only the address part can become a subject.
+		address := parsed.Address
+		if address == "" || strings.ContainsFunc(address, isUnsafeMailtoRune) {
+			continue
+		}
+		return "mailto:" + address
+	}
+	return ""
+}
+
+// isUnsafeMailtoRune reports whether a rune must not go into a mailto: VAPID
+// subject unescaped. A quoted local part can hold spaces, control characters,
+// and delimiters that would break the URI or the JWT claim that carries it.
+func isUnsafeMailtoRune(r rune) bool {
+	if r <= ' ' || r == 0x7f {
+		return true
+	}
+	return strings.ContainsRune(`"<>,;:\?#[]{}|^`+"`", r)
 }
 
 func embeddedNATSClientURL(cfg EmbeddedNATSConfig) string {
@@ -383,20 +455,25 @@ func (c *ChattoConfig) Validate() error {
 		errs = append(errs, "email.transport must be one of: smtp, jmap")
 	}
 
-	// Push notification configuration
-	if c.Push.Enabled {
-		if c.Webserver.URL == "" {
-			errs = append(errs, "webserver.url is required when push is enabled")
+	// Push notification configuration. Keys are optional: the server generates
+	// and stores a VAPID key pair when the operator supplies none. A half
+	// configured pair is still an error, because it hides a typo behind a
+	// generated key that the operator did not ask for.
+	if c.Push.EnabledOrDefault() {
+		if c.Push.VAPIDPublicKey == "" && c.Push.VAPIDPrivateKey != "" {
+			errs = append(errs, "push.vapid_public_key is required together with push.vapid_private_key")
 		}
-		if c.Push.VAPIDPublicKey == "" {
-			errs = append(errs, "push.vapid_public_key is required when push is enabled")
+		if c.Push.VAPIDPrivateKey == "" && c.Push.VAPIDPublicKey != "" {
+			errs = append(errs, "push.vapid_private_key is required together with push.vapid_public_key")
 		}
-		if c.Push.VAPIDPrivateKey == "" {
-			errs = append(errs, "push.vapid_private_key is required when push is enabled")
-		}
-		if c.Push.VAPIDSubject == "" {
-			errs = append(errs, "push.vapid_subject is required when push is enabled")
-		}
+	}
+	// ApplyDefaults derives the subject from an https webserver.url, and then
+	// from an owner email address. Only an operator who turned push on
+	// explicitly gets an error for a missing contact URI; otherwise push stays
+	// unavailable and the server logs the reason. The message names the
+	// configuration keys only: an email address must never reach a log.
+	if c.Push.Enabled != nil && *c.Push.Enabled && c.Push.VAPIDSubject == "" {
+		errs = append(errs, "push.vapid_subject, an https webserver.url, or an owners.emails address is required when push is enabled")
 	}
 
 	// LiveKit configuration

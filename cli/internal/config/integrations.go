@@ -85,16 +85,44 @@ func (c EmailConfig) TransportOrDefault() EmailTransport {
 
 // PushConfig contains settings for Web Push notifications.
 // Push notifications allow messages to be delivered even when the browser is closed.
+//
+// Web Push needs no configuration. When the operator supplies no VAPID key
+// pair, the server generates one on first start and keeps it in runtime state.
+// The server contacts a browser push service only after a member grants
+// notification permission on a device.
+//
+// ChattoConfig.ApplyDefaults fills VAPIDSubject when the operator left it
+// empty: first from an https webserver.url, then from mailto: plus the first
+// usable owners.emails address. The server URL comes first so a public https
+// server does not disclose an operator address to third-party push services.
 type PushConfig struct {
-	Enabled         bool   `toml:"enabled" env:"CHATTO_PUSH_ENABLED" comment:"Enable Web Push notifications. Default: false (opt-in to avoid third-party server contact)."`
-	VAPIDPublicKey  string `toml:"vapid_public_key" env:"CHATTO_PUSH_VAPID_PUBLIC_KEY" comment:"VAPID public key (base64-encoded). Generate with: openssl ecparam -genkey -name prime256v1 | openssl ec -pubout"`
-	VAPIDPrivateKey string `toml:"vapid_private_key" env:"CHATTO_PUSH_VAPID_PRIVATE_KEY" comment:"VAPID private key (base64-encoded). NEVER SHARE THIS!"`
-	VAPIDSubject    string `toml:"vapid_subject" env:"CHATTO_PUSH_VAPID_SUBJECT" comment:"VAPID subject (operator email, optional mailto: prefix, or https: URL). Used by push services to contact the operator."`
+	Enabled         *bool  `toml:"enabled" env:"CHATTO_PUSH_ENABLED" comment:"Enable Web Push notifications. Default: true. The server generates a VAPID key pair when none is configured."`
+	VAPIDPublicKey  string `toml:"vapid_public_key" env:"CHATTO_PUSH_VAPID_PUBLIC_KEY" comment:"VAPID public key (base64url-encoded). Optional. Set it with vapid_private_key to use your own key pair instead of the generated one."`
+	VAPIDPrivateKey string `toml:"vapid_private_key" env:"CHATTO_PUSH_VAPID_PRIVATE_KEY" comment:"VAPID private key (base64url-encoded). Optional, but required with vapid_public_key. NEVER SHARE THIS!"`
+	VAPIDSubject    string `toml:"vapid_subject" env:"CHATTO_PUSH_VAPID_SUBJECT" comment:"VAPID subject (operator email, optional mailto: prefix, or https: URL). Used by push services to contact the operator. Defaults to webserver.url when that is an https URL, and then to mailto: plus the first owners.emails address."`
 }
 
-// IsConfigured returns true if push notifications are enabled and all required VAPID fields are set.
+// EnabledOrDefault reports whether Web Push is enabled. Push is on by default;
+// set enabled = false to keep the feature and its UI hidden.
+func (c *PushConfig) EnabledOrDefault() bool {
+	if c.Enabled == nil {
+		return true
+	}
+	return *c.Enabled
+}
+
+// HasOperatorVAPIDKeys reports whether the operator supplied a complete VAPID
+// key pair. An incomplete pair is a configuration error, not a request for a
+// generated pair, so Validate rejects it.
+func (c *PushConfig) HasOperatorVAPIDKeys() bool {
+	return c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != ""
+}
+
+// IsConfigured returns true if push notifications are enabled and every VAPID
+// field is present. Generated keys are resolved into this config during server
+// startup, so this stays false until that resolution has run.
 func (c *PushConfig) IsConfigured() bool {
-	return c.Enabled && c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != ""
+	return c.EnabledOrDefault() && c.HasOperatorVAPIDKeys() && c.VAPIDSubject != ""
 }
 
 // VideoConfig controls whether video uploads are accepted and their upload limit.

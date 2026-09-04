@@ -471,20 +471,20 @@ SMTP is the default transactional email transport. Set `email.transport = "jmap"
 
 ## Push Notifications
 
-<EnvVar name="CHATTO_PUSH_ENABLED" toml="push.enabled" default="false">
-  Enable Web Push notifications.
+<EnvVar name="CHATTO_PUSH_ENABLED" toml="push.enabled" default="true">
+  Enable Web Push notifications. Set it to `false` to hide the push UI and stop all contact with browser push services.
 </EnvVar>
 
 <EnvVar name="CHATTO_PUSH_VAPID_PUBLIC_KEY" toml="push.vapid_public_key">
-  VAPID public key for Web Push. Generate with `npx web-push generate-vapid-keys`.
+  VAPID public key for Web Push. Optional: the server makes a key pair at its first start and keeps it in `RUNTIME_STATE`. Set this together with `CHATTO_PUSH_VAPID_PRIVATE_KEY` to use your own key pair. Generate one with `npx web-push generate-vapid-keys`.
 </EnvVar>
 
 <EnvVar name="CHATTO_PUSH_VAPID_PRIVATE_KEY" toml="push.vapid_private_key">
-  VAPID private key for Web Push.
+  VAPID private key for Web Push. Optional, but required together with `CHATTO_PUSH_VAPID_PUBLIC_KEY`. The server refuses to start if you set only one of the two.
 </EnvVar>
 
-<EnvVar name="CHATTO_PUSH_VAPID_SUBJECT" toml="push.vapid_subject">
-  VAPID subject identifier. Use an operator email address, optionally prefixed with `mailto:`, or an `https:` contact URL.
+<EnvVar name="CHATTO_PUSH_VAPID_SUBJECT" toml="push.vapid_subject" default="https webserver.url, then mailto: owners.emails">
+  VAPID subject identifier. Use an operator email address, optionally prefixed with `mailto:`, or an `https:` contact URL. When this is empty, Chatto uses `webserver.url` if that URL uses `https:`, and then `mailto:` and the first usable `owners.emails` address. Push services receive this value as the operator contact, so set it yourself if you do not want an owner address to go to them. Web Push stays unavailable when all three are absent.
 </EnvVar>
 
 ## Asset Processing

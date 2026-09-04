@@ -73,6 +73,7 @@ var initCmd = &cobra.Command{
 		// Build configuration
 		directRegistration := true
 		directLogin := true
+		pushEnabled := true
 		unlimited := -1
 		cfg := config.ChattoConfig{
 			General: config.GeneralConfig{
@@ -116,6 +117,11 @@ var initCmd = &cobra.Command{
 			},
 			AssetProcessing: config.AssetProcessingConfig{
 				Enabled: true,
+			},
+			// Web Push works without operator keys, so the template only shows
+			// the switch that turns the feature off.
+			Push: config.PushConfig{
+				Enabled: &pushEnabled,
 			},
 			NATS: config.NATSConfig{
 				Replicas: 1,

@@ -341,6 +341,10 @@ authorization, live events, backup and restore, and backend tests.
 
 ## Backend Tests
 
+- `cli/cmd/embedded/` is git-ignored, and `cmd/license.go` embeds `LICENSE` and
+  `NOTICE` from it. A new clone therefore does not compile the `cmd` package.
+  Run `mise run sync-cli-legal` first. The `mise test-cli` and `mise build`
+  tasks do this for you.
 - Use `mise test-cli` for full backend checkpoints. It includes the
   `test_endpoints` build tag.
 - Iterate with targeted tests:

@@ -7,11 +7,14 @@
 
 Users can opt in to receive notifications through the browser's W3C Web Push
 system. Activity with the Push notification mode can reach them when the Chatto
-tab is not open. Push is opt-in for each device, requires operator configuration
-(VAPID keys), and uses the persistent notification system (see FDR-012).
+tab is not open. Push is opt-in for each device, needs no operator
+configuration, and uses the persistent notification system (see FDR-012).
 
 ## Behavior
 
+- Web Push is enabled by default. The server generates a VAPID key pair on first use and stores it in `RUNTIME_STATE` under `push_vapid_keys`, so operators do not configure keys. A configured key pair takes precedence and suppresses generation; a half configured pair is a startup error.
+- The VAPID subject uses the first available of: `push.vapid_subject`, `webserver.url` when that URL uses `https:`, and `mailto:` plus the first usable `owners.emails` address (RFC 8292 allows only `https:` and `mailto:` subjects). An owner entry is usable when it is one valid email address whose address part holds no character that a `mailto:` URI cannot carry unescaped; empty and whitespace-only entries are skipped. Push stays unavailable, without failing startup, when push is turned off or when none of the three gives a contact URI. The subject is never logged, and the warning for a missing contact URI names configuration keys only.
+- Replicas settle on one generated pair because the record is created, never overwritten. The pair stays stable for the life of the server's runtime state; a client whose browser subscription carries a different application-server key unsubscribes and subscribes again at its next startup registration, without a new permission prompt.
 - If push is configured and supported, the Notifications pane shows an action to enable push while browser permission is unset. This action opens the browser or operating-system permission prompt.
 - If the user dismisses the browser prompt, the action remains available because permission is still unset. If the user denies permission, Chatto hides the action. The user can change the choice in browser or operating-system settings.
 - On granting permission, the browser creates one subscription for each eligible server. Each subscription uses that server's VAPID public key. Chatto sends each subscription to its server for storage.
@@ -57,11 +60,11 @@ validation can still suppress it.
 **Why:** The same user might be subscribed from a laptop and a phone, and pushing to both is the expected behavior. A browser can also retain the same endpoint while the person signs out and into another account; exclusive ownership prevents pushes for the previous account from leaking into that shared browser. Tying the claim to the subscription revision also prevents a stale unsubscribe from releasing newly rotated credentials.
 **Tradeoff:** Old non-owner records can remain stored but inert until normal unsubscribe or account cleanup. Records created by older versions have no claim and do not deliver until the browser reopens Chatto and performs its normal startup registration. If the browser cannot determine subscription state and the server record cannot be removed, Chatto keeps the account session or server entry in place so the user can retry instead of crossing the privacy boundary with delivery still active.
 
-### 3. VAPID with self-managed keys
+### 3. VAPID with self-managed, self-generated keys
 
-**Decision:** Operators provide a VAPID key pair and subject (contact URL). Without configuration, the feature is disabled.
-**Why:** VAPID is the standard for Web Push. Self-managed keys mean the operator's server is the only entity that can send push notifications to its users — no third-party relay. Hiding the UI when unconfigured prevents user confusion.
-**Tradeoff:** Operators have to generate keys and configure them. The setup docs cover this; it's a one-time cost.
+**Decision:** The server generates its own VAPID key pair on first use and keeps it in `RUNTIME_STATE`, and defaults the subject (contact URI) to `webserver.url` when that URL uses `https:`, falling back to `mailto:` plus the first usable `owners.emails` address. Push is enabled by default. Operators may still supply their own pair, and may turn the feature off.
+**Why:** VAPID is the standard for Web Push. Self-managed keys mean the operator's server is the only entity that can send push notifications to its users — no third-party relay. Nothing about that requires a human to run a key generator: the server can make the same key material itself, so the feature works on a fresh install without setup. Generated keys go in `RUNTIME_STATE` rather than `ENCRYPTION_KEYS` so a normal backup keeps the pair together with the subscriptions it authenticates, and preferring the public server URL for the subject avoids sending an operator's email address to third-party push services while a non-identifying contact URI exists. The owner address is the last resort because it is the only contact URI a server on a plain `http://` URL — which is what `chatto init` writes — has, and without it that server gets no push at all. An operator who does not want the address disclosed sets `push.vapid_subject`.
+**Tradeoff:** A server that never wanted push now exposes the push UI until the operator sets `push.enabled = false`. Contact with a browser push service still requires a member to grant notification permission, so the default costs no third-party traffic on its own. Losing `RUNTIME_STATE` without a backup rotates the pair and forces every device to subscribe again.
 
 ### 4. Automatic cleanup of expired subscriptions
 

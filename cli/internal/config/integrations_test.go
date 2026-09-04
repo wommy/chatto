@@ -115,12 +115,11 @@ func TestChattoConfig_Validate_EnabledIntegrationsRequireWebserverURL(t *testing
 		{
 			name: "push",
 			modify: func(c *ChattoConfig) {
-				c.Push.Enabled = true
+				c.Push.Enabled = boolPtr(true)
 				c.Push.VAPIDPublicKey = "public-key"
 				c.Push.VAPIDPrivateKey = "private-key"
-				c.Push.VAPIDSubject = "mailto:admin@example.com"
 			},
-			wantError: "webserver.url is required when push is enabled",
+			wantError: "push.vapid_subject, an https webserver.url, or an owners.emails address is required when push is enabled",
 		},
 		{
 			name: "LiveKit",
@@ -299,48 +298,38 @@ func TestPushConfig_IsConfigured(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "empty config returns false",
+			name: "unresolved config returns false",
 			cfg:  PushConfig{},
 			want: false,
 		},
 		{
-			name: "enabled but missing all keys returns false",
+			name: "missing public key returns false",
 			cfg: PushConfig{
-				Enabled: true,
-			},
-			want: false,
-		},
-		{
-			name: "enabled but missing public key returns false",
-			cfg: PushConfig{
-				Enabled:         true,
 				VAPIDPrivateKey: "private-key",
 				VAPIDSubject:    "mailto:admin@example.com",
 			},
 			want: false,
 		},
 		{
-			name: "enabled but missing private key returns false",
+			name: "missing private key returns false",
 			cfg: PushConfig{
-				Enabled:        true,
 				VAPIDPublicKey: "public-key",
 				VAPIDSubject:   "mailto:admin@example.com",
 			},
 			want: false,
 		},
 		{
-			name: "enabled but missing subject returns false",
+			name: "missing subject returns false",
 			cfg: PushConfig{
-				Enabled:         true,
 				VAPIDPublicKey:  "public-key",
 				VAPIDPrivateKey: "private-key",
 			},
 			want: false,
 		},
 		{
-			name: "all fields set but not enabled returns false",
+			name: "all fields set but disabled returns false",
 			cfg: PushConfig{
-				Enabled:         false,
+				Enabled:         boolPtr(false),
 				VAPIDPublicKey:  "public-key",
 				VAPIDPrivateKey: "private-key",
 				VAPIDSubject:    "mailto:admin@example.com",
@@ -348,9 +337,18 @@ func TestPushConfig_IsConfigured(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "fully configured returns true",
+			name: "resolved config without an explicit enabled flag returns true",
 			cfg: PushConfig{
-				Enabled:         true,
+				VAPIDPublicKey:  "public-key",
+				VAPIDPrivateKey: "private-key",
+				VAPIDSubject:    "mailto:admin@example.com",
+			},
+			want: true,
+		},
+		{
+			name: "explicitly enabled and resolved config returns true",
+			cfg: PushConfig{
+				Enabled:         boolPtr(true),
 				VAPIDPublicKey:  "public-key",
 				VAPIDPrivateKey: "private-key",
 				VAPIDSubject:    "mailto:admin@example.com",
@@ -396,10 +394,10 @@ func TestChattoConfig_Validate_Push(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "valid config with push",
+			name: "valid config with operator keys",
 			modify: func(c *ChattoConfig) {
 				c.Webserver.URL = "https://chat.example"
-				c.Push.Enabled = true
+				c.Push.Enabled = boolPtr(true)
 				c.Push.VAPIDPublicKey = "public-key"
 				c.Push.VAPIDPrivateKey = "private-key"
 				c.Push.VAPIDSubject = "mailto:admin@example.com"
@@ -407,34 +405,55 @@ func TestChattoConfig_Validate_Push(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name: "push enabled without public key fails",
+			name: "default push without any key passes",
 			modify: func(c *ChattoConfig) {
-				c.Push.Enabled = true
+				c.Webserver.URL = "https://chat.example"
+				c.Push.VAPIDSubject = "https://chat.example"
+			},
+			wantError: false,
+		},
+		{
+			name: "explicitly enabled push without any key passes",
+			modify: func(c *ChattoConfig) {
+				c.Webserver.URL = "https://chat.example"
+				c.Push.Enabled = boolPtr(true)
+				c.Push.VAPIDSubject = "https://chat.example"
+			},
+			wantError: false,
+		},
+		{
+			name: "push private key without public key fails",
+			modify: func(c *ChattoConfig) {
 				c.Push.VAPIDPrivateKey = "private-key"
 				c.Push.VAPIDSubject = "mailto:admin@example.com"
 			},
 			wantError: true,
-			errorMsg:  "push.vapid_public_key is required when push is enabled",
+			errorMsg:  "push.vapid_public_key is required together with push.vapid_private_key",
 		},
 		{
-			name: "push enabled without private key fails",
+			name: "push public key without private key fails",
 			modify: func(c *ChattoConfig) {
-				c.Push.Enabled = true
 				c.Push.VAPIDPublicKey = "public-key"
 				c.Push.VAPIDSubject = "mailto:admin@example.com"
 			},
 			wantError: true,
-			errorMsg:  "push.vapid_private_key is required when push is enabled",
+			errorMsg:  "push.vapid_private_key is required together with push.vapid_public_key",
 		},
 		{
-			name: "push enabled without subject fails",
+			name: "explicitly enabled push without a contact URI fails",
 			modify: func(c *ChattoConfig) {
-				c.Push.Enabled = true
-				c.Push.VAPIDPublicKey = "public-key"
-				c.Push.VAPIDPrivateKey = "private-key"
+				c.Push.Enabled = boolPtr(true)
 			},
 			wantError: true,
-			errorMsg:  "push.vapid_subject is required when push is enabled",
+			errorMsg:  "push.vapid_subject, an https webserver.url, or an owners.emails address is required when push is enabled",
+		},
+		{
+			name: "disabled push ignores an incomplete key pair",
+			modify: func(c *ChattoConfig) {
+				c.Push.Enabled = boolPtr(false)
+				c.Push.VAPIDPublicKey = "public-key"
+			},
+			wantError: false,
 		},
 	}
 
