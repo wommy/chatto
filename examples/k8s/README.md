@@ -106,7 +106,8 @@ cp ingress.yaml ingress.local.yaml
 
 Update these values (generate secrets with `openssl rand -hex 32`):
 
-- `NATS_TOKEN` and `CHATTO_NATS_CLIENT_TOKEN` - Must match
+- `NATS_CONFIG` - Replace `YOUR_NATS_TOKEN_HERE` with a generated token; must use same token for `CHATTO_NATS_CLIENT_TOKEN`
+- `CHATTO_NATS_CLIENT_TOKEN` - Must match the token in `NATS_CONFIG`
 - `CHATTO_WEBSERVER_URL` - Your domain (e.g., `https://chat.example.com`)
 - `CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET` - Session signing secret
 - `CHATTO_WEBSERVER_COOKIE_ENCRYPTION_SECRET` - Session encryption secret
