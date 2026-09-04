@@ -47,18 +47,19 @@ func (c *TLSConfig) HTTPPortOrDefault() int {
 }
 
 type WebserverConfig struct {
-	URL                    string        `toml:"url" env:"CHATTO_WEBSERVER_URL" comment:"Public URL where the webserver is accessible. Used for generating absolute URLs."`
-	AllowedOrigins         []string      `toml:"allowed_origins,commented" env:"CHATTO_WEBSERVER_ALLOWED_ORIGINS" comment:"Additional exact public origins that can use cookie authentication, publish the bundled frontend OAuth identity, and serve MCP through a reverse proxy. Do not include paths or configure both HTTP and HTTPS for the same request host. Wildcards apply only to CORS and authorize none of these behaviors."`
-	Port                   int           `toml:"port" env:"CHATTO_WEBSERVER_PORT" comment:"Port for the webserver to listen on."`
-	TrustedProxies         []string      `toml:"trusted_proxies,commented" env:"CHATTO_WEBSERVER_TRUSTED_PROXIES" comment:"IP addresses or CIDR ranges of reverse proxies allowed to supply forwarded host and client-IP headers. Default: none."`
-	APICompression         *bool         `toml:"api_compression" env:"CHATTO_WEBSERVER_API_COMPRESSION" comment:"Compress eligible ConnectRPC API responses with gzip. Disable to reduce compressor memory and CPU at the cost of higher network usage. Default: true."`
-	APICompressionMinBytes *int          `toml:"api_compression_min_bytes" env:"CHATTO_WEBSERVER_API_COMPRESSION_MIN_BYTES" comment:"Minimum uncompressed ConnectRPC response size eligible for gzip compression. Default: 1024."`
-	WebSocketCompression   *bool         `toml:"websocket_compression" env:"CHATTO_WEBSERVER_WEBSOCKET_COMPRESSION" comment:"Enable WebSocket compression for eligible realtime frames. Default: true."`
-	RequestLogging         *bool         `toml:"request_logging" env:"CHATTO_WEBSERVER_REQUEST_LOGGING" comment:"Log HTTP requests. Successful requests are debug-level; 4xx responses are warnings; 5xx responses are errors. Useful for debugging but can be noisy in production. Default: false."`
-	CookieSigningSecret    string        `toml:"cookie_signing_secret" env:"CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET" comment:"Secret for signing browser-flow cookies and CSRF proofs. NEVER SHARE THIS!\nIf it leaks, change it immediately. Existing browser flows must restart and CSRF cookies will refresh; opaque chatto_auth_* sessions use core.secret_key instead."`
-	CookieEncryptionSecret string        `toml:"cookie_encryption_secret" env:"CHATTO_WEBSERVER_COOKIE_ENCRYPTION_SECRET" comment:"Optional hex-encoded secret used to encrypt session cookies (in addition to signing). Must decode to 16, 24, or 32 bytes (AES-128/192/256). If unset, cookies are signed but not encrypted — anything ever written to the session is readable by anyone who steals the cookie."`
-	TLS                    TLSConfig     `toml:"tls" comment:"Automatic TLS configuration via Let's Encrypt."`
-	Shields                ShieldsConfig `toml:"shields,commented" comment:"Public Shields.io-compatible community badges. Disabled by default."`
+	URL                              string        `toml:"url" env:"CHATTO_WEBSERVER_URL" comment:"Public URL where the webserver is accessible. Used for generating absolute URLs."`
+	AllowedOrigins                   []string      `toml:"allowed_origins,commented" env:"CHATTO_WEBSERVER_ALLOWED_ORIGINS" comment:"Additional exact public origins that can use cookie authentication, publish the bundled frontend OAuth identity, and serve MCP through a reverse proxy. Do not include paths or configure both HTTP and HTTPS for the same request host. Wildcards apply only to CORS and authorize none of these behaviors."`
+	Port                             int           `toml:"port" env:"CHATTO_WEBSERVER_PORT" comment:"Port for the webserver to listen on."`
+	TrustedProxies                   []string      `toml:"trusted_proxies,commented" env:"CHATTO_WEBSERVER_TRUSTED_PROXIES" comment:"IP addresses or CIDR ranges of reverse proxies allowed to supply forwarded host and client-IP headers. Default: none."`
+	APICompression                   *bool         `toml:"api_compression" env:"CHATTO_WEBSERVER_API_COMPRESSION" comment:"Compress eligible ConnectRPC API responses with gzip. Disable to reduce compressor memory and CPU at the cost of higher network usage. Default: true."`
+	APICompressionMinBytes           *int          `toml:"api_compression_min_bytes" env:"CHATTO_WEBSERVER_API_COMPRESSION_MIN_BYTES" comment:"Minimum uncompressed ConnectRPC response size eligible for gzip compression. Default: 1024."`
+	WebSocketCompression             *bool         `toml:"websocket_compression" env:"CHATTO_WEBSERVER_WEBSOCKET_COMPRESSION" comment:"Enable WebSocket compression for eligible realtime frames. Default: true."`
+	RealtimeSteadyStateConnectionCap *int          `toml:"realtime_steady_state_connection_cap,commented" env:"CHATTO_WEBSERVER_REALTIME_STEADY_STATE_CONNECTION_CAP" comment:"Maximum number of concurrent open realtime WebSocket connections per user in steady-state (after catch-up). Prevents a single user from consuming unbounded connections. Default: 30. Set to 0 to disable the cap."`
+	RequestLogging                   *bool         `toml:"request_logging" env:"CHATTO_WEBSERVER_REQUEST_LOGGING" comment:"Log HTTP requests. Successful requests are debug-level; 4xx responses are warnings; 5xx responses are errors. Useful for debugging but can be noisy in production. Default: false."`
+	CookieSigningSecret              string        `toml:"cookie_signing_secret" env:"CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET" comment:"Secret for signing browser-flow cookies and CSRF proofs. NEVER SHARE THIS!\nIf it leaks, change it immediately. Existing browser flows must restart and CSRF cookies will refresh; opaque chatto_auth_* sessions use core.secret_key instead."`
+	CookieEncryptionSecret           string        `toml:"cookie_encryption_secret" env:"CHATTO_WEBSERVER_COOKIE_ENCRYPTION_SECRET" comment:"Optional hex-encoded secret used to encrypt session cookies (in addition to signing). Must decode to 16, 24, or 32 bytes (AES-128/192/256). If unset, cookies are signed but not encrypted — anything ever written to the session is readable by anyone who steals the cookie."`
+	TLS                              TLSConfig     `toml:"tls" comment:"Automatic TLS configuration via Let's Encrypt."`
+	Shields                          ShieldsConfig `toml:"shields,commented" comment:"Public Shields.io-compatible community badges. Disabled by default."`
 }
 
 // ServerOrigins returns the canonical HTTP or HTTPS origins that identify this
@@ -510,4 +511,14 @@ func (c *WebserverConfig) EffectivePort() int {
 		return 443
 	}
 	return c.Port
+}
+
+// RealtimeSteadyStateConnectionCapOrDefault returns the maximum concurrent
+// steady-state realtime WebSocket connections per user, defaulting to 30.
+// A value of 0 disables the cap (unbounded).
+func (c *WebserverConfig) RealtimeSteadyStateConnectionCapOrDefault() int {
+	if c.RealtimeSteadyStateConnectionCap == nil {
+		return 30
+	}
+	return *c.RealtimeSteadyStateConnectionCap
 }

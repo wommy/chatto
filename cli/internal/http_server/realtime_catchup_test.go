@@ -7,7 +7,7 @@ import (
 
 func TestRealtimeCatchUpAdmissionBoundsUserAndProcessConcurrency(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 3, time.Minute, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 3, time.Minute, func() time.Time { return now }, 30)
 
 	releaseFirst, err := admission.acquire("user-1", true)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestRealtimeCatchUpAdmissionBoundsUserAndProcessConcurrency(t *testing.T) {
 
 func TestRealtimeHydrationAdmissionIsSharedAcrossSocketsAndCatchUp(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(2, 3, time.Minute, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(2, 3, time.Minute, func() time.Time { return now }, 30)
 
 	release, err := admission.acquireHydration("user-1")
 	if err != nil {
@@ -57,7 +57,7 @@ func TestRealtimeHydrationAdmissionIsSharedAcrossSocketsAndCatchUp(t *testing.T)
 
 func TestRealtimeHydrationAdmissionRateLimitsDistinctRooms(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now }, 30)
 
 	for attempt := 0; attempt < realtimeHydrationRateBurst; attempt++ {
 		release, err := admission.acquireHydration("user-1")
@@ -80,7 +80,7 @@ func TestRealtimeHydrationAdmissionRateLimitsDistinctRooms(t *testing.T) {
 
 func TestRealtimeHydrationAdmissionPrunesInactiveUsers(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now }, 30)
 
 	release, err := admission.acquireHydration("inactive-user")
 	if err != nil {
@@ -106,7 +106,7 @@ func TestRealtimeHydrationAdmissionPrunesInactiveUsers(t *testing.T) {
 
 func TestRealtimeCatchUpAdmissionRateLimitsReplayAndBootstrapAttempts(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(2, 2, time.Minute, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(2, 2, time.Minute, func() time.Time { return now }, 30)
 
 	for attempt := 0; attempt < 2; attempt++ {
 		release, err := admission.acquire("user-1", true)
@@ -129,7 +129,7 @@ func TestRealtimeCatchUpAdmissionRateLimitsReplayAndBootstrapAttempts(t *testing
 
 func TestRealtimeCatchUpAdmissionDoesNotChargeRejectedGlobalAttempt(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now }, 30)
 
 	releaseFirst, err := admission.acquire("user-1", true)
 	if err != nil {
@@ -149,7 +149,7 @@ func TestRealtimeCatchUpAdmissionDoesNotChargeRejectedGlobalAttempt(t *testing.T
 
 func TestRealtimeCatchUpAdmissionDoesNotRateLimitCurrentBoundaryReconnect(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now }, 30)
 
 	release, err := admission.acquire("user-1", true)
 	if err != nil {
@@ -173,7 +173,7 @@ func TestRealtimeCatchUpAdmissionDoesNotRateLimitCurrentBoundaryReconnect(t *tes
 
 func TestRealtimeCatchUpAdmissionChargesGapDiscoveredAfterBoundaryCheck(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now }, 30)
 
 	release, err := admission.acquire("user-1", false)
 	if err != nil {
@@ -196,7 +196,7 @@ func TestRealtimeCatchUpAdmissionChargesGapDiscoveredAfterBoundaryCheck(t *testi
 
 func TestRealtimeCatchUpAdmissionRateLimitsSequentialGeneralCatchUps(t *testing.T) {
 	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
-	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now })
+	admission := newRealtimeCatchUpAdmissionWithLimits(1, 1, time.Hour, func() time.Time { return now }, 30)
 
 	for attempt := 0; attempt < realtimeCatchUpGeneralRateBurst; attempt++ {
 		release, err := admission.acquire("user-1", false)
@@ -215,4 +215,122 @@ func TestRealtimeCatchUpAdmissionRateLimitsSequentialGeneralCatchUps(t *testing.
 		t.Fatalf("general catch-up after refill: %v", err)
 	}
 	release()
+}
+
+func TestRealtimeSteadyStateConnectionCapEnforcement(t *testing.T) {
+	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
+	admission := newRealtimeCatchUpAdmissionWithLimits(8, 3, time.Minute, func() time.Time { return now }, 3)
+
+	// Open three connections for user-1
+	var releases []func()
+	for i := 0; i < 3; i++ {
+		release, err := admission.acquireSteadyStateConnection("user-1")
+		if err != nil {
+			t.Fatalf("steady-state connection %d: %v", i+1, err)
+		}
+		releases = append(releases, release)
+	}
+
+	// Fourth connection should be rejected
+	if _, err := admission.acquireSteadyStateConnection("user-1"); err == nil || err.code != "steady_state_connection_limit_exceeded" {
+		t.Fatalf("fourth connection error = %+v, want steady_state_connection_limit_exceeded", err)
+	}
+
+	// Close first connection
+	releases[0]()
+
+	// Now fourth connection should succeed
+	release4, err := admission.acquireSteadyStateConnection("user-1")
+	if err != nil {
+		t.Fatalf("connection after release: %v", err)
+	}
+	releases = append(releases[1:], release4)
+
+	// Clean up
+	for _, release := range releases {
+		release()
+	}
+}
+
+func TestRealtimeSteadyStateConnectionCapZeroDisablesTheLimit(t *testing.T) {
+	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
+	admission := newRealtimeCatchUpAdmissionWithLimits(8, 3, time.Minute, func() time.Time { return now }, 0)
+
+	// A cap of zero disables the limit, so far more connections than any
+	// configured cap must be admitted for a single user.
+	var releases []func()
+	for i := 0; i < 500; i++ {
+		release, err := admission.acquireSteadyStateConnection("user-1")
+		if err != nil {
+			t.Fatalf("steady-state connection %d with cap disabled: %+v", i+1, err)
+		}
+		releases = append(releases, release)
+	}
+
+	for _, release := range releases {
+		release()
+	}
+}
+
+func TestRealtimeSteadyStateConnectionIsolatedPerUser(t *testing.T) {
+	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
+	admission := newRealtimeCatchUpAdmissionWithLimits(8, 3, time.Minute, func() time.Time { return now }, 2)
+
+	// User-1 opens 2 connections (at cap)
+	rel1a, err := admission.acquireSteadyStateConnection("user-1")
+	if err != nil {
+		t.Fatalf("user-1 connection 1: %v", err)
+	}
+	rel1b, err := admission.acquireSteadyStateConnection("user-1")
+	if err != nil {
+		t.Fatalf("user-1 connection 2: %v", err)
+	}
+
+	// User-1 at capacity
+	if _, err := admission.acquireSteadyStateConnection("user-1"); err == nil {
+		t.Fatal("user-1 should be over capacity")
+	}
+
+	// User-2 should still be able to open 2 connections (separate limit)
+	rel2a, err := admission.acquireSteadyStateConnection("user-2")
+	if err != nil {
+		t.Fatalf("user-2 connection 1: %v", err)
+	}
+	rel2b, err := admission.acquireSteadyStateConnection("user-2")
+	if err != nil {
+		t.Fatalf("user-2 connection 2: %v", err)
+	}
+
+	// User-2 at capacity
+	if _, err := admission.acquireSteadyStateConnection("user-2"); err == nil {
+		t.Fatal("user-2 should be over capacity")
+	}
+
+	// Clean up
+	rel1a()
+	rel1b()
+	rel2a()
+	rel2b()
+}
+
+func TestRealtimeSteadyStateConnectionReleaseIsIdempotent(t *testing.T) {
+	now := time.Date(2026, time.July, 17, 12, 0, 0, 0, time.UTC)
+	admission := newRealtimeCatchUpAdmissionWithLimits(8, 3, time.Minute, func() time.Time { return now }, 1)
+
+	release, err := admission.acquireSteadyStateConnection("user-1")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+
+	// Release multiple times should be safe
+	release()
+	release()
+	release()
+
+	// Connection count should allow a new connection
+	release2, err := admission.acquireSteadyStateConnection("user-1")
+	if err != nil {
+		t.Fatalf("after multiple releases: %v", err)
+	}
+	release2()
 }

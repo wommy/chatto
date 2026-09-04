@@ -6,15 +6,16 @@ import (
 )
 
 const (
-	realtimeCatchUpMaxConcurrent         = 8
-	realtimeCatchUpRateBurst             = 3
-	realtimeCatchUpRateRefillInterval    = 20 * time.Second
-	realtimeCatchUpGeneralRateBurst      = 20
-	realtimeCatchUpGeneralRefillInterval = time.Second
-	realtimeCatchUpLimiterStateLifetime  = 24 * time.Hour
-	realtimeCatchUpDefaultTimeout        = 30 * time.Second
-	realtimeHydrationRateBurst           = 20
-	realtimeHydrationRefillInterval      = time.Second
+	realtimeCatchUpMaxConcurrent            = 8
+	realtimeCatchUpRateBurst                = 3
+	realtimeCatchUpRateRefillInterval       = 20 * time.Second
+	realtimeCatchUpGeneralRateBurst         = 20
+	realtimeCatchUpGeneralRefillInterval    = time.Second
+	realtimeCatchUpLimiterStateLifetime     = 24 * time.Hour
+	realtimeCatchUpDefaultTimeout           = 30 * time.Second
+	realtimeHydrationRateBurst              = 20
+	realtimeHydrationRefillInterval         = time.Second
+	realtimeSteadyStateConnectionCapDefault = 30
 )
 
 type realtimeCatchUpAdmissionError struct {
@@ -32,20 +33,23 @@ type realtimeCatchUpUserState struct {
 	hydrationActive   bool
 	hydrationTokens   float64
 	hydrationRefillAt time.Time
+	steadyStateConns  int
 }
 
 // realtimeCatchUpAdmission bounds expensive projection catch-up work per
-// process. It is a capacity guard only: correctness and authorization never
+// process and caps concurrent steady-state realtime WebSocket connections.
+// It is a capacity guard only: correctness and authorization never
 // depend on this process-local state.
 type realtimeCatchUpAdmission struct {
-	mu             sync.Mutex
-	global         chan struct{}
-	users          map[string]*realtimeCatchUpUserState
-	burst          int
-	refillInterval time.Duration
-	timeout        time.Duration
-	now            func() time.Time
-	acquisitions   uint64
+	mu                       sync.Mutex
+	global                   chan struct{}
+	users                    map[string]*realtimeCatchUpUserState
+	burst                    int
+	refillInterval           time.Duration
+	timeout                  time.Duration
+	now                      func() time.Time
+	acquisitions             uint64
+	steadyStateConnectionCap int
 }
 
 func newRealtimeCatchUpAdmission() *realtimeCatchUpAdmission {
@@ -54,17 +58,19 @@ func newRealtimeCatchUpAdmission() *realtimeCatchUpAdmission {
 		realtimeCatchUpRateBurst,
 		realtimeCatchUpRateRefillInterval,
 		time.Now,
+		realtimeSteadyStateConnectionCapDefault,
 	)
 }
 
-func newRealtimeCatchUpAdmissionWithLimits(maxConcurrent, burst int, refillInterval time.Duration, now func() time.Time) *realtimeCatchUpAdmission {
+func newRealtimeCatchUpAdmissionWithLimits(maxConcurrent, burst int, refillInterval time.Duration, now func() time.Time, steadyStateConnectionCap int) *realtimeCatchUpAdmission {
 	return &realtimeCatchUpAdmission{
-		global:         make(chan struct{}, maxConcurrent),
-		users:          make(map[string]*realtimeCatchUpUserState),
-		burst:          burst,
-		refillInterval: refillInterval,
-		timeout:        realtimeCatchUpDefaultTimeout,
-		now:            now,
+		global:                   make(chan struct{}, maxConcurrent),
+		users:                    make(map[string]*realtimeCatchUpUserState),
+		burst:                    burst,
+		refillInterval:           refillInterval,
+		timeout:                  realtimeCatchUpDefaultTimeout,
+		now:                      now,
+		steadyStateConnectionCap: steadyStateConnectionCap,
 	}
 }
 
@@ -253,8 +259,59 @@ func (a *realtimeCatchUpAdmission) refillGeneral(state *realtimeCatchUpUserState
 
 func (a *realtimeCatchUpAdmission) removeStaleUsers(now time.Time) {
 	for userID, state := range a.users {
-		if !state.active && !state.hydrationActive && now.Sub(state.lastSeen) > realtimeCatchUpLimiterStateLifetime {
+		if !state.active && !state.hydrationActive && state.steadyStateConns == 0 && now.Sub(state.lastSeen) > realtimeCatchUpLimiterStateLifetime {
 			delete(a.users, userID)
 		}
 	}
+}
+
+// acquireSteadyStateConnection checks whether the user can open one more
+// steady-state realtime WebSocket connection. If permitted, it increments
+// the per-user counter and returns a release function; if over capacity,
+// it returns an error with "steady_state_connection_limit_exceeded".
+// The returned release function is idempotent.
+//
+// A cap of zero or less disables the limit: every connection is admitted and
+// the release function is a no-op.
+func (a *realtimeCatchUpAdmission) acquireSteadyStateConnection(userID string) (func(), *realtimeCatchUpAdmissionError) {
+	if a.steadyStateConnectionCap <= 0 {
+		return func() {}, nil
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	state := a.users[userID]
+	if state == nil {
+		now := a.now()
+		state = &realtimeCatchUpUserState{
+			tokens:            float64(a.burst),
+			lastRefill:        now,
+			generalTokens:     realtimeCatchUpGeneralRateBurst,
+			generalLastRefill: now,
+			hydrationTokens:   realtimeHydrationRateBurst,
+			hydrationRefillAt: now,
+			lastSeen:          now,
+		}
+		a.users[userID] = state
+	}
+
+	if state.steadyStateConns >= a.steadyStateConnectionCap {
+		return nil, &realtimeCatchUpAdmissionError{code: "steady_state_connection_limit_exceeded", retryAfter: time.Second}
+	}
+
+	state.steadyStateConns++
+	state.lastSeen = a.now()
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			a.mu.Lock()
+			if state.steadyStateConns > 0 {
+				state.steadyStateConns--
+			}
+			state.lastSeen = a.now()
+			a.mu.Unlock()
+		})
+	}, nil
 }
