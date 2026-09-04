@@ -176,6 +176,11 @@ func TestImmutableFrontendAssetNeverCarriesAuthenticationCookies(t *testing.T) {
 		router: router,
 	}
 	router.Use(server.csrfMiddleware())
+	// Add security headers middleware (same as in setupRoutes)
+	router.Use(func(c *gin.Context) {
+		setFrontendSecurityHeaders(c)
+		c.Next()
+	})
 	if err := server.setupFrontendRoutes(); err != nil {
 		t.Fatalf("setupFrontendRoutes: %v", err)
 	}
@@ -604,11 +609,17 @@ func TestBrowserIconRoutes(t *testing.T) {
 
 	newServer := func(t *testing.T, chattoCore *core.ChattoCore) *HTTPServer {
 		t.Helper()
+		router := gin.New()
 		server := &HTTPServer{
 			config: config.ChattoConfig{Webserver: config.WebserverConfig{URL: "https://example.com"}},
 			core:   chattoCore,
-			router: gin.New(),
+			router: router,
 		}
+		// Add security headers middleware (same as in setupRoutes)
+		router.Use(func(c *gin.Context) {
+			setFrontendSecurityHeaders(c)
+			c.Next()
+		})
 		if err := server.setupFrontendRoutes(); err != nil {
 			t.Fatalf("setupFrontendRoutes: %v", err)
 		}
@@ -728,6 +739,11 @@ func TestFrontendFallbackDoesNotServeReservedBackendPrefixes(t *testing.T) {
 	}
 	sessionStore := cookie.NewStore([]byte("test-secret-key-32-bytes-long!!"))
 	server.router.Use(sessions.Sessions("chatto_session", sessionStore))
+	// Add security headers middleware (same as in setupRoutes)
+	server.router.Use(func(c *gin.Context) {
+		setFrontendSecurityHeaders(c)
+		c.Next()
+	})
 	if err := server.setupFrontendRoutes(); err != nil {
 		t.Fatalf("setupFrontendRoutes: %v", err)
 	}
@@ -788,6 +804,11 @@ func TestFrontendFallbackAllowsRoutesWithReservedPrefixNames(t *testing.T) {
 	}
 	sessionStore := cookie.NewStore([]byte("test-secret-key-32-bytes-long!!"))
 	server.router.Use(sessions.Sessions("chatto_session", sessionStore))
+	// Add security headers middleware (same as in setupRoutes)
+	server.router.Use(func(c *gin.Context) {
+		setFrontendSecurityHeaders(c)
+		c.Next()
+	})
 	if err := server.setupFrontendRoutes(); err != nil {
 		t.Fatalf("setupFrontendRoutes: %v", err)
 	}

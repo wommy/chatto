@@ -165,6 +165,7 @@ Chatto has **built-in Let's Encrypt** support via Go's `autocert` package — no
 - On Unix, the autocert cache directory must be owned by the Chatto process user and is restricted to `0700` at startup, including when the directory already exists. The cache directory and its immediate parent cannot be symlinks; the parent must be owned by the process user or root and cannot be group- or world-writable.
 - `MinVersion: TLS 1.2` is enforced.
 - Plain HTTP requests are 301-redirected to HTTPS (except ACME challenges).
+- The response header `Strict-Transport-Security: max-age=31536000; includeSubDomains` is automatically sent on all responses. This header tells browsers to enforce HTTPS for this domain and all subdomains for one year.
 
 TLS is **not required**. Chatto can also run plain HTTP, which is useful for local development or when you terminate TLS at your own proxy. If you terminate TLS upstream, make sure `webserver.url` starts with `https://` so the `Secure` cookie flag is set correctly.
 
@@ -265,9 +266,14 @@ operator-selected Chatto and LiveKit servers.
 
 Original attachment responses also set `X-Content-Type-Options: nosniff`. Uploaded active document formats such as HTML, XHTML, SVG, and XML are served with `Content-Security-Policy: sandbox`; S3-backed files of those types stream through Chatto instead of redirecting directly to object storage so that policy is preserved.
 
-Add HSTS at your TLS reverse proxy when the deployment uses HTTPS. Preserve the
-frontend CSP header and the CSP meta element. A proxy can add more restrictive
-directives, but these directives can stop multi-server connections or media.
+**HSTS configuration depends on your TLS setup:**
+
+- When Chatto terminates TLS itself (`webserver.tls.enabled = true`), Chatto sends the HSTS header automatically. No additional proxy configuration is needed.
+- When you terminate TLS at a reverse proxy and Chatto runs plain HTTP, your proxy must add the HSTS header.
+
+Preserve the frontend CSP header and the CSP meta element at your proxy. A proxy can add more restrictive CSP directives, but these directives can stop multi-server connections or media.
+
+**HSTS has lasting consequences.** Browsers remember HSTS directives for the full `max-age` period. The `includeSubDomains` directive applies to all subdomains. If you later move away from HTTPS, or if you serve a subdomain over plain HTTP, browsers will reject the unencrypted connection and show an error. Plan accordingly.
 
 ## Secret and key storage
 
