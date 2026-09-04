@@ -454,6 +454,9 @@ func requirePassphrase(passphrase string) (string, error) {
 	if passphrase == "" {
 		return "", fmt.Errorf("passphrase cannot be empty")
 	}
+	if len(passphrase) < 12 {
+		return "", fmt.Errorf("passphrase must be at least 12 characters long")
+	}
 	return passphrase, nil
 }
 

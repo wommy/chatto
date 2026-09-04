@@ -402,6 +402,8 @@ func (s *MyEventsModel) filterReadyEVTRoomSubjectEvent(userID string, memberRoom
 		}
 	case *evtv1.Event_RoomDeleted:
 		delete(memberRooms, roomID)
+	case *evtv1.Event_RoomArchived:
+		delete(memberRooms, roomID)
 	}
 	if !isMember {
 		return nil, false

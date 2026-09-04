@@ -145,6 +145,8 @@ func (s *HTTPServer) serveServerAsset(c *gin.Context) {
 		contentType = getContentType(key)
 	}
 
+	setOriginalAttachmentSecurityHeaders(c, contentType)
+
 	// Immutable asset - cache forever
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Header("ETag", fmt.Sprintf("\"%s\"", key))

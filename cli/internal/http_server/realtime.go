@@ -53,7 +53,25 @@ func (s *HTTPServer) setupRealtimeAPI() {
 		s.metrics = newProcessMetrics()
 	}
 	if s.realtimeCatchUps == nil {
-		s.realtimeCatchUps = newRealtimeCatchUpAdmission()
+		cap := s.config.Webserver.RealtimeSteadyStateConnectionCapOrDefault()
+		if cap > 0 {
+			s.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(
+				realtimeCatchUpMaxConcurrent,
+				realtimeCatchUpRateBurst,
+				realtimeCatchUpRateRefillInterval,
+				time.Now,
+				cap,
+			)
+		} else {
+			// cap of 0 means unbounded; create a very high limit
+			s.realtimeCatchUps = newRealtimeCatchUpAdmissionWithLimits(
+				realtimeCatchUpMaxConcurrent,
+				realtimeCatchUpRateBurst,
+				realtimeCatchUpRateRefillInterval,
+				time.Now,
+				1000000,
+			)
+		}
 	}
 
 	writeBufferPool := &sync.Pool{}
@@ -96,15 +114,22 @@ func (s *HTTPServer) setupRealtimeAPI() {
 }
 
 func (s *HTTPServer) checkRealtimeWebSocketOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
 	if origin == "" {
 		return true
 	}
-	if _, ok := parseBrowserOrigin(origin); ok {
-		return true
+
+	// Accept any syntactically valid origin. Authentication (bearer token or
+	// same-origin cookie) is validated post-upgrade in the hello frame.
+	// Per ADR-025, all public HTTP and realtime entry points permit browser
+	// transport from any syntactically valid origin. Cross-origin clients
+	// must present bearer tokens; ambient cookie credentials remain same-origin
+	// only, enforced by requestIsSameOrigin in the auth layer.
+	_, ok := parseBrowserOrigin(origin)
+	if !ok {
+		s.logger.Warn("Realtime WebSocket connection rejected: invalid origin syntax", "origin", origin)
 	}
-	s.logger.Warn("Realtime WebSocket connection rejected: invalid origin")
-	return false
+	return ok
 }
 
 func (s *HTTPServer) serveRealtimeWebSocket(parent context.Context, conn *websocket.Conn) {
@@ -505,6 +530,20 @@ func (s *HTTPServer) serveRealtimeWebSocket(parent context.Context, conn *websoc
 	}
 	cancelCatchUp()
 	finishCatchUp()
+
+	// Acquire a steady-state connection slot for this user before entering the
+	// long-lived event-delivery loop. This prevents any single user from opening
+	// an unbounded number of concurrent sockets once catch-up completes.
+	releaseSteadyStateConnection, steadyStateErr := s.realtimeCatchUps.acquireSteadyStateConnection(user.Id)
+	if steadyStateErr != nil {
+		s.metrics.realtimeSteadyStateConnectionRejected()
+		_ = writeFrame(&realtimev1.RealtimeServerFrame{Frame: &realtimev1.RealtimeServerFrame_Close{
+			Close: &realtimev1.RealtimeClose{Code: steadyStateErr.code, Message: "concurrent connection limit exceeded", Reconnect: true, RetryAfterMs: uint32(steadyStateErr.retryAfter.Milliseconds())},
+		}})
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseTryAgainLater, steadyStateErr.code), time.Now().Add(time.Second))
+		return
+	}
+	defer releaseSteadyStateConnection()
 
 	for {
 		select {
