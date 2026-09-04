@@ -1,6 +1,7 @@
 # Subject and Event Inventory
 
 Key files: [`cli/internal/evtstream/subjects.go`](../../cli/internal/evtstream/subjects.go),
+[`cli/internal/core/subjects/subjects.go`](../../cli/internal/core/subjects/subjects.go),
 [`cli/internal/evtstream/publisher.go`](../../cli/internal/evtstream/publisher.go),
 [`pkg/events/encoded_event_log.go`](../../pkg/events/encoded_event_log.go),
 [`pkg/events/mutation.go`](../../pkg/events/mutation.go),

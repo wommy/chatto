@@ -22,15 +22,6 @@
     "test:lingua": "pnpm --filter @chatto/lingua test",
     "test:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend test:unit:run"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ],
-    "ignoredBuiltDependencies": [
-      "@tailwindcss/oxide"
-    ]
-  },
   "devDependencies": {
     "knip": "^6.22.0"
   }
