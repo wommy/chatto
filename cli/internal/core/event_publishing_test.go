@@ -769,3 +769,60 @@ func liveEventRoomID(event EventEnvelope) string {
 		return ""
 	}
 }
+
+func TestArchivedRoomEvictionFromMemberRoomsCache(t *testing.T) {
+	core, _ := setupTestCore(t)
+	ctx := testContext(t)
+
+	user, err := core.CreateUser(ctx, "system", "archive-test-user", "Archive Test User", "password123")
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+
+	room, err := core.CreateRoom(ctx, user.Id, KindChannel, "", "archive_test_room", "")
+	if err != nil {
+		t.Fatalf("CreateRoom: %v", err)
+	}
+
+	if _, err := core.JoinRoom(ctx, user.Id, KindChannel, user.Id, room.Id); err != nil {
+		t.Fatalf("JoinRoom: %v", err)
+	}
+
+	memberRooms := map[string]struct{}{room.Id: {}}
+
+	// The RoomArchived event should be delivered to show the member that their room is archived
+	archivedEvent := &evtv1.Event{
+		Id:      "test-archived-event",
+		ActorId: user.Id,
+		Event: &evtv1.Event_RoomArchived{
+			RoomArchived: &evtv1.RoomArchivedEvent{RoomId: room.Id},
+		},
+	}
+
+	model := core.myEventsModel
+	_, deliveredArchived := model.filterReadyEVTRoomSubjectEvent(user.Id, memberRooms, room.Id, archivedEvent, 1)
+
+	if !deliveredArchived {
+		t.Errorf("RoomArchived event should be delivered to member; got delivered=%v, want true", deliveredArchived)
+	}
+
+	// After the RoomArchived event, the room should be evicted from memberRooms
+	if _, isStillMember := memberRooms[room.Id]; isStillMember {
+		t.Errorf("room should be evicted from memberRooms after RoomArchived event")
+	}
+
+	// A subsequent event (like another user joining) should NOT be delivered now
+	// since the room is no longer in memberRooms
+	joinEvent := &evtv1.Event{
+		Id:      "test-join-event",
+		ActorId: "other-user",
+		Event: &evtv1.Event_UserJoinedRoom{
+			UserJoinedRoom: &evtv1.UserJoinedRoomEvent{RoomId: room.Id},
+		},
+	}
+
+	_, deliveredJoin := model.filterReadyEVTRoomSubjectEvent(user.Id, memberRooms, room.Id, joinEvent, 2)
+	if deliveredJoin {
+		t.Errorf("subsequent event on archived room should not be delivered; got delivered=%v, want false", deliveredJoin)
+	}
+}
