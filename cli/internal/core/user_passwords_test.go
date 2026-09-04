@@ -461,3 +461,31 @@ func TestChattoCore_SetPasswordHash_TooLongPassword(t *testing.T) {
 		t.Errorf("Expected ErrPasswordTooLong, got: %v", err)
 	}
 }
+
+func TestChattoCore_SetPasswordHash_PasswordInBcryptRejectZone(t *testing.T) {
+	core, _ := setupTestCore(t)
+	ctx := testContext(t)
+
+	user, err := core.CreateUser(ctx, "system", "testuser", "testuser", "initial123")
+	if err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
+
+	// Boundary test: 72 bytes is the bcrypt limit.
+	// A 72-byte password must be accepted.
+	acceptedLength := 72
+	accepted := strings.Repeat("a", acceptedLength)
+	err = core.SetPasswordHash(ctx, user.Id, accepted)
+	if err != nil {
+		t.Errorf("SetPasswordHash at %d bytes (boundary): expected success, got: %v", acceptedLength, err)
+	}
+
+	// Passwords exceeding 72 bytes are rejected with ErrPasswordTooLong.
+	for _, length := range []int{73, 100} {
+		tooLong := strings.Repeat("a", length)
+		err := core.SetPasswordHash(ctx, user.Id, tooLong)
+		if !errors.Is(err, ErrPasswordTooLong) {
+			t.Errorf("SetPasswordHash at %d bytes: expected ErrPasswordTooLong, got: %v", length, err)
+		}
+	}
+}

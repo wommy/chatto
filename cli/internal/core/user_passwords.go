@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -137,6 +138,11 @@ func (c *ChattoCore) setPasswordHash(ctx context.Context, actorID, userID string
 	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), passwordHashCost)
 	if err != nil {
+		// bcrypt returns ErrPasswordTooLong for passwords exceeding 72 bytes.
+		// Map this to the validation error for consistency with ValidatePassword.
+		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
+			return ErrPasswordTooLong
+		}
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
