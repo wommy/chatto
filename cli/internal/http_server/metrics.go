@@ -15,13 +15,14 @@ import (
 )
 
 type processMetrics struct {
-	realtimeWebSocketConnections atomic.Int64
-	realtimeCatchUps             atomic.Int64
-	realtimeCatchUpsStarted      atomic.Uint64
-	realtimeCatchUpsTimedOut     atomic.Uint64
-	realtimeCatchUpsRateLimited  atomic.Uint64
-	realtimeCatchUpsUserBusy     atomic.Uint64
-	realtimeCatchUpsServerBusy   atomic.Uint64
+	realtimeWebSocketConnections           atomic.Int64
+	realtimeCatchUps                       atomic.Int64
+	realtimeCatchUpsStarted                atomic.Uint64
+	realtimeCatchUpsTimedOut               atomic.Uint64
+	realtimeCatchUpsRateLimited            atomic.Uint64
+	realtimeCatchUpsUserBusy               atomic.Uint64
+	realtimeCatchUpsServerBusy             atomic.Uint64
+	realtimeSteadyStateConnectionsRejected atomic.Uint64
 }
 
 func (m *processMetrics) realtimeCatchUpStarted() {
@@ -64,6 +65,10 @@ func (m *processMetrics) realtimeWebSocketConnectionCount() int64 {
 	return m.realtimeWebSocketConnections.Load()
 }
 
+func (m *processMetrics) realtimeSteadyStateConnectionRejected() {
+	m.realtimeSteadyStateConnectionsRejected.Add(1)
+}
+
 func (s *HTTPServer) newMetricsServer() (*http.Server, error) {
 	if s.metrics == nil {
 		s.metrics = newProcessMetrics()
@@ -104,27 +109,30 @@ type chattoCollector struct {
 	realtimeCatchUpsStarted  *prometheus.Desc
 	realtimeCatchUpsTimedOut *prometheus.Desc
 	realtimeCatchUpsRejected *prometheus.Desc
-	myEventsActive           *prometheus.Desc
-	myEventsDelivered        *prometheus.Desc
-	myEventsSlowDisconnects  *prometheus.Desc
-	presenceRefreshes        *prometheus.Desc
-	presenceFailures         *prometheus.Desc
-	modelInfo                *prometheus.Desc
-	natsConnected            *prometheus.Desc
-	natsRTT                  *prometheus.Desc
-	natsMessages             *prometheus.Desc
-	natsBytes                *prometheus.Desc
-	natsReconnects           *prometheus.Desc
-	projectionStarted        *prometheus.Desc
-	projectionStartup        *prometheus.Desc
-	projectionStartupMsgs    *prometheus.Desc
-	projectionFailed         *prometheus.Desc
-	projectionLastApplied    *prometheus.Desc
-	projectionTarget         *prometheus.Desc
-	projectionLag            *prometheus.Desc
-	projectionEntries        *prometheus.Desc
-	projectionBytes          *prometheus.Desc
-	scrapeError              *prometheus.Desc
+
+	realtimeSteadyStateConnectionsRejected *prometheus.Desc
+
+	myEventsActive          *prometheus.Desc
+	myEventsDelivered       *prometheus.Desc
+	myEventsSlowDisconnects *prometheus.Desc
+	presenceRefreshes       *prometheus.Desc
+	presenceFailures        *prometheus.Desc
+	modelInfo               *prometheus.Desc
+	natsConnected           *prometheus.Desc
+	natsRTT                 *prometheus.Desc
+	natsMessages            *prometheus.Desc
+	natsBytes               *prometheus.Desc
+	natsReconnects          *prometheus.Desc
+	projectionStarted       *prometheus.Desc
+	projectionStartup       *prometheus.Desc
+	projectionStartupMsgs   *prometheus.Desc
+	projectionFailed        *prometheus.Desc
+	projectionLastApplied   *prometheus.Desc
+	projectionTarget        *prometheus.Desc
+	projectionLag           *prometheus.Desc
+	projectionEntries       *prometheus.Desc
+	projectionBytes         *prometheus.Desc
+	scrapeError             *prometheus.Desc
 }
 
 func newChattoCollector(server *HTTPServer) *chattoCollector {
@@ -171,6 +179,12 @@ func newChattoCollector(server *HTTPServer) *chattoCollector {
 			"chatto_realtime_catch_ups_rejected_total",
 			"Total realtime catch-ups rejected by the process-local capacity guard.",
 			[]string{"reason"},
+			nil,
+		),
+		realtimeSteadyStateConnectionsRejected: prometheus.NewDesc(
+			"chatto_realtime_steady_state_connection_cap_rejected_total",
+			"Total realtime connections rejected after catch-up by the per-user steady-state connection cap.",
+			nil,
 			nil,
 		),
 		myEventsActive: prometheus.NewDesc(
@@ -310,6 +324,7 @@ func (c *chattoCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.realtimeCatchUpsStarted
 	ch <- c.realtimeCatchUpsTimedOut
 	ch <- c.realtimeCatchUpsRejected
+	ch <- c.realtimeSteadyStateConnectionsRejected
 	ch <- c.myEventsActive
 	ch <- c.myEventsDelivered
 	ch <- c.myEventsSlowDisconnects
@@ -345,6 +360,7 @@ func (c *chattoCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(c.realtimeCatchUpsRejected, prometheus.CounterValue, float64(c.server.metrics.realtimeCatchUpsRateLimited.Load()), "rate_limited")
 	ch <- prometheus.MustNewConstMetric(c.realtimeCatchUpsRejected, prometheus.CounterValue, float64(c.server.metrics.realtimeCatchUpsUserBusy.Load()), "user_busy")
 	ch <- prometheus.MustNewConstMetric(c.realtimeCatchUpsRejected, prometheus.CounterValue, float64(c.server.metrics.realtimeCatchUpsServerBusy.Load()), "server_busy")
+	ch <- prometheus.MustNewConstMetric(c.realtimeSteadyStateConnectionsRejected, prometheus.CounterValue, float64(c.server.metrics.realtimeSteadyStateConnectionsRejected.Load()))
 
 	c.collectNATSMetrics(ch)
 	c.collectCoreMetrics(ch)
