@@ -466,6 +466,13 @@ channel-room viewer also needs broad `message.read`, or
 DM membership authorizes DM delivery. The hub and public projection mapper
 both check this boundary.
 
+Archived rooms are removed from the fast-path realtime membership cache when a
+`RoomArchived` event commits, ensuring that non-message metadata events
+(call start/end, member changes, and administrative facts) cannot leak to
+remaining members after archival. Membership filtering applies before metadata
+delivery, so archived rooms cannot deliver updates through either the compacted
+replay or incremental live path.
+
 Message facts do not carry room summaries or room viewer state. Root messages
 carry a content-free `room_activity` operation for room order and first-message
 visibility. Notification counts converge through notification signals and the
