@@ -10,24 +10,9 @@ descendants=""
 all_test_pids=""
 archive_workspace=""
 
-descendants_of() {
-	local root_pid="$1"
-	ps -A -o pid=,ppid= | awk -v root_pid="$root_pid" '
-		{ parent[$1] = $2 }
-		END {
-			for (pid in parent) {
-				ancestor = pid
-				while (ancestor in parent && parent[ancestor] != 0) {
-					if (parent[ancestor] == root_pid) {
-						print pid
-						break
-					}
-					ancestor = parent[ancestor]
-				}
-			}
-		}
-	'
-}
+# shellcheck source=lib/descendants-of.sh
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/lib/descendants-of.sh"
 
 is_live() {
 	local pid="$1"
@@ -109,8 +94,9 @@ assert_signal_cleanup INT
 # cannot run its TERM trap.
 archive_workspace="$(mktemp -d)"
 archive_workspace="$(cd "$archive_workspace" && pwd -P)"
-mkdir -p "$archive_workspace/tools"
+mkdir -p "$archive_workspace/tools/lib"
 cp "$repository_root/tools/dev-supervisor.sh" "$archive_workspace/tools/dev-supervisor.sh"
+cp "$repository_root/tools/lib/descendants-of.sh" "$archive_workspace/tools/lib/descendants-of.sh"
 chmod +x "$archive_workspace/tools/dev-supervisor.sh"
 perl -e '$SIG{HUP} = $SIG{INT} = $SIG{TERM} = "DEFAULT"; exec @ARGV' \
 	"$archive_workspace/tools/dev-supervisor.sh" \

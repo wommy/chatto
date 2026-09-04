@@ -10,24 +10,9 @@ supervisor_path="$workspace_path/tools/dev-supervisor.sh"
 supervisor_pids=()
 workspace_pids=()
 
-descendants_of() {
-	local root_pid="$1"
-	ps -A -o pid=,ppid= | awk -v root_pid="$root_pid" '
-		{ parent[$1] = $2 }
-		END {
-			for (pid in parent) {
-				ancestor = pid
-				while (ancestor in parent && parent[ancestor] != 0) {
-					if (parent[ancestor] == root_pid) {
-						print pid
-						break
-					}
-					ancestor = parent[ancestor]
-				}
-			}
-		}
-	'
-}
+# shellcheck source=lib/descendants-of.sh
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/lib/descendants-of.sh"
 
 while read -r pid command; do
 	if [[ "$command" == *"$supervisor_path"* ]]; then

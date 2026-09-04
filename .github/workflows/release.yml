@@ -29,6 +29,13 @@ on:
 permissions:
   contents: read
 
+# The release-please configuration and manifest paths. The release-please
+# action reads them, and tools/verify-release-tag.mjs derives the files that a
+# release commit may change from the configuration, so both jobs need them.
+env:
+  CONFIG_FILE: .release-please-config.json
+  MANIFEST_FILE: .release-please-manifest.json
+
 jobs:
   release-please:
     if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' }}
@@ -39,12 +46,11 @@ jobs:
     concurrency:
       group: release-please-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: false
+    timeout-minutes: 10
     env:
       TARGET_BRANCH: ${{ github.event.workflow_run.head_branch }}
-      CONFIG_FILE: .release-please-config.json
-      MANIFEST_FILE: .release-please-manifest.json
     steps:
-      - uses: googleapis/release-please-action@v5
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_PAT }}
           config-file: ${{ env.CONFIG_FILE }}
@@ -58,14 +64,18 @@ jobs:
     permissions:
       contents: read
       packages: write
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ inputs.ref || github.ref_name }}
 
       - name: Setup environment
         uses: ./.github/actions/setup
+
+      - name: Fetch build-version module
+        uses: ./.github/actions/fetch-build-version-module
 
       - name: Resolve image metadata
         id: image
@@ -74,19 +84,12 @@ jobs:
 
           sha="$(git rev-parse HEAD)"
           development_version="$(mise env --json | jq -r '.CHATTO_DEVELOPMENT_VERSION // empty')"
-          if [[ -n "$development_version" ]]; then
-            version="${development_version}+${sha:0:12}"
-          else
-            # Historical refs predate CHATTO_DEVELOPMENT_VERSION. Preserve the
-            # arbitrary-ref build contract by using their checked-in release
-            # version instead.
-            release_version="$(sed -n 's/.*Version = "\([^"]*\)".*/\1/p' cli/version.go)"
-            if [[ -z "$release_version" ]]; then
-              echo "::error::Could not determine the Chatto version."
-              exit 1
-            fi
-            version="${release_version}+${sha:0:12}"
+          if [[ -z "$development_version" ]]; then
+            echo "::error::CHATTO_DEVELOPMENT_VERSION is not set. This ref's mise.toml must define this variable."
+            exit 1
           fi
+
+          version="$(node "$RUNNER_TEMP/build-version.mjs" --base "$development_version" --sha "$sha")"
 
           echo "sha=${sha}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
@@ -101,48 +104,34 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: ./.github/actions/setup-buildx
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build frontend assets for CLI image
-        run: mise build-frontend
-        env:
-          CHATTO_BUILD_VERSION: ${{ steps.image.outputs.version }}
-          CHATTO_FRONTEND_PRECOMPRESS: "1"
+      - name: Build and verify versioned frontend
+        uses: ./.github/actions/build-versioned-frontend
+        with:
+          version: ${{ steps.image.outputs.version }}
 
       - name: Prepare Docker context
         env:
           VERSION: ${{ steps.image.outputs.version }}
         run: |
-          set -euo pipefail
+          GOOS=linux GOARCH=amd64 VERSION="$VERSION" CONTEXT_DIR="/tmp/chatto-docker/linux-amd64" mise run image-context-build > /dev/null
 
-          context="/tmp/chatto-docker/linux-amd64"
-          mkdir -p "$context"
-          cp docker/Dockerfile.goreleaser "$context/Dockerfile"
-          mkdir -p "$context/docker"
-          cp docker/docker-entrypoint.sh "$context/docker/docker-entrypoint.sh"
-          cp docker/nats-wrapper.sh "$context/docker/nats-wrapper.sh"
-          mkdir -p "$context/LICENSES"
-          cp LICENSES/AGPL-3.0-or-later.txt "$context/LICENSES/AGPL-3.0-or-later.txt"
-          cp NOTICE "$context/NOTICE"
-
-          (
-            cd cli
-            # Chatto does not expose Gin's MessagePack binding; omit its large codec.
-            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
-              -tags=nomsgpack \
-              -ldflags="-s -w -X main.Version=${VERSION}" \
-              -o "$context/chatto" .
-          )
+      - name: Guard against multi-platform manifest downgrade
+        uses: ./.github/actions/guard-multiarch-push
+        with:
+          image: ghcr.io/chattocorp/chatto:${{ steps.image.outputs.sha }}
+          platforms: linux/amd64
 
       - name: Build and push Chatto image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: /tmp/chatto-docker/linux-amd64
           file: /tmp/chatto-docker/linux-amd64/Dockerfile
@@ -180,23 +169,19 @@ jobs:
       actions: read
       contents: read
       id-token: write
+    # Windows signing and verification must use the same extension list.
+    env:
+      WINDOWS_SIGNING_EXTENSIONS: exe,dll,node
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
 
       - name: Verify trusted desktop ref
         shell: bash
-        run: |
-          set -euo pipefail
-
-          git fetch origin '+refs/heads/main:refs/remotes/origin/main'
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "::error::Desktop signing is restricted to commits reachable from origin/main."
-            exit 1
-          fi
+        run: node apps/desktop/scripts/release-ref-checks.mjs verify-trusted-ref
 
       - name: Verify immutable GitHub OIDC subject
         if: runner.os == 'Windows'
@@ -204,29 +189,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SUBJECT_PREFIX: repo:chattocorp@261891647/chatto@1205013299
-        run: |
-          set -euo pipefail
-
-          if ! configuration="$(
-            gh api \
-              -H "X-GitHub-Api-Version: 2026-03-10" \
-              "repos/${GITHUB_REPOSITORY}/actions/oidc/customization/sub" \
-              --jq '[.use_default, .use_immutable_subject, .sub_claim_prefix] | @tsv'
-          )"; then
-            echo "::error::Could not read the repository's GitHub OIDC configuration."
-            exit 1
-          fi
-
-          expected_configuration="$(printf 'true\ttrue\t%s' "$EXPECTED_SUBJECT_PREFIX")"
-          if [[ "$configuration" != "$expected_configuration" ]]; then
-            echo "::error::Enable the repository's default immutable GitHub OIDC subject before configuring Azure federation. Expected prefix '${EXPECTED_SUBJECT_PREFIX}'."
-            exit 1
-          fi
+        run: node apps/desktop/scripts/release-ref-checks.mjs verify-oidc-subject
 
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
           install-cli-deps: "false"
+
+      - name: Fetch build-version module
+        uses: ./.github/actions/fetch-build-version-module
 
       - name: Resolve desktop version
         id: version
@@ -250,7 +221,7 @@ jobs:
             exit 1
           fi
 
-          frontend_version="${version}+${sha:0:12}"
+          frontend_version="$(node "$RUNNER_TEMP/build-version.mjs" --base "$version" --sha "$sha")"
           {
             echo "version=${version}"
             echo "sha=${sha}"
@@ -281,94 +252,20 @@ jobs:
           NOTARY_API_KEY_BASE64: ${{ secrets.CHATTO_MACOS_NOTARY_API_KEY_BASE64 }}
           NOTARY_API_KEY_ID: ${{ secrets.CHATTO_MACOS_NOTARY_API_KEY_ID }}
           NOTARY_API_ISSUER_ID: ${{ secrets.CHATTO_MACOS_NOTARY_API_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-
-          for variable in \
-            CERTIFICATE_BASE64 \
-            CERTIFICATE_PASSWORD \
-            NOTARY_API_KEY_BASE64 \
-            NOTARY_API_KEY_ID \
-            NOTARY_API_ISSUER_ID; do
-            if [[ -z "${!variable}" ]]; then
-              echo "::error::The ${variable} macOS release secret is not configured."
-              exit 1
-            fi
-          done
-
-          certificate_path="$RUNNER_TEMP/chatto-developer-id.p12"
-          api_key_path="$RUNNER_TEMP/AuthKey_${NOTARY_API_KEY_ID}.p8"
-          keychain_path="$RUNNER_TEMP/chatto-signing.keychain-db"
-          keychain_password="$(openssl rand -hex 24)"
-
-          {
-            echo "CHATTO_MACOS_NOTARY_API_KEY=${api_key_path}"
-            echo "CHATTO_MACOS_SIGNING_KEYCHAIN=${keychain_path}"
-            echo "CHATTO_MACOS_SIGNING_CERTIFICATE=${certificate_path}"
-          } >> "$GITHUB_ENV"
-
-          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
-          printf '%s' "$NOTARY_API_KEY_BASE64" | base64 --decode > "$api_key_path"
-          chmod 600 "$certificate_path" "$api_key_path"
-
-          security create-keychain -p "$keychain_password" "$keychain_path"
-          security set-keychain-settings -lut 21600 "$keychain_path"
-          security unlock-keychain -p "$keychain_password" "$keychain_path"
-          security import "$certificate_path" \
-            -k "$keychain_path" \
-            -P "$CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign \
-            -T /usr/bin/security
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s \
-            -k "$keychain_password" \
-            "$keychain_path"
-          security list-keychains -d user -s "$keychain_path"
-
-          signing_identity="$(
-            security find-identity -v -p codesigning "$keychain_path" |
-              awk '/Developer ID Application:/ { print $2; exit }'
-          )"
-          if [[ -z "$signing_identity" ]]; then
-            echo "::error::The certificate does not contain a Developer ID Application identity."
-            exit 1
-          fi
-
-          {
-            echo "CHATTO_MACOS_SIGN_IDENTITY=${signing_identity}"
-            echo "CHATTO_MACOS_NOTARY_API_KEY_ID=${NOTARY_API_KEY_ID}"
-            echo "CHATTO_MACOS_NOTARY_API_ISSUER_ID=${NOTARY_API_ISSUER_ID}"
-          } >> "$GITHUB_ENV"
+        run: mise x -- node apps/desktop/scripts/macos-keychain.mjs provision >> "$GITHUB_ENV"
 
       - name: Validate Windows signing configuration
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          AZURE_CLIENT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID }}
-          SIGNING_ENDPOINT: ${{ vars.CHATTO_WINDOWS_SIGNING_ENDPOINT }}
-          SIGNING_ACCOUNT_NAME: ${{ vars.CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME }}
-          CERTIFICATE_PROFILE_NAME: ${{ vars.CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME }}
-          EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
-        run: |
-          $required = @{
-            CHATTO_WINDOWS_AZURE_CLIENT_ID = $env:AZURE_CLIENT_ID
-            CHATTO_WINDOWS_AZURE_TENANT_ID = $env:AZURE_TENANT_ID
-            CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID = $env:AZURE_SUBSCRIPTION_ID
-            CHATTO_WINDOWS_SIGNING_ENDPOINT = $env:SIGNING_ENDPOINT
-            CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME = $env:SIGNING_ACCOUNT_NAME
-            CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME = $env:CERTIFICATE_PROFILE_NAME
-            CHATTO_WINDOWS_EXPECTED_PUBLISHER = $env:EXPECTED_PUBLISHER
-          }
-          $missing = @($required.GetEnumerator() | Where-Object {
-            [string]::IsNullOrWhiteSpace([string]$_.Value)
-          } | ForEach-Object Key)
-          if ($missing.Count -gt 0) {
-            Write-Error "The following Windows release settings are not configured: $($missing -join ', ')"
-            exit 1
-          }
+          CHATTO_WINDOWS_AZURE_CLIENT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_CLIENT_ID }}
+          CHATTO_WINDOWS_AZURE_TENANT_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_TENANT_ID }}
+          CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID: ${{ secrets.CHATTO_WINDOWS_AZURE_SUBSCRIPTION_ID }}
+          CHATTO_WINDOWS_SIGNING_ENDPOINT: ${{ vars.CHATTO_WINDOWS_SIGNING_ENDPOINT }}
+          CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME: ${{ vars.CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME }}
+          CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME: ${{ vars.CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME }}
+          CHATTO_WINDOWS_EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
+        run: mise x -- node apps/desktop/scripts/windows-signing.mjs check-settings
 
       - name: Build desktop bundle
         shell: bash
@@ -384,7 +281,7 @@ jobs:
 
       - name: Log in to Azure for Windows signing
         if: runner.os == 'Windows'
-        uses: azure/login@v3
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3
         with:
           client-id: ${{ secrets.CHATTO_WINDOWS_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.CHATTO_WINDOWS_AZURE_TENANT_ID }}
@@ -392,13 +289,13 @@ jobs:
 
       - name: Sign Windows desktop bundle
         if: runner.os == 'Windows'
-        uses: azure/artifact-signing-action@v2
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
         with:
           endpoint: ${{ vars.CHATTO_WINDOWS_SIGNING_ENDPOINT }}
           signing-account-name: ${{ vars.CHATTO_WINDOWS_SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ vars.CHATTO_WINDOWS_CERTIFICATE_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\apps\desktop\dist\windows
-          files-folder-filter: exe,dll,node
+          files-folder-filter: ${{ env.WINDOWS_SIGNING_EXTENSIONS }}
           files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
@@ -419,69 +316,42 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
+          CHATTO_WINDOWS_EXPECTED_PUBLISHER: ${{ vars.CHATTO_WINDOWS_EXPECTED_PUBLISHER }}
         run: |
+          # Collect the signature records only. windows-signing.mjs decides
+          # which record passes, and it has a test beside it.
           $bundle = Resolve-Path "apps/desktop/dist/windows"
-          $files = @(Get-ChildItem -LiteralPath $bundle -File -Recurse | Where-Object {
-            $_.Extension -in '.exe', '.dll', '.node'
-          })
-          if ($files.Count -eq 0) {
-            Write-Error "The Windows bundle contains no executable files to verify."
-            exit 1
-          }
           $application = Join-Path $bundle "chatto-desktop.exe"
-          if (-not (Test-Path -LiteralPath $application -PathType Leaf)) {
-            Write-Error "The Windows bundle does not contain chatto-desktop.exe."
-            exit 1
+          $filterExtensions = $env:WINDOWS_SIGNING_EXTENSIONS.Split(',') | ForEach-Object { ".$_" }
+          $report = [ordered]@{
+            mainBinaryPath = $application
+            mainBinaryPresent = [bool](Test-Path -LiteralPath $application -PathType Leaf)
+            files = @(Get-ChildItem -LiteralPath $bundle -File -Recurse |
+              Where-Object { $_.Extension -in $filterExtensions } |
+              ForEach-Object {
+                $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
+                [ordered]@{
+                  fullName = $_.FullName
+                  status = [string]$signature.Status
+                  publisher = $signature.SignerCertificate.Subject
+                  hasTimestamp = $null -ne $signature.TimeStamperCertificate
+                }
+              })
           }
-
-          $failed = $false
-          foreach ($file in $files) {
-            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
-            $publisher = $signature.SignerCertificate.Subject
-            $hasExpectedPublisher = [string]::Equals(
-              $publisher,
-              $env:EXPECTED_PUBLISHER,
-              [System.StringComparison]::OrdinalIgnoreCase
-            )
-            $requiresExpectedPublisher = [string]::Equals(
-              $file.FullName,
-              $application,
-              [System.StringComparison]::OrdinalIgnoreCase
-            )
-            if (
-              $signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -or
-              ($requiresExpectedPublisher -and -not $hasExpectedPublisher) -or
-              $null -eq $signature.TimeStamperCertificate
-            ) {
-              Write-Error "$($file.FullName): status=$($signature.Status), publisher='$publisher', timestamped=$($null -ne $signature.TimeStamperCertificate)"
-              $failed = $true
-            }
-          }
-          if ($failed) {
-            exit 1
-          }
-          Write-Host "Verified $($files.Count) valid, timestamped Windows executable signatures; chatto-desktop.exe is published by '$env:EXPECTED_PUBLISHER'."
+          $reportPath = Join-Path $env:RUNNER_TEMP "windows-signature-report.json"
+          [System.IO.File]::WriteAllText($reportPath, ($report | ConvertTo-Json -Depth 4))
+          mise x -- node apps/desktop/scripts/windows-signing.mjs verify-signatures $reportPath
 
       - name: Package macOS release
         if: runner.os == 'macOS'
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          helper="apps/desktop/dist/Chatto Desktop.app/Contents/Helpers/Chatto Capture Helper.app/Contents/MacOS/chatto-macos-capture-probe"
-          test -x "$helper"
-          codesign --verify --deep --strict --verbose=2 "apps/desktop/dist/Chatto Desktop.app"
-          xcrun stapler validate "apps/desktop/dist/Chatto Desktop.app"
-          spctl --assess --type execute --verbose=4 "apps/desktop/dist/Chatto Desktop.app"
-          mkdir -p .context/desktop-release
-          ditto -c -k --sequesterRsrc --keepParent \
-            "apps/desktop/dist/Chatto Desktop.app" \
-            ".context/desktop-release/chatto-desktop_${VERSION}_macOS_${RUNNER_ARCH}.zip"
+        run: mise x -- node apps/desktop/scripts/desktop-packaging.mjs package-macos
 
       - name: Upload macOS notarisation log
         if: runner.os == 'macOS' && always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-notarisation-log-${{ github.run_id }}-${{ runner.arch }}
           path: ${{ runner.temp }}/chatto-macos-notarization.log
@@ -491,13 +361,7 @@ jobs:
       - name: Remove macOS signing credentials
         if: runner.os == 'macOS' && always()
         shell: bash
-        run: |
-          if [[ -n "${CHATTO_MACOS_SIGNING_KEYCHAIN:-}" ]]; then
-            security delete-keychain "$CHATTO_MACOS_SIGNING_KEYCHAIN" || true
-          fi
-          rm -f \
-            "${CHATTO_MACOS_SIGNING_CERTIFICATE:-$RUNNER_TEMP/chatto-developer-id.p12}" \
-            "${CHATTO_MACOS_NOTARY_API_KEY:-$RUNNER_TEMP/chatto-notary-api-key.p8}"
+        run: mise x -- node apps/desktop/scripts/macos-keychain.mjs cleanup
 
       - name: Package Linux release
         if: runner.os == 'Linux'
@@ -515,14 +379,10 @@ jobs:
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          New-Item -ItemType Directory -Force .context/desktop-release | Out-Null
-          Compress-Archive `
-            -Path "apps/desktop/dist/windows" `
-            -DestinationPath ".context/desktop-release/chatto-desktop_$env:VERSION`_Windows_$env:RUNNER_ARCH.zip"
+        run: mise x -- node apps/desktop/scripts/desktop-packaging.mjs package-windows
 
       - name: Upload desktop release artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-release-${{ matrix.platform }}-${{ runner.arch }}
           path: .context/desktop-release
@@ -535,9 +395,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    timeout-minutes: 10
     steps:
       - name: Download desktop release artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: desktop-release-*
           path: .context/desktop-release
@@ -551,7 +412,7 @@ jobs:
 
       - name: Upload desktop release verification
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-release-verification-${{ github.run_id }}
           path: .context/desktop-release
@@ -580,115 +441,82 @@ jobs:
       is_stable: ${{ steps.release_meta.outputs.is_stable }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       - name: Fetch release branches
         run: git fetch origin '+refs/heads/main:refs/remotes/origin/main' '+refs/heads/release-*:refs/remotes/origin/release-*'
 
+      # tools/verify-release-tag.mjs owns the gate: which commits may
+      # release, and whether this release may move `latest`. Its test runs on
+      # every pull request against Git fixture repositories, so the rules are
+      # proven before the tag that acts on them. This step runs before the
+      # environment setup, so it uses the Node of the runner.
       - name: Verify release-please tag
         id: release_meta
         shell: bash
         run: |
           set -euo pipefail
 
-          tag_commit="$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
-
-          source_branch=""
-          if git merge-base --is-ancestor "$tag_commit" origin/main; then
-            source_branch="main"
-          else
-            while IFS= read -r ref; do
-              if git merge-base --is-ancestor "$tag_commit" "$ref"; then
-                source_branch="${ref#refs/remotes/origin/}"
-                break
-              fi
-            done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/release-*')
-          fi
-
-          if [[ -z "$source_branch" ]]; then
-            echo "::error::Refusing to release ${GITHUB_REF_NAME}: tagged commit is not reachable from origin/main or an origin/release-* branch."
-            exit 1
-          fi
-
-          echo "source_branch=${source_branch}" >> "$GITHUB_OUTPUT"
-
-          parent_count="$(git rev-list --parents -n 1 "$tag_commit" | awk '{ print NF - 1 }')"
-          if [[ "$parent_count" -lt 1 ]]; then
-            echo "::error::Refusing to release ${GITHUB_REF_NAME}: tagged commit has no parent to compare against."
-            exit 1
-          fi
-
-          disallowed=()
-          while IFS= read -r path; do
-            case "$path" in
-              .release-please-config.json|\
-              .release-please-config-main.json|\
-              .release-please-manifest.json|\
-              .release-please-manifest-main.json|\
-              CHANGELOG.md|\
-              cli/version.go|\
-              apps/frontend/package.json)
-                ;;
-              *)
-                disallowed+=("$path")
-                ;;
-            esac
-          done < <(git diff --name-only "${tag_commit}^" "$tag_commit")
-
-          if (( ${#disallowed[@]} > 0 )); then
-            echo "::error::Refusing to release ${GITHUB_REF_NAME}: tagged commit contains non-release-please files."
-            printf 'Disallowed file: %s\n' "${disallowed[@]}"
-            exit 1
-          fi
-
-          version="${GITHUB_REF_NAME#v}"
-          push_latest=false
-          is_stable=false
-          if [[ "$version" != *-* ]]; then
-            is_stable=true
-            highest_stable="$(
-              git tag --list 'v[0-9]*.[0-9]*.[0-9]*' |
-                sed 's/^v//' |
-                grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' |
-                sort -V |
-                tail -n 1
-            )"
-
-            if [[ "$version" == "$highest_stable" ]]; then
-              push_latest=true
-            fi
-          fi
-
-          echo "push_latest=${push_latest}" >> "$GITHUB_OUTPUT"
-          echo "is_stable=${is_stable}" >> "$GITHUB_OUTPUT"
+          node tools/verify-release-tag.mjs \
+            --tag "$GITHUB_REF_NAME" \
+            --config "$CONFIG_FILE" \
+            --manifest "$MANIFEST_FILE" | tee -a "$GITHUB_OUTPUT"
 
       - name: Setup environment
         uses: ./.github/actions/setup
 
-      - name: Build frontend once
-        run: mise build-frontend
-        env:
-          CHATTO_FRONTEND_PRECOMPRESS: "1"
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Verify that the frontend build received the correct version before GoReleaser
+      # packages it into the server binary and client image. The bundled version must
+      # match the release tag, not the npm_package_version fallback.
+      - name: Build and verify versioned frontend
+        uses: ./.github/actions/build-versioned-frontend
+        with:
+          version: ${{ steps.version.outputs.version }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
           platforms: arm64
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: ./.github/actions/setup-buildx
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # tools/release-image-tags.mjs owns the tag policy for both images. Its
+      # test runs on every pull request, so the decision is proven before the
+      # push that acts on it. `tee` keeps the complete plan in the job log.
+      - name: Resolve release image tags
+        id: image_tags
+        shell: bash
+        env:
+          PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
+        run: |
+          set -euo pipefail
+
+          mise x -- node tools/release-image-tags.mjs \
+            --tag "$GITHUB_REF_NAME" \
+            --push-latest "$PUSH_LATEST" | tee -a "$GITHUB_OUTPUT"
+
+      # Every floating server manifest carries skip_push: "true" as a literal
+      # in .goreleaser.yml, so GoReleaser publishes only the immutable
+      # {version} manifest here. The floating tags move in the last step of
+      # this job, after the smoke check below proved that this image works
+      # and after the GitHub Release published. Issues #38 and #52 hold the
+      # decision.
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           distribution: goreleaser
           version: "~> v2"
@@ -698,38 +526,72 @@ jobs:
           # than github-actions[bot]. Bot-authored releases don't get
           # GitHub's autolink rendering for commit SHAs and #NNN PR refs.
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          CHATTO_PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
 
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build frontend Docker tags
-        id: frontend_tags
+      # tools/smoke-check-binaries.mjs verifies that GoReleaser-built CLI
+      # binaries are executable and report a version. Only binaries matching
+      # the current platform (linux/amd64 on this ubuntu-latest runner) are
+      # checked; other platforms (windows, macOS, FreeBSD) are noted as
+      # unchecked because cross-platform verification would require different
+      # CI runner types. The binary check is conservative: a failure blocks the
+      # entire release before artifacts are published, just like the image
+      # smoke checks. See issues #38/#51/#52 for the smoke-check precedent.
+      - name: Smoke check the CLI binaries
         shell: bash
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          PUSH_LATEST: ${{ steps.release_meta.outputs.push_latest }}
+        timeout-minutes: 5
         run: |
-          {
-            echo "tags<<EOF"
-            echo "ghcr.io/chattocorp/chatto-client:${VERSION}"
-            if [[ "$VERSION" == *-* ]]; then
-              echo "ghcr.io/chattocorp/chatto-client:next"
-            elif [[ "$PUSH_LATEST" == "true" ]]; then
-              echo "ghcr.io/chattocorp/chatto-client:latest"
-            fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          set -euo pipefail
 
+          mise x -- node tools/smoke-check-binaries.mjs
+
+      # tools/smoke-check-image.mjs pulls the image that GoReleaser pushed
+      # above and proves that it starts. `cli/internal/config` refuses to
+      # start without `webserver.port` and three hex secrets, none of which
+      # have a default, and no config file exists on this runner to mount, so
+      # the check generates throwaway secrets and gives them with `--env`.
+      # They are masked so a log never carries them, and they are discarded
+      # with the container. The `release` job sets no timeout, so this step
+      # sets its own, and the module bounds its own attempts as well.
+      - name: Smoke check the server image
+        shell: bash
+        timeout-minutes: 10
+        env:
+          SERVER_VERSION_TAG: ${{ steps.image_tags.outputs.server_version_tag }}
+        run: |
+          set -euo pipefail
+
+          cookie_secret="$(openssl rand -hex 32)"
+          core_secret="$(openssl rand -hex 32)"
+          assets_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::${cookie_secret}"
+          echo "::add-mask::${core_secret}"
+          echo "::add-mask::${assets_secret}"
+
+          mise x -- node tools/smoke-check-image.mjs \
+            --image "$SERVER_VERSION_TAG" \
+            --port 4000 \
+            --probe-path /readyz \
+            --arg start --arg -c --arg /config/chatto.toml \
+            --env "CHATTO_WEBSERVER_PORT=4000" \
+            --env "CHATTO_WEBSERVER_URL=http://127.0.0.1:4000" \
+            --env "CHATTO_WEBSERVER_COOKIE_SIGNING_SECRET=${cookie_secret}" \
+            --env "CHATTO_CORE_SECRET_KEY=${core_secret}" \
+            --env "CHATTO_CORE_ASSETS_SIGNING_SECRET=${assets_secret}" \
+            --env "CHATTO_NATS_EMBEDDED_ENABLED=true" \
+            --env "CHATTO_NATS_EMBEDDED_DATA_DIR=/data/nats" \
+            --env "CHATTO_LOG_LEVEL=error"
+
+      # Only the immutable {version} tag is pushed here. The floating tags
+      # move in the last step of this job, after the smoke check proved that
+      # this image works and after the GitHub Release published. Issue #38
+      # holds the decision.
       - name: Build and push frontend Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/Dockerfile.frontend.prebuilt
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.frontend_tags.outputs.tags }}
+          tags: ${{ steps.image_tags.outputs.client_version_tag }}
           cache-from: type=gha,scope=chatto-client
           cache-to: type=gha,scope=chatto-client,mode=max
           labels: |
@@ -737,6 +599,36 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.licenses=Apache-2.0
+
+      # tools/smoke-check-image.mjs pulls the image that was pushed above and
+      # proves that it starts and carries the bundle of this release. Its unit
+      # tests run on every pull request; the container path first runs here.
+      # The `release` job sets no timeout, so this step sets its own, and the
+      # module bounds its own attempts as well.
+      - name: Smoke check the client image
+        shell: bash
+        timeout-minutes: 10
+        env:
+          CLIENT_VERSION_TAG: ${{ steps.image_tags.outputs.client_version_tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          mise x -- node tools/smoke-check-image.mjs \
+            --image "$CLIENT_VERSION_TAG" \
+            --port 80 \
+            --probe-path / \
+            --expect-version "$VERSION"
+
+      - name: Log GitHub Release rollback
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          echo "If the release publishes incorrectly, re-draft it with:"
+          echo "  gh release edit v${VERSION} --repo chattocorp/chatto --draft=true"
 
       - name: Publish GitHub Release
         shell: bash
@@ -750,8 +642,11 @@ jobs:
             --repo chattocorp/chatto \
             --draft=false
 
+      # `release_meta` classified this version with the one parser that the
+      # repository uses. A substring test for `-` here disagreed with that
+      # parser for a version that carries build metadata.
       - name: Update Homebrew tap
-        if: ${{ !contains(steps.version.outputs.version, '-') }}
+        if: ${{ steps.release_meta.outputs.is_stable == 'true' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
@@ -836,14 +731,58 @@ jobs:
           git -C "${tap_dir}" config user.name "github-actions[bot]"
           git -C "${tap_dir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git -C "${tap_dir}" diff --quiet -- Formula/chatto.rb; then
+          if [[ -z "$(git -C "${tap_dir}" status --porcelain -- Formula/chatto.rb)" ]]; then
             echo "Homebrew tap already contains Chatto ${VERSION}."
             exit 0
           fi
 
           git -C "${tap_dir}" add Formula/chatto.rb
           git -C "${tap_dir}" commit -m "chore: update chatto to v${VERSION}"
+
+          # Capture the previous commit SHA before pushing, so the tap can be
+          # rolled back if needed.
+          previous_sha="$(git -C "${tap_dir}" rev-parse HEAD~1)"
+          echo "If the Homebrew tap update needs to be rolled back, use:"
+          echo "  git -C chattocorp/homebrew-tap reset --hard ${previous_sha}"
+
           git -C "${tap_dir}" push origin HEAD:main
+      # The last step of the release moves the client image floating tags.
+      # Any earlier failure means this step never runs, the job is red, and
+      # `chatto-client:latest` keeps the previous release serving.
+      #
+      # `imagetools create` copies the manifest that the smoke check tested,
+      # so the tag points at the digest that was checked. A second
+      # `build-push-action` would push a new manifest instead, and nothing
+      # would tie that manifest to the checked image. The same command moves a
+      # tag back, so the rollback is the mechanism that each release exercises.
+      # `docs/RELEASING.md` holds the recovery.
+      - name: Move the client image floating tags
+        uses: ./.github/actions/move-image-floating-tags
+        timeout-minutes: 10
+        with:
+          image-type: client
+          version-tag: ${{ steps.image_tags.outputs.client_version_tag }}
+          floating-tags: ${{ steps.image_tags.outputs.client_floating_tags }}
+
+      # The true last step of the release moves the server image floating
+      # tags. `chatto:latest` is the least withdrawable reference this
+      # release publishes, so it moves only after every earlier step,
+      # including the client tag move above, has succeeded. Any earlier
+      # failure means this step never runs, the job is red, and
+      # `chatto:latest` keeps the previous release serving.
+      #
+      # `imagetools create` copies the manifest that the smoke check tested,
+      # so the tag points at the digest that was checked. GoReleaser pushing
+      # a floating manifest directly would tie no check to that image. The
+      # same command moves a tag back, so the rollback is the mechanism that
+      # each release exercises. `docs/RELEASING.md` holds the recovery.
+      - name: Move the server image floating tags
+        uses: ./.github/actions/move-image-floating-tags
+        timeout-minutes: 10
+        with:
+          image-type: server
+          version-tag: ${{ steps.image_tags.outputs.server_version_tag }}
+          floating-tags: ${{ steps.image_tags.outputs.server_floating_tags }}
 
   publish-stable-docs:
     needs: release

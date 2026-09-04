@@ -1,0 +1,37 @@
+name: "Build and Verify Versioned Frontend"
+description: "Build frontend with CHATTO_BUILD_VERSION and verify the build output matches the specified version"
+inputs:
+  version:
+    description: "Version string to set in CHATTO_BUILD_VERSION environment variable and verify against"
+    required: true
+  task-cache-read-only:
+    description: "Use --task-cache read-only (true for PRs, false for main)"
+    required: false
+    default: "true"
+runs:
+  using: "composite"
+  steps:
+    - name: Build frontend
+      shell: bash
+      env:
+        CHATTO_BUILD_VERSION: ${{ inputs.version }}
+        CHATTO_FRONTEND_PRECOMPRESS: "1"
+      run: |
+        cache_flags="--task-cache-stats"
+        if [[ "${{ inputs.task-cache-read-only }}" == "true" ]]; then
+          cache_flags="--task-cache read-only $cache_flags"
+        fi
+        # mise's flags must precede the task name (`mise run [FLAGS] [TASK]`);
+        # placing them after, as `mise build-frontend $cache_flags` did, passes
+        # them through as positional args to the task's last shell command
+        # instead of consuming them, breaking tools/prepare-embedded-frontend.sh.
+        mise run $cache_flags build-frontend
+
+    - name: Verify frontend build version
+      shell: bash
+      env:
+        EXPECTED_VERSION: ${{ inputs.version }}
+      run: |
+        jq -e --arg expected "$EXPECTED_VERSION" \
+          '.version == $expected' \
+          apps/frontend/build/_app/version.json

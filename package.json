@@ -7,7 +7,6 @@
   "scripts": {
     "build:api-types": "pnpm --filter @chatto/api-types build",
     "build:lingua": "pnpm --filter @chatto/lingua build",
-    "build:docs": "pnpm --filter docs-website build",
     "build:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend build",
     "build:storybook": "pnpm run build:lingua && pnpm --filter chatto-frontend build-storybook",
     "check": "pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run check",
@@ -18,8 +17,9 @@
     "knip:prepare": "pnpm run build:lingua && pnpm --dir apps/frontend run prepare",
     "lint": "pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run lint",
     "lint:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend lint",
-    "test": "pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run test",
+    "test": "pnpm run test:tools && pnpm run build:api-types && pnpm run build:lingua && pnpm --recursive --if-present --workspace-concurrency=1 run test",
     "test:lingua": "pnpm --filter @chatto/lingua test",
+    "test:tools": "node --test \"tools/*.test.mjs\"",
     "test:frontend": "pnpm run build:api-types && pnpm run build:lingua && pnpm --filter chatto-frontend test:unit:run"
   },
   "pnpm": {

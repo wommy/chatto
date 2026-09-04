@@ -1,16 +1,11 @@
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CONNECTRPC_RAW_MDX_FILES } from './connectrpc-raw-mdx-files.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
-const rawReferencePaths = [
-  path.join(repoRoot, 'apps/docs-website/src/generated/connectrpc-api/auth.raw.mdx'),
-  path.join(repoRoot, 'apps/docs-website/src/generated/connectrpc-api/discovery.raw.mdx'),
-  path.join(repoRoot, 'apps/docs-website/src/generated/connectrpc-api/api.raw.mdx'),
-  path.join(repoRoot, 'apps/docs-website/src/generated/connectrpc-api/admin.raw.mdx'),
-  path.join(repoRoot, 'apps/docs-website/src/generated/connectrpc-api/realtime.raw.mdx')
-];
+const rawReferencePaths = CONNECTRPC_RAW_MDX_FILES.map((p) => path.join(repoRoot, p));
 const legacyRawReferencePath = path.join(
   repoRoot,
   'apps/docs-website/src/generated/connectrpc-api/index.raw.mdx'

@@ -104,6 +104,19 @@ export CHATTO_MACOS_NOTARY_API_ISSUER_ID='ISSUER_UUID'
 mise desktop-build
 ```
 
+### Release workflow reference checks
+
+Before building the desktop bundle, the release workflow verifies the build
+context with two checks: first, that HEAD is an ancestor of `origin/main` (so
+only commits reachable from the public main branch are signed), and second (on
+Windows), that the repository's GitHub OIDC configuration uses immutable
+subjects (required by Azure federation).
+
+`scripts/release-ref-checks.mjs` holds these checks. The workflow calls them
+with `git` and `gh` commands injected, so `scripts/release-ref-checks.test.mjs`
+can run the logic on each platform and `mise test-desktop` runs that test on
+every pull request.
+
 ### Configure Windows release signing
 
 Windows releases use Microsoft Artifact Signing (formerly Trusted Signing) with
@@ -176,6 +189,13 @@ rejects missing, invalid, or untimestamped signatures before packaging the ZIP.
 The main `chatto-desktop.exe` must also report the expected ChattoCorp publisher;
 bundled third-party libraries may retain their original valid publisher, such
 as Microsoft.
+
+`scripts/windows-signing.mjs` holds these two checks: the check of the settings
+before the build, and the check of the signature records after the signing
+step. The workflow collects the signature records with
+`Get-AuthenticodeSignature` and gives them to the module as JSON. Thus
+`scripts/windows-signing.test.mjs` can run the checks on each platform, and
+`mise test-desktop` runs that test.
 
 Before the first tagged release, manually run the `release` workflow with the
 `desktop` target on `main`, approve the protected environment, and inspect the

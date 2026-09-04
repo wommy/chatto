@@ -1,17 +1,12 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CONNECTRPC_RAW_MDX_FILES } from './connectrpc-raw-mdx-files.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 
-const generatedFiles = new Set([
-  'apps/docs-website/src/generated/connectrpc-api/admin.raw.mdx',
-  'apps/docs-website/src/generated/connectrpc-api/api.raw.mdx',
-  'apps/docs-website/src/generated/connectrpc-api/auth.raw.mdx',
-  'apps/docs-website/src/generated/connectrpc-api/discovery.raw.mdx',
-  'apps/docs-website/src/generated/connectrpc-api/realtime.raw.mdx'
-]);
+const generatedFiles = new Set(CONNECTRPC_RAW_MDX_FILES);
 
 async function collectGeneratedTypeScript(relativeDir) {
   const dir = path.join(repoRoot, relativeDir);

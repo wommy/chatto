@@ -1,0 +1,21 @@
+name: Setup mise
+description: Install mise and the tools mise.toml defines
+
+# A job that needs mise enters here, or through `setup`. That keeps the mise
+# version in one place, so that a pin is a one-line change to this file.
+#
+# `setup` also installs Go and pnpm and restores several caches. A job that
+# needs mise alone enters here instead, because that extra work would make a
+# job of about twenty seconds much slower.
+runs:
+  using: composite
+  steps:
+    - name: Setup mise
+      uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+      with:
+        experimental: true
+        # Pin the exact version. Without this the action installs
+        # whatever is current, and a cache hit reuses an older mise
+        # than a cache miss installs. Two runs of one commit can then
+        # differ. mise.toml gives contributors a floor instead.
+        version: 2026.9.0
