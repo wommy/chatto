@@ -113,3 +113,10 @@ an explicit read grant, bounded by its owner's effective read authority.
 - A future interaction-end feature needs a new durable end fact and must define
   whether permission restoration or room re-entry can reopen an ended
   relationship.
+
+## Related
+
+- [ADR-038](ADR-038-room-owned-thread-state.md) — Room-owned thread state.
+  This record derives interaction relationships inside the Threads projection
+  that ADR-038 defines, and extends its snapshot with the message-to-thread
+  index and interaction causes.

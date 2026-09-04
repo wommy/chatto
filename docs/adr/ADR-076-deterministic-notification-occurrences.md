@@ -333,3 +333,10 @@ overrides.
 - One additional replicated file-backed stream and two durable consumers—the
   EVT materializer and the notification push worker—add bounded NATS cluster
   overhead.
+
+## Related
+
+- [ADR-077](ADR-077-persistent-notification-list.md) — Present notifications
+  as one persistent occurrence list. This record defines the storage,
+  lifecycle-fact, and delivery mechanism that ADR-077's occurrence API and
+  presentation model read from.

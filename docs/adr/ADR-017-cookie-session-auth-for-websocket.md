@@ -42,3 +42,10 @@ time. An independent HTTP timer uses it when realtime transport is unavailable.
 - **Explicit automatic renewal**: Ordinary HTTP and WebSocket requests are read-only. At the renewal threshold, the frontend calls the CSRF-protected renewal route and reconnects without user action.
 - **Bounded revocation checks**: Established cookie and bearer sockets revalidate their exact credential once per minute, so a lost process-local termination signal cannot preserve access for the full session window.
 - **Server version in the connection acknowledgement**: The frontend uses this to detect when the server has been upgraded and prompt users to refresh. This is a lightweight deployment coordination mechanism.
+
+## Related
+
+- [ADR-024](ADR-024-opaque-bearer-tokens-for-cross-origin-auth.md) partially extends this decision, adding a parallel cross-origin bearer-token path alongside same-origin cookie auth.
+- [ADR-046](ADR-046-typed-runtime-credentials.md) moved the cookie session recorded here onto a typed runtime credential model.
+- [ADR-079](ADR-079-renewable-bearer-sessions.md) extends the realtime authentication model to renewable bearer sessions for non-cookie clients.
+- [ADR-081](ADR-081-explicit-expiry-for-mutable-runtime-credentials.md) replaces the sliding cookie-session renewal described here with explicit expiry and a defined renewal window.

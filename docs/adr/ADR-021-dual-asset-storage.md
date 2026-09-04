@@ -2,6 +2,8 @@
 
 **Date:** 2026-03-01
 
+**Updated:** 2026-05-24
+
 ## Context
 
 Chatto stores binary assets: user avatars, space icons, and message attachments. The storage backend must work out of the box for small self-hosted instances but scale for larger deployments with terabytes of files.
@@ -28,5 +30,5 @@ Each legacy `Attachment` carries a `DeprecatedAsset` field, and each EVT `Asset`
 - **Gradual migration path**: Operators can enable S3 at any time. New uploads go to S3; old assets remain in NATS. No downtime, no bulk migration required.
 - **No backend probing on retrieval**: Each `Attachment` records its backend on `Storage` at upload time. The HTTP handler reads it directly and goes to the right place, no NATS-then-S3 fallthrough. Switching backends doesn't trigger any extra lookups.
 - **Deletion follows `Storage`**: `DeleteAttachmentFromStorage(*Attachment)` branches on the Storage type and deletes from exactly one backend. The proto knows where its bytes live.
-- **NATS storage limits matter for NATS-only deployments**: Large instances using NATS-only storage will eventually hit practical limits (disk space, stream size). The S3 option is the escape hatch for this.
-- **Pre-ADR-030-Phase-4 S3 keys live at `spaces/{server|DM}/attachments/{id}`** instead of the current `attachments/{id}` layout. Their full key is preserved on `Attachment.Storage.S3.Key`, so we read them at exactly that path — no kind-segment probing needed.
+- **NATS storage limits matter for NATS-only deployments**: Large servers using NATS-only storage will eventually hit practical limits (disk space, stream size). The S3 option is the escape hatch for this.
+- **Pre-[ADR-030](ADR-030-space-tier-retirement.md)-Phase-4 S3 keys live at `spaces/{server|DM}/attachments/{id}`** instead of the current `attachments/{id}` layout. Their full key is preserved on `Attachment.Storage.S3.Key`, so we read them at exactly that path — no kind-segment probing needed.

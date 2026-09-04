@@ -40,12 +40,14 @@ Thread replies remain ordinary `MessagePostedEvent` facts on
 Thread lifecycle and metadata facts also use room-owned event-type lanes:
 
 ```text
-evt.room.{roomId}.thread_created        // ThreadCreatedEvent
-evt.room.{roomId}.thread_closed         // ThreadClosedEvent
-evt.room.{roomId}.thread_reopened       // ThreadReopenedEvent
-evt.room.{roomId}.thread_label_added    // ThreadLabelAddedEvent
-evt.room.{roomId}.thread_label_removed  // ThreadLabelRemovedEvent
+evt.room.{roomId}.thread_created        // ThreadCreatedEvent (shipped)
+evt.room.{roomId}.thread_closed         // ThreadClosedEvent (reserved; not yet implemented)
+evt.room.{roomId}.thread_reopened       // ThreadReopenedEvent (reserved; not yet implemented)
+evt.room.{roomId}.thread_label_added    // ThreadLabelAddedEvent (reserved; not yet implemented)
+evt.room.{roomId}.thread_label_removed  // ThreadLabelRemovedEvent (reserved; not yet implemented)
 ```
+
+Only `ThreadCreatedEvent` exists in the event proto today (`proto/chatto/core/evt/v1/thread_events.proto`), alongside `ThreadFollowedEvent` and `ThreadUnfollowedEvent`, which this ADR's follow-state paragraph below also relies on. Close/reopen/label events are reserved lanes for the forum-mode and labeling features described in Context; they have not shipped. [ADR-082](ADR-082-derive-thread-interactions-from-message-facts.md) extends the projection this ADR defines but does not add these event types either.
 
 Those payloads carry `room_id` and `thread_root_event_id`. The thread root
 event ID is the durable identity of the thread.
@@ -117,3 +119,10 @@ lifecycle semantics that no longer fit a room-owned consistency boundary.
 - A future split into thread aggregates remains possible, but it would be a
   deliberate migration of the room-owned thread event model rather than an
   accidental mixed ownership model.
+
+## Related
+
+- [ADR-082](ADR-082-derive-thread-interactions-from-message-facts.md) —
+  Derive thread interactions from message facts. It derives interaction
+  relationships inside the Threads projection this record defines and extends
+  its snapshot with a message-to-thread index.

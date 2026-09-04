@@ -143,3 +143,10 @@ requested page.
   rolling back captured rows and potentially resurrecting deleted content.
 - Clients own grouping complexity, but the public API is smaller and no
   server-side group state can drift from occurrences.
+
+## Related
+
+- [ADR-076](ADR-076-deterministic-notification-occurrences.md) — Store
+  notification lifecycle facts in a bounded event stream. This record's
+  occurrence API, attention model, and presentation grouping are built on
+  ADR-076's `NOTIFICATIONS` stream, signal identities, and lifecycle facts.

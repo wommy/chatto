@@ -16,7 +16,7 @@ Options considered:
 
 Use Protocol Buffers (proto3) for all JetStream event serialization. Proto definitions live in `proto/` and generate Go types used by core services, projections, and public API mapping.
 
-- Events are defined as proto messages with `oneof` for polymorphic event types (e.g., `SpaceRoomEvent` can be a `MessagePostedEvent`, `UserJoinedRoomEvent`, etc.)
+- Events are defined as proto messages with `oneof` for polymorphic event types (e.g., `chatto.core.evt.v1.Event` — Go type `evtv1.Event` — can hold a `MessagePostedEvent`, `UserJoinedRoomEvent`, etc.)
 - KV values that are structured data also use protobuf
 
 ## Consequences
@@ -28,3 +28,7 @@ Use Protocol Buffers (proto3) for all JetStream event serialization. Proto defin
 - **Not human-readable**: Debugging stream contents requires `protoc --decode_raw` or similar tooling. The `chatto-debugging` skill documents the workflow for inspecting raw stream data.
 - **Codegen step required**: Any schema change requires running `mise codegen` to regenerate Go types. Forgetting this causes build failures.
 - **API mapping**: Persisted event protos are storage contracts, not public API contracts. ConnectRPC/realtime API handlers map persisted event shapes into caller-facing API protos instead of exposing storage messages directly.
+
+## Related
+
+- [ADR-084](ADR-084-separate-internal-protobufs-by-storage-contract.md) names the current storage-contract packages for these event protos, including `chatto.core.evt.v1`.

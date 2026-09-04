@@ -44,7 +44,7 @@ rollout decision whose implementation and cleanup are finished.
 | [ADR-026](ADR-026-event-identity-via-nanoid.md) | Event Identity via NanoID, Not JetStream Sequence Numbers | Accepted | 2026-03-26 |
 | [ADR-027](ADR-027-instance-space-server-consolidation.md) | Consolidate Instance + Space into a Single "Server" Concept | Accepted | 2026-05-04 |
 | [ADR-028](ADR-028-event-id-keyed-read-state.md) | Event-ID-Keyed Read State | Partially superseded | 2026-05-06 |
-| [ADR-029](ADR-029-instance-to-server-rename.md) | Rename `Instance` → `Server` across the codebase | Accepted | 2026-05-11 |
+| [ADR-029](ADR-029-instance-to-server-rename.md) | Rename `Instance` → `Server` across the codebase | Completed | 2026-05-11 |
 | [ADR-030](ADR-030-space-tier-retirement.md) | Retire the Space tier | Accepted | 2026-05-11 |
 | [ADR-031](ADR-031-room-group-centric-acl.md) | Room-Group-Centric ACL for Room-Scope Permissions | Partially superseded | 2026-05-13 |
 | [ADR-032](ADR-032-signed-attachment-locator-urls.md) | Self-Describing Signed Attachment URLs | Superseded | 2026-05-23 |
@@ -58,7 +58,7 @@ rollout decision whose implementation and cleanup are finished.
 | [ADR-040](ADR-040-permission-only-rbac-with-owner-override.md) | Permission-Only RBAC with Owner Override | Partially superseded | 2026-06-15 |
 | [ADR-041](ADR-041-runtime-units.md) | Runtime Units for Optional Chatto Processes | Accepted | 2026-06-21 |
 | [ADR-042](ADR-042-protobuf-first-public-api.md) | Protobuf-First Public API with ConnectRPC and Realtime WebSocket | Accepted | 2026-06-22 |
-| [ADR-043](ADR-043-client-shell-internationalization.md) | Client-Shell Internationalization | Superseded | 2026-06-22 |
+| [ADR-043](ADR-043-client-shell-internationalization.md) | Client-Shell Internationalization | Partially superseded | 2026-06-22 |
 | [ADR-044](ADR-044-connectrpc-service-conventions.md) | ConnectRPC Service Conventions | Accepted | 2026-06-25 |
 | [ADR-045](ADR-045-public-api-stability-tiers.md) | Public API Stability Tiers | Accepted | 2026-06-28 |
 | [ADR-046](ADR-046-typed-runtime-credentials.md) | Typed Runtime Credentials | Partially superseded | 2026-06-30 |

@@ -77,6 +77,16 @@ Out of scope (deferred):
 
 Each phase is shippable independently. Phases 1 and 2 are good candidates to combine. Phase 3 is the biggest single landing because deleting `spaces.go` cascades into the proto + subject renames cleanly.
 
+**Remnants left after Phase 1 and Phase 2:** `cli/internal/core/threads.go`'s
+`ListFollowedThreadsPage` (and its `ListFollowedThreads` wrapper) still take a
+`spaceIDs []string` parameter and loop over it, converting each value with
+`RoomKindFromLegacySpaceID`. `cli/internal/http_server/opengraph.go` no
+longer reads the retired `space.{spaceId}` KV record — it already reads
+`ServerConfig` through `ConfigModel()`, so Phase 1 is done there — but it
+keeps a `spaceID`-named route variable and `spaceRoutePattern` to match the
+`/chat/{server}/{spaceId}/*` URL shape. Neither blocks Phase 3; clean both up
+in a follow-up.
+
 ## Consequences
 
 ### Positive

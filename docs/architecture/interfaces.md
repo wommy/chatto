@@ -13,10 +13,12 @@ This inventory records mounted transport and service boundaries. The generated
 is authoritative for individual RPCs, request and response messages, and public
 method documentation.
 
-Related decisions: [ADR-044](../adr/ADR-044-connectrpc-service-conventions.md),
+Related decisions: [ADR-042](../adr/ADR-042-protobuf-first-public-api.md),
+[ADR-044](../adr/ADR-044-connectrpc-service-conventions.md),
 [ADR-045](../adr/ADR-045-public-api-stability-tiers.md),
 [ADR-053](../adr/ADR-053-versioned-nats-service-namespaces.md),
 [ADR-079](../adr/ADR-079-renewable-bearer-sessions.md),
+[ADR-083](../adr/ADR-083-action-limited-bot-incoming-webhooks.md),
 [ADR-084](../adr/ADR-084-separate-internal-protobufs-by-storage-contract.md), and
 [ADR-085](../adr/ADR-085-agent-integration-through-mcp.md).
 

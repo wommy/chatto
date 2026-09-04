@@ -26,3 +26,11 @@ Configure SvelteKit with `adapter-static` (`fallback: '200.html'`, `precompress:
 - **No SSR**: The frontend is fully client-rendered. First paint shows a loading state until JavaScript boots. This is acceptable for an authenticated app where SEO doesn't matter.
 - **OpenGraph tags are server-rendered**: Despite being an SPA, the Go server injects `<meta>` tags for link preview URLs (space invites, shared assets) by manipulating the `200.html` before serving. This gives good link previews without SSR.
 - **Frontend updates require a full rebuild**: Changing a CSS color means rebuilding the Go binary. In practice, this is automated by CI and acceptable for a self-hosted product.
+
+## Related
+
+The static SPA build produced here is not only embedded in the Go binary. Later decisions reuse the same static artifacts in other distribution shapes:
+
+- [ADR-025](ADR-025-multi-instance-client-architecture.md) relies on the SPA being servable statically (for example from a CDN) without a Chatto backend.
+- [ADR-063](ADR-063-deno-desktop-cef-client.md) embeds these unmodified static artifacts in an experimental Deno Desktop shell.
+- [ADR-067](ADR-067-electron-desktop-client.md) embeds the same unmodified static artifacts in the Electron desktop client that superseded ADR-063.

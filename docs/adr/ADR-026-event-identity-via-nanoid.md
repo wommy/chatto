@@ -2,6 +2,16 @@
 
 **Date:** 2026-03-26
 
+**Naming note:** This ADR predates the Instance/Space → Server consolidation
+(ADR-027/029/030) and the later protobuf package split (ADR-084). `SpaceEvent`
+below is the pre-consolidation event-envelope type name; the durable event
+wrapper is now `chatto.core.evt.v1.Event` (Go `evtv1.Event`), which still
+reserves field 9001 for the retired `sequence_id`. `GetSequenceTimestamp()` was
+later removed entirely — [ADR-028](ADR-028-event-id-keyed-read-state.md) moved
+persisted read-state markers to stable event IDs, eliminating its only caller.
+The core decision recorded here — identify events by NanoID, not JetStream
+sequence number — is unchanged.
+
 ## Context
 
 Events in Chatto were historically identified by two values: a NanoID (`event.id`) and a JetStream stream sequence number (`sequence_id`). The sequence number was populated at read time from JetStream metadata and exposed through the then-current public API as `SpaceEvent.sequenceId`.
