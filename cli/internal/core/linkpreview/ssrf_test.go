@@ -42,10 +42,27 @@ func TestIsPrivateIP(t *testing.T) {
 		{"unspecified 0.0.0.0", "0.0.0.0", true},
 		{"this-network 0.0.0.1", "0.0.0.1", true},
 		{"this-network 0.1.2.3", "0.1.2.3", true},
+
+		// IANA special-use ranges - should be blocked
+		{"CGNAT 100.64.0.1", "100.64.0.1", true},
+		{"CGNAT 100.127.255.255", "100.127.255.255", true},
+		{"Tailscale default 100.64.0.0", "100.64.0.0", true},
+		{"TEST-NET-1 192.0.2.1", "192.0.2.1", true},
+		{"TEST-NET-2 192.0.2.100", "192.0.2.100", true},
+		{"TEST-NET-3 203.0.113.1", "203.0.113.1", true},
+		{"reserved 240.0.0.1", "240.0.0.1", true},
+		{"reserved 255.255.255.255", "255.255.255.255", true},
+		{"benchmarking 198.18.0.1", "198.18.0.1", true},
+		{"documentation 192.0.0.1", "192.0.0.1", true},
+
+		// IPv6 loopback, link-local, unique local - should be blocked
 		{"IPv6 loopback", "::1", true},
 		{"IPv6 link-local", "fe80::1", true},
 		{"IPv6 unique local", "fc00::1", true},
 		{"IPv6 unspecified", "::", true},
+		{"IPv6 documentation 2001:db8::1", "2001:db8::1", true},
+		{"IPv6 6to4 2002::1", "2002::1", true},
+		{"IPv6 translation 64:ff9b::1", "64:ff9b::1", true},
 
 		// Public IPs - should be allowed
 		{"public 8.8.8.8", "8.8.8.8", false},
@@ -53,6 +70,7 @@ func TestIsPrivateIP(t *testing.T) {
 		{"public 93.184.216.34", "93.184.216.34", false},
 		{"not RFC1918 172.32.0.1", "172.32.0.1", false},
 		{"public IPv6", "2001:4860:4860::8888", false},
+		{"public IPv6 Cloudflare", "2606:4700:4700::1111", false},
 	}
 
 	for _, tt := range tests {
