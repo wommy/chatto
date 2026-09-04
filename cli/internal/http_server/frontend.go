@@ -423,12 +423,6 @@ func (s *HTTPServer) setupFrontendRoutes() error {
 		return err
 	}
 
-	// Security headers middleware - applied to all frontend routes
-	s.router.Use(func(c *gin.Context) {
-		setFrontendSecurityHeaders(c)
-		c.Next()
-	})
-
 	// Middleware to set cache headers and ETags based on request path.
 	// SvelteKit puts all hashed/immutable assets under /_app/immutable/
 	// Other files under /_app/ (like version.json, env.js) are NOT content-hashed
