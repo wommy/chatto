@@ -105,9 +105,7 @@ describe('AppHeader', () => {
 
     const { container } = render(AppHeader);
 
-    expect(
-      container.querySelector('a[href="/chat/remote.example.com/settings"]')
-    ).not.toBeNull();
+    expect(container.querySelector('a[href="/chat/remote.example.com/settings"]')).not.toBeNull();
     expect(container.querySelector('a[href="/chat/preferences"]')).toBeNull();
   });
 
@@ -117,5 +115,19 @@ describe('AppHeader', () => {
     (container.querySelector('button[aria-label="About Chatto"]') as HTMLButtonElement).click();
 
     expect(mocks.pushState).toHaveBeenCalledWith('', { modal: { type: 'aboutChatto' } });
+  });
+
+  it('gives the sign-out button the same 44px tap target as its sibling header icons', () => {
+    mocks.servers = [{ id: 'remote' }];
+    mocks.getStore.mockReturnValue({ notifications: { count: 0 } });
+
+    const { container } = render(AppHeader);
+    const signOut = container.querySelector('button[aria-label="Sign out"]');
+
+    expect(signOut).not.toBeNull();
+    expect(signOut).toHaveClass('app-header-icon');
+
+    (signOut as HTMLButtonElement).click();
+    expect(mocks.pushState).toHaveBeenCalledWith('', { modal: { type: 'logout' } });
   });
 });
