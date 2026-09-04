@@ -824,7 +824,11 @@ func TestAdminUserServiceAssignsAndRevokesRoles(t *testing.T) {
 	if err := env.core.AssignAdminRole(env.ctx, admin.Id); err != nil {
 		t.Fatalf("AssignAdminRole: %v", err)
 	}
-	adminCtx := withCaller(env.ctx, admin)
+	adminToken, err := env.core.CreateAuthTokenWithSource(env.ctx, admin.Id, "test_login")
+	if err != nil {
+		t.Fatalf("CreateAuthTokenWithSource admin: %v", err)
+	}
+	adminCtx := withBearerCredential(env.ctx, admin, adminToken)
 
 	if _, err := env.adminUsers.AssignRole(env.ctx, connect.NewRequest(&adminv1.AssignRoleRequest{
 		UserId:   target.Id,
@@ -832,7 +836,12 @@ func TestAdminUserServiceAssignsAndRevokesRoles(t *testing.T) {
 	})); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("unauthenticated AssignRole code = %v, want unauthenticated", connect.CodeOf(err))
 	}
-	if _, err := env.adminUsers.AssignRole(withCaller(env.ctx, regular), connect.NewRequest(&adminv1.AssignRoleRequest{
+	regularToken, err := env.core.CreateAuthTokenWithSource(env.ctx, regular.Id, "test_login")
+	if err != nil {
+		t.Fatalf("CreateAuthTokenWithSource regular: %v", err)
+	}
+	regularCtx := withBearerCredential(env.ctx, regular, regularToken)
+	if _, err := env.adminUsers.AssignRole(regularCtx, connect.NewRequest(&adminv1.AssignRoleRequest{
 		UserId:   target.Id,
 		RoleName: core.RoleModerator,
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
@@ -856,7 +865,11 @@ func TestAdminUserServiceAssignsAndRevokesRoles(t *testing.T) {
 	if err := env.core.GrantUserPermission(env.ctx, core.SystemActorID, roleAssigner.Id, core.PermRoomMemberBan); err != nil {
 		t.Fatalf("GrantUserPermission room.ban-member: %v", err)
 	}
-	roleAssignerCtx := withCaller(env.ctx, roleAssigner)
+	roleAssignerToken, err := env.core.CreateAuthTokenWithSource(env.ctx, roleAssigner.Id, "test_login")
+	if err != nil {
+		t.Fatalf("CreateAuthTokenWithSource role assigner: %v", err)
+	}
+	roleAssignerCtx := withBearerCredential(env.ctx, roleAssigner, roleAssignerToken)
 	if _, err := env.adminUsers.GetMember(roleAssignerCtx, connect.NewRequest(&adminv1.GetMemberRequest{
 		Target: &adminv1.GetMemberRequest_UserId{UserId: target.Id},
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
